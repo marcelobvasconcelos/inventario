@@ -3,6 +3,7 @@ require_once 'includes/header.php';
 require_once 'config/db.php'; // Conexão com o banco para a consulta
 
 // Buscar últimas movimentações
+//comentário
 if ($_SESSION['permissao'] == 'admin') {
     $sql = "SELECT 
                 m.data_movimentacao, 
