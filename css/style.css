@@ -1,0 +1,218 @@
+body {
+    font-family: sans-serif;
+    line-height: 1.6;
+    margin: 0;
+    padding: 0;
+    background: #e7f3ff;
+    color: #333;
+}
+
+header {
+    background: #007bff;
+    color: #fff;
+    padding: 1rem 0;
+    text-align: center;
+}
+
+header h1 {
+    margin: 0;
+}
+
+nav a {
+    color: #fff;
+    padding: 0 15px;
+    text-decoration: none;
+}
+
+main {
+    padding: 20px;
+    max-width: 1200px;
+    margin: 20px auto;
+    background: #fff;
+    border-radius: 5px;
+}
+
+footer {
+    text-align: center;
+    padding: 20px;
+    margin-top: 20px;
+    background: #007bff;
+    color: #fff;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+}
+
+th, td {
+    padding: 12px;
+    border: 1px solid #b8daff;
+    text-align: left;
+}
+
+th {
+    background-color: #d1e7ff;
+}
+
+form {
+    margin-top: 20px;
+}
+
+form div {
+    margin-bottom: 15px;
+}
+
+form label {
+    display: block;
+    margin-bottom: 5px;
+}
+
+form input[type='text'],
+form input[type='email'],
+form input[type='password'],
+form select,
+form textarea {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid #b8daff;
+    border-radius: 4px;
+}
+
+form input[type='submit'] {
+    background: #007bff;
+    color: #fff;
+    padding: 10px 15px;
+    border: 0;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+/* Estilos para os atalhos */
+.atalhos-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+    justify-content: center;
+    margin-top: 30px;
+}
+
+.atalho-item {
+    background-color: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    color: #007bff;
+    padding: 20px;
+    text-align: center;
+    text-decoration: none;
+    width: 150px;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.atalho-item:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+.atalho-item i {
+    font-size: 48px;
+    display: block;
+    margin-bottom: 10px;
+}
+
+.atalho-item span {
+    font-size: 16px;
+    font-weight: bold;
+}
+
+/* Estilos para atividades recentes */
+.atividades-recentes {
+    margin-top: 40px;
+    border-top: 1px solid #dee2e6;
+    padding-top: 20px;
+}
+
+.atividades-recentes h3 {
+    margin-bottom: 20px;
+    color: #0056b3;
+}
+
+/* Estilos para alertas */
+.alert {
+    padding: 15px;
+    margin-bottom: 20px;
+    border: 1px solid transparent;
+    border-radius: 4px;
+}
+
+.alert-danger {
+    color: #721c24;
+    background-color: #f8d7da;
+    border-color: #f5c6cb;
+}
+
+.alert-success {
+    color: #155724;
+    background-color: #d4edda;
+    border-color: #c3e6cb;
+    font-weight: bold;
+}
+
+/* Estilos para botões de ação de usuário */
+.btn-aprovar {
+    color: #155724;
+    text-decoration: none;
+    font-weight: bold;
+}
+
+.btn-rejeitar {
+    color: #721c24;
+    text-decoration: none;
+    font-weight: bold;
+    margin-left: 10px;
+}
+
+/* Estilos para sugestões de autocomplete */
+.suggestions-box {
+    border: 1px solid #b8daff;
+    max-height: 150px;
+    overflow-y: auto;
+    position: absolute;
+    z-index: 1000;
+    background-color: #fff;
+    width: calc(100% - 2px); /* Ajusta à largura do input */
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+
+.suggestion-item {
+    padding: 8px 10px;
+    cursor: pointer;
+    border-bottom: 1px solid #eee;
+}
+
+.suggestion-item:last-child {
+    border-bottom: none;
+}
+
+.suggestion-item:hover {
+    background-color: #e9ecef;
+}
+
+.login-wrapper {
+    width: 350px; /* Largura fixa para o formulário de login */
+    padding: 20px;
+    background-color: #fff;
+    border-radius: 8px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    margin: 50px auto; /* Centraliza horizontalmente e adiciona margem superior */
+}
+
+.registro-wrapper {
+    width: 350px; /* Largura fixa para o formulário de registro */
+    padding: 20px;
+    background-color: #fff;
+    border-radius: 8px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    margin: 50px auto; /* Centraliza horizontalmente e adiciona margem superior */
+}
