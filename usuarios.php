@@ -16,6 +16,8 @@ if(isset($_GET['acao']) && isset($_GET['id'])){
         $novo_status = 'aprovado';
     } elseif($acao == 'rejeitar'){
         $novo_status = 'rejeitado';
+    } elseif($acao == 'pendente'){
+        $novo_status = 'pendente';
     }
 
     if(isset($novo_status)){
@@ -55,17 +57,18 @@ $result = mysqli_query($link, $sql);
         <?php while($row = mysqli_fetch_assoc($result)): ?>
         <tr>
             <td><?php echo $row['id']; ?></td>
-            <td><?php echo $row['nome']; ?></td>
-            <td><?php echo $row['email']; ?></td>
-            <td><?php echo $row['permissao']; ?></td>
-            <td><?php echo ucfirst($row['status']); ?></td>
+            <td><a href="usuario_itens.php?id=<?php echo $row['id']; ?>"><?php echo htmlspecialchars($row['nome']); ?></a></td>
+            <td><?php echo htmlspecialchars($row['email']); ?></td>
+            <td><?php echo htmlspecialchars($row['permissao']); ?></td>
+            <td><?php echo ucfirst(htmlspecialchars($row['status'])); ?></td>
             <td>
                 <?php if($row['status'] == 'pendente'): ?>
-                    <a href="usuarios.php?acao=aprovar&id=<?php echo $row['id']; ?>" class="btn-aprovar">Aprovar</a>
-                    <a href="usuarios.php?acao=rejeitar&id=<?php echo $row['id']; ?>" class="btn-rejeitar">Rejeitar</a>
+                    <a href="usuarios.php?acao=aprovar&id=<?php echo $row['id']; ?>" class="btn btn-aprovar">Aprovar</a>
+                    <a href="usuarios.php?acao=rejeitar&id=<?php echo $row['id']; ?>" class="btn btn-rejeitar">Rejeitar</a>
                 <?php else: ?>
-                    <a href="usuario_edit.php?id=<?php echo $row['id']; ?>">Editar</a>
-                    <a href="usuario_delete.php?id=<?php echo $row['id']; ?>" onclick="return confirm('Tem certeza que deseja excluir este usuário?');">Excluir</a>
+                    <a href="usuario_edit.php?id=<?php echo $row['id']; ?>" class="btn btn-editar">Editar</a>
+                    <a href="usuario_delete.php?id=<?php echo $row['id']; ?>" class="btn btn-excluir" onclick="return confirm('Tem certeza que deseja excluir este usuário?');">Excluir</a>
+                    <a href="usuarios.php?acao=pendente&id=<?php echo $row['id']; ?>" class="btn btn-pendente">Pendente</a>
                 <?php endif; ?>
             </td>
         </tr>

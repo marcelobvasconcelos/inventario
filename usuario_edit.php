@@ -2,61 +2,140 @@
 require_once 'includes/header.php';
 require_once 'config/db.php';
 
-if($_SESSION["permissao"] != 'admin'){
-    echo "Acesso negado.";
+// Validação da sessão e permissão
+if(!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true || $_SESSION["permissao"] != 'admin'){
+    echo "<main><h2>Acesso negado.</h2></main>";
+    require_once 'includes/footer.php';
+    exit;
+}
+
+// Validação do ID do usuário
+if(!isset($_GET['id']) || empty(trim($_GET['id'])) || !ctype_digit($_GET['id'])){
+    echo "<main><h2>ID de usuário inválido.</h2></main>";
+    require_once 'includes/footer.php';
     exit;
 }
 
 $id = $_GET['id'];
+$nome = $email = $permissao = "";
+$senha_err = $nome_err = $email_err = "";
 
+// Processamento do formulário quando enviado
 if($_SERVER["REQUEST_METHOD"] == "POST"){
-    $sql = "UPDATE usuarios SET nome = ?, email = ?, permissao = ? WHERE id = ?";
-    // Senha é atualizada separadamente
+    // Validação dos campos (exemplo simples)
+    if(empty(trim($_POST["nome"]))){
+        $nome_err = "Por favor, insira um nome.";
+    } else {
+        $nome = trim($_POST["nome"]);
+    }
 
-    if($stmt = mysqli_prepare($link, $sql)){
-        mysqli_stmt_bind_param($stmt, "sssi", $_POST['nome'], $_POST['email'], $_POST['permissao'], $id);
-        
-        if(mysqli_stmt_execute($stmt)){
-            header("location: usuarios.php");
-            exit();
-        } else{
-            echo "Oops! Algo deu errado. Por favor, tente novamente mais tarde.";
+    if(empty(trim($_POST["email"]))){
+        $email_err = "Por favor, insira um email.";
+    } else {
+        $email = trim($_POST["email"]);
+    }
+    
+    $permissao = $_POST["permissao"];
+
+    // Validação da nova senha (se preenchida)
+    if(!empty($_POST['nova_senha'])){
+        if(strlen($_POST['nova_senha']) < 6){
+            $senha_err = "A senha deve ter no mínimo 6 caracteres.";
+        } elseif($_POST['nova_senha'] != $_POST['confirmar_nova_senha']){
+            $senha_err = "As senhas não coincidem.";
+        }
+    }
+
+    // Se não houver erros, atualize o banco de dados
+    if(empty($nome_err) && empty($email_err) && empty($senha_err)){
+        // Prepara a query de atualização
+        if(!empty($_POST['nova_senha'])){
+            $sql = "UPDATE usuarios SET nome = ?, email = ?, permissao = ?, senha = ? WHERE id = ?";
+            $hashed_password = password_hash($_POST['nova_senha'], PASSWORD_DEFAULT);
+        } else {
+            $sql = "UPDATE usuarios SET nome = ?, email = ?, permissao = ? WHERE id = ?";
+        }
+
+        if($stmt = mysqli_prepare($link, $sql)){
+            // Binda os parâmetros
+            if(!empty($_POST['nova_senha'])){
+                mysqli_stmt_bind_param($stmt, "ssssi", $nome, $email, $permissao, $hashed_password, $id);
+            } else {
+                mysqli_stmt_bind_param($stmt, "sssi", $nome, $email, $permissao, $id);
+            }
+
+            if(mysqli_stmt_execute($stmt)){
+                header("location: usuarios.php");
+                exit();
+            } else{
+                echo "Oops! Algo deu errado. Por favor, tente novamente mais tarde.";
+            }
+            mysqli_stmt_close($stmt);
         }
     }
 }
 
-$sql = "SELECT * FROM usuarios WHERE id = ?";
-if($stmt = mysqli_prepare($link, $sql)){
-    mysqli_stmt_bind_param($stmt, "i", $id);
-    mysqli_stmt_execute($stmt);
-    $result = mysqli_stmt_get_result($stmt);
-    $usuario = mysqli_fetch_assoc($result);
+// Busca os dados atuais do usuário para preencher o formulário
+$sql_user = "SELECT nome, email, permissao FROM usuarios WHERE id = ?";
+if($stmt_user = mysqli_prepare($link, $sql_user)){
+    mysqli_stmt_bind_param($stmt_user, "i", $id);
+    if(mysqli_stmt_execute($stmt_user)){
+        $result = mysqli_stmt_get_result($stmt_user);
+        if(mysqli_num_rows($result) == 1){
+            $usuario = mysqli_fetch_assoc($result);
+            $nome = $usuario['nome'];
+            $email = $usuario['email'];
+            $permissao = $usuario['permissao'];
+        } else {
+            echo "<main><h2>Usuário não encontrado.</h2></main>";
+            require_once 'includes/footer.php';
+            exit;
+        }
+    }
+    mysqli_stmt_close($stmt_user);
 }
 
+mysqli_close($link);
 ?>
 
-<h2>Editar Usuário</h2>
+<main>
+    <h2>Editar Usuário</h2>
+    <p>Preencha os campos para editar o usuário. Deixe os campos de senha em branco para não alterá-la.</p>
 
-<form action="" method="post">
-    <div>
-        <label>Nome</label>
-        <input type="text" name="nome" value="<?php echo $usuario['nome']; ?>">
-    </div>
-    <div>
-        <label>Email</label>
-        <input type="email" name="email" value="<?php echo $usuario['email']; ?>">
-    </div>
-    <div>
-        <label>Permissão</label>
-        <select name="permissao">
-            <option value="usuario" <?php echo ($usuario['permissao'] == 'usuario') ? 'selected' : ''; ?>>Usuário</option>
-            <option value="admin" <?php echo ($usuario['permissao'] == 'admin') ? 'selected' : ''; ?>>Administrador</option>
-        </select>
-    </div>
-    <div>
-        <input type="submit" value="Salvar Alterações">
-    </div>
-</form>
+    <form action="<?php echo htmlspecialchars($_SERVER['PHP_SELF'] . '?id=' . $id); ?>" method="post">
+        <div>
+            <label>Nome</label>
+            <input type="text" name="nome" value="<?php echo htmlspecialchars($nome); ?>">
+            <span class="help-block"><?php echo $nome_err; ?></span>
+        </div>
+        <div>
+            <label>Email</label>
+            <input type="email" name="email" value="<?php echo htmlspecialchars($email); ?>">
+            <span class="help-block"><?php echo $email_err; ?></span>
+        </div>
+        <div>
+            <label>Permissão</label>
+            <select name="permissao">
+                <option value="usuario" <?php echo ($permissao == 'usuario') ? 'selected' : ''; ?>>Usuário</option>
+                <option value="admin" <?php echo ($permissao == 'admin') ? 'selected' : ''; ?>>Administrador</option>
+            </select>
+        </div>
+        <hr>
+        <div>
+            <label>Nova Senha</label>
+            <input type="password" name="nova_senha" class="form-control">
+            <span class="help-block"><?php echo $senha_err; ?></span>
+        </div>
+        <div>
+            <label>Confirmar Nova Senha</label>
+            <input type="password" name="confirmar_nova_senha" class="form-control">
+        </div>
+        <div>
+            <input type="submit" class="btn btn-primary" value="Salvar Alterações">
+            <a href="usuarios.php" class="btn btn-default">Cancelar</a>
+        </div>
+    </form>
+</main>
 
 <?php
 require_once 'includes/footer.php';

@@ -160,17 +160,44 @@ form input[type='submit'] {
 }
 
 /* Estilos para botões de ação de usuário */
-.btn-aprovar {
-    color: #155724;
+.btn {
+    display: inline-block;
+    padding: 8px 12px;
+    border: 1px solid transparent;
+    border-radius: 4px;
     text-decoration: none;
+    text-align: center;
+    cursor: pointer;
     font-weight: bold;
+    margin: 2px;
 }
 
-.btn-rejeitar {
-    color: #721c24;
-    text-decoration: none;
-    font-weight: bold;
-    margin-left: 10px;
+.btn:hover {
+    opacity: 0.9;
+}
+
+.btn-aprovar {
+    background-color: #28a745;
+    color: #fff !important;
+    border-color: #28a745;
+}
+
+.btn-rejeitar, .btn-excluir {
+    background-color: #dc3545;
+    color: #fff !important;
+    border-color: #dc3545;
+}
+
+.btn-editar {
+    background-color: #007bff;
+    color: #fff !important;
+    border-color: #007bff;
+}
+
+.btn-pendente {
+    background-color: #ffc107;
+    color: #212529 !important;
+    border-color: #ffc107;
 }
 
 /* Estilos para sugestões de autocomplete */
