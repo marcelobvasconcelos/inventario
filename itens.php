@@ -156,7 +156,7 @@ if($stmt = mysqli_prepare($link, $sql)){
             <?php while($row = mysqli_fetch_assoc($result)): ?>
             <tr>
                 <td><?php echo $row['id']; ?></td>
-                <td><?php echo $row['nome']; ?></td>
+                <td><a href="item_details.php?id=<?php echo $row['id']; ?>"><?php echo $row['nome']; ?></a></td>
                 <td><?php echo $row['patrimonio_novo']; ?></td>
                 <td><?php echo $row['patrimonio_secundario']; ?></td>
                 <td><a href="local_itens.php?id=<?php echo $row['local_id']; ?>"><?php echo $row['local']; ?></a></td>

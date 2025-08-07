@@ -24,6 +24,7 @@ if(!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true){
             <a href="locais.php">Locais</a>
             <a href="movimentacoes.php">Movimentações</a>
             <?php if($_SESSION["permissao"] == 'Administrador'): ?>
+                <a href="patrimonio_add.php">Patrimônio</a>
                 <a href="usuarios.php">Usuários</a>
             <?php endif; ?>
         </nav>

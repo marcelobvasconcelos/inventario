@@ -6,6 +6,7 @@ $item_id = $_GET['id'];
 
 $sql_item = "SELECT 
                 i.id, i.nome, i.patrimonio_novo, i.patrimonio_secundario, i.data_cadastro, i.estado, i.observacao, 
+                i.empenho, i.data_emissao_empenho, i.fornecedor, i.cnpj_fornecedor, i.categoria, i.valor_nf, i.nd_nota_despesa, i.unidade_medida, i.valor,
                 l.nome as local_nome, 
                 u.nome as responsavel_nome, u.email as responsavel_email
               FROM itens i
@@ -39,6 +40,17 @@ if($stmt_item = mysqli_prepare($link, $sql_item)){
         <p><strong>Observação:</strong> <?php echo $item['observacao']; ?></p>
         <p><strong>Local:</strong> <?php echo $item['local_nome']; ?></p>
         <p><strong>Responsável:</strong> <?php echo $item['responsavel_nome']; ?> (<?php echo $item['responsavel_email']; ?>)</p>
+        
+        <h3>Informações de Aquisição</h3>
+        <p><strong>Empenho:</strong> <?php echo htmlspecialchars($item['empenho']); ?></p>
+        <p><strong>Data Emissão Empenho:</strong> <?php echo htmlspecialchars($item['data_emissao_empenho']); ?></p>
+        <p><strong>Fornecedor:</strong> <?php echo htmlspecialchars($item['fornecedor']); ?></p>
+        <p><strong>CNPJ Fornecedor:</strong> <?php echo htmlspecialchars($item['cnpj_fornecedor']); ?></p>
+        <p><strong>Categoria:</strong> <?php echo htmlspecialchars($item['categoria']); ?></p>
+        <p><strong>Número NF:</strong> <?php echo htmlspecialchars($item['valor_nf']); ?></p>
+        <p><strong>ND-Nota de Despesa:</strong> <?php echo htmlspecialchars($item['nd_nota_despesa']); ?></p>
+        <p><strong>Unidade de Medida:</strong> <?php echo htmlspecialchars($item['unidade_medida']); ?></p>
+        <p><strong>Valor Unitário:</strong> <?php echo htmlspecialchars($item['valor']); ?></p>
     </div>
 <?php else: ?>
     <p>Item não encontrado.</p>
