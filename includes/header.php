@@ -1,5 +1,7 @@
 <?php
-session_start();
+if (session_status() == PHP_SESSION_NONE) {
+    session_start();
+}
 
 if(!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true){
     header("location: login.php");
@@ -24,14 +26,17 @@ if(!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true){
             <a href="locais.php">Locais</a>
             <a href="movimentacoes.php">Movimentações</a>
             <?php if($_SESSION["permissao"] == 'Administrador'): ?>
-                <a href="patrimonio_add.php">Patrimônio</a>
                 <a href="usuarios.php">Usuários</a>
+                <a href="patrimonio_add.php">Patrimônio</a>
             <?php endif; ?>
         </nav>
         <div class="user-menu">
             <button class="user-menu-button">Bem-vindo, <?php echo $_SESSION['nome']; ?> <i class="fas fa-caret-down"></i></button>
             <div class="user-menu-content">
                 <a href="usuario_perfil.php">Editar Perfil</a>
+                <?php if($_SESSION["permissao"] == 'Administrador'): ?>
+                    <a href="configuracoes_pdf.php">Configurações PDF</a>
+                <?php endif; ?>
                 <a href="docs.php">Ajuda</a>
                 <a href="logout.php">Sair</a>
             </div>

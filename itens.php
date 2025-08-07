@@ -2,6 +2,13 @@
 require_once 'includes/header.php';
 require_once 'config/db.php';
 
+// Buscar o cabeçalho padrão do PDF para o administrador
+$cabecalho_padrao_pdf = '';
+if ($_SESSION['permissao'] == 'Administrador') {
+    $stmt_cabecalho = $pdo->query("SELECT valor FROM configuracoes WHERE chave = 'cabecalho_padrao_pdf'");
+    $cabecalho_padrao_pdf = $stmt_cabecalho->fetchColumn();
+}
+
 // Configurações de paginação
 $itens_por_pagina = 20;
 $pagina_atual = isset($_GET['pagina']) ? (int)$_GET['pagina'] : 1;
@@ -135,6 +142,26 @@ if($stmt = mysqli_prepare($link, $sql)){
     </div>
     <?php endif; ?>
 </div>
+
+<?php if($_SESSION['permissao'] == 'Administrador'): ?>
+<div class="pdf-form-container card mt-4">
+    <div class="card-body">
+        <h5 class="card-title">Gerar Relatório PDF</h5>
+        <form action="gerar_pdf_itens.php" method="post" target="_blank">
+            <div class="form-group">
+                <label for="cabecalho_pdf">Cabeçalho do Relatório (opcional):</label>
+                <textarea name="cabecalho_pdf" id="cabecalho_pdf" class="form-control" rows="3"><?php echo htmlspecialchars($cabecalho_padrao_pdf); ?></textarea>
+            </div>
+            
+            <!-- Campos ocultos para passar os filtros de pesquisa -->
+            <input type="hidden" name="search_by" value="<?php echo htmlspecialchars($search_by); ?>">
+            <input type="hidden" name="search_query" value="<?php echo htmlspecialchars($search_query); ?>">
+            
+            <button type="submit" class="btn btn-primary mt-2">Gerar PDF</button>
+        </form>
+    </div>
+</div>
+<?php endif; ?>
 
 <table>
     <thead>
