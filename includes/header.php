@@ -23,10 +23,17 @@ if(!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true){
             <a href="itens.php">Itens</a>
             <a href="locais.php">Locais</a>
             <a href="movimentacoes.php">Movimentações</a>
-            <?php if($_SESSION["permissao"] == 'admin'): ?>
+            <?php if($_SESSION["permissao"] == 'Administrador'): ?>
                 <a href="usuarios.php">Usuários</a>
             <?php endif; ?>
-            <a href="logout.php">Sair</a>
         </nav>
+        <div class="user-menu">
+            <button class="user-menu-button">Bem-vindo, <?php echo $_SESSION['nome']; ?> <i class="fas fa-caret-down"></i></button>
+            <div class="user-menu-content">
+                <a href="usuario_perfil.php">Editar Perfil</a>
+                <a href="docs.php">Ajuda</a>
+                <a href="logout.php">Sair</a>
+            </div>
+        </div>
     </header>
     <main>

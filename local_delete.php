@@ -1,5 +1,13 @@
 <?php
+session_start();
+require_once 'includes/header.php';
 require_once 'config/db.php';
+
+// Verifica se o usuário é administrador
+if($_SESSION["permissao"] != 'Administrador'){
+    header("location: index.php");
+    exit;
+}
 
 $id = $_GET['id'];
 

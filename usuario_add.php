@@ -2,17 +2,21 @@
 require_once 'includes/header.php';
 require_once 'config/db.php';
 
-if($_SESSION["permissao"] != 'admin'){
+if($_SESSION["permissao"] != 'Administrador'){
     echo "Acesso negado.";
     exit;
 }
 
+// Obter perfis disponíveis
+$perfis_sql = "SELECT id, nome FROM perfis ORDER BY nome ASC";
+$perfis_result = mysqli_query($link, $perfis_sql);
+
 if($_SERVER["REQUEST_METHOD"] == "POST"){
     $senha = password_hash($_POST['senha'], PASSWORD_DEFAULT);
-    $sql = "INSERT INTO usuarios (nome, email, senha, permissao) VALUES (?, ?, ?, ?)";
+    $sql = "INSERT INTO usuarios (nome, email, senha, permissao_id) VALUES (?, ?, ?, ?)";
 
     if($stmt = mysqli_prepare($link, $sql)){
-        mysqli_stmt_bind_param($stmt, "ssss", $_POST['nome'], $_POST['email'], $senha, $_POST['permissao']);
+        mysqli_stmt_bind_param($stmt, "sssi", $_POST['nome'], $_POST['email'], $senha, $_POST['permissao_id']);
         
         if(mysqli_stmt_execute($stmt)){
             header("location: usuarios.php");
@@ -41,9 +45,10 @@ if($_SERVER["REQUEST_METHOD"] == "POST"){
     </div>
     <div>
         <label>Permissão</label>
-        <select name="permissao">
-            <option value="usuario">Usuário</option>
-            <option value="admin">Administrador</option>
+        <select name="permissao_id">
+            <?php while($perfil = mysqli_fetch_assoc($perfis_result)): ?>
+                <option value="<?php echo $perfil['id']; ?>"><?php echo $perfil['nome']; ?></option>
+            <?php endwhile; ?>
         </select>
     </div>
     <div>
@@ -52,5 +57,6 @@ if($_SERVER["REQUEST_METHOD"] == "POST"){
 </form>
 
 <?php
+mysqli_close($link);
 require_once 'includes/footer.php';
 ?>

@@ -8,14 +8,14 @@ function display_error($message) {
     echo '<main>';
     echo '<h2>Erro ao Excluir Usuário</h2>';
     echo '<div class="alert alert-danger">' . htmlspecialchars($message) . '</div>';
-    echo '<a href="usuarios.php" class="btn btn-editar">Voltar para Usuários</a>';
+    echo '<a href="usuarios.php" class="btn-custom">Voltar para Usuários</a>';
     echo '</main>';
     require_once 'includes/footer.php';
     exit;
 }
 
 // Validação da sessão e permissão
-if(!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true || $_SESSION["permissao"] != 'admin'){
+if(!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true || $_SESSION["permissao"] != 'Administrador'){
     display_error("Acesso negado.");
 }
 

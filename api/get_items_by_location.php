@@ -5,7 +5,7 @@ require_once "../config/db.php";
 header('Content-Type: application/json');
 
 // Apenas administradores podem acessar este endpoint
-if(!isset($_SESSION["permissao"]) || $_SESSION["permissao"] != 'admin'){
+if(!isset($_SESSION["permissao"]) || $_SESSION["permissao"] != 'Administrador'){
     echo json_encode(['error' => 'Acesso negado.']);
     exit;
 }

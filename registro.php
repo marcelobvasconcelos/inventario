@@ -47,10 +47,23 @@ if($_SERVER["REQUEST_METHOD"] == "POST"){
 
     // Se não houver erros, insere no banco de dados
     if(empty($nome_err) && empty($email_err) && empty($senha_err)){
-        $sql = "INSERT INTO usuarios (nome, email, senha, permissao, status) VALUES (?, ?, ?, 'usuario', 'pendente')";
+        // Obter o ID do perfil 'Visualizador'
+        $permissao_id = null;
+        $sql_perfil = "SELECT id FROM perfis WHERE nome = 'Visualizador'";
+        if($result_perfil = mysqli_query($link, $sql_perfil)){
+            $row_perfil = mysqli_fetch_assoc($result_perfil);
+            if($row_perfil) {
+                $permissao_id = $row_perfil['id'];
+            } else {
+                // Fallback caso o perfil 'Visualizador' não exista
+                $permissao_id = 3; // Assumindo que 3 é o ID do Visualizador
+            }
+        }
+
+        $sql = "INSERT INTO usuarios (nome, email, senha, permissao_id, status) VALUES (?, ?, ?, ?, 'pendente')";
         
         if($stmt = mysqli_prepare($link, $sql)){
-            mysqli_stmt_bind_param($stmt, "sss", $param_nome, $param_email, $param_senha);
+            mysqli_stmt_bind_param($stmt, "sssi", $param_nome, $param_email, $param_senha, $permissao_id);
             
             $param_nome = $nome;
             $param_email = $email;
@@ -69,6 +82,7 @@ if($_SERVER["REQUEST_METHOD"] == "POST"){
     }
     mysqli_close($link);
 }
+?>
 ?>
 
 <!DOCTYPE html>

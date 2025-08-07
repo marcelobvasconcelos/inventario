@@ -4,7 +4,7 @@ require_once 'config/db.php'; // Conexão com o banco para a consulta
 
 // Buscar últimas movimentações
 //comentário
-if ($_SESSION['permissao'] == 'admin') {
+if ($_SESSION['permissao'] == 'Administrador') {
     $sql = "SELECT 
                 m.data_movimentacao, 
                 i.nome as item_nome, 
@@ -37,7 +37,7 @@ if ($_SESSION['permissao'] == 'admin') {
 }
 
 if($stmt = mysqli_prepare($link, $sql)){
-    if ($_SESSION['permissao'] != 'admin') {
+    if ($_SESSION['permissao'] != 'Administrador') {
         mysqli_stmt_bind_param($stmt, "i", $usuario_id);
     }
     mysqli_stmt_execute($stmt);
@@ -62,7 +62,7 @@ if($stmt = mysqli_prepare($link, $sql)){
         <i class="fas fa-exchange-alt"></i>
         <span>Movimentações</span>
     </a>
-    <?php if($_SESSION["permissao"] == 'admin'): ?>
+    <?php if($_SESSION["permissao"] == 'Administrador'): ?>
     <a href="usuarios.php" class="atalho-item">
         <i class="fas fa-users"></i>
         <span>Usuários</span>

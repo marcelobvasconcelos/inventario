@@ -30,8 +30,8 @@ if($stmt_user = mysqli_prepare($link, $user_sql)){
     mysqli_stmt_close($stmt_user);
 }
 
-// Buscar itens do usuário
-$sql = "SELECT i.id, i.nome, i.patrimonio_novo, l.nome as local_nome, i.estado 
+// Buscar itens do usuário, incluindo o ID do local
+$sql = "SELECT i.id, i.nome, i.patrimonio_novo, l.id as local_id, l.nome as local_nome, i.estado 
         FROM itens i 
         JOIN locais l ON i.local_id = l.id 
         WHERE i.responsavel_id = ? 
@@ -52,7 +52,12 @@ mysqli_close($link);
 ?>
 
 <main>
-    <h2>Itens Sob Responsabilidade de <?php echo htmlspecialchars($user_nome); ?></h2>
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+        <h2>Itens Sob Responsabilidade de <?php echo htmlspecialchars($user_nome); ?></h2>
+        <?php if(isset($_SESSION['permissao']) && ($_SESSION['permissao'] == 'Gestor' || $_SESSION['permissao'] == 'Administrador')): ?>
+            <a href="movimentacao_add.php" class="btn-custom">Adicionar Movimentação</a>
+        <?php endif; ?>
+    </div>
 
     <?php if(!empty($itens)): ?>
     <table>
@@ -69,9 +74,9 @@ mysqli_close($link);
             <?php foreach($itens as $item): ?>
             <tr>
                 <td><?php echo $item['id']; ?></td>
-                <td><?php echo htmlspecialchars($item['nome']); ?></td>
+                <td><a href="item_details.php?id=<?php echo $item['id']; ?>"><?php echo htmlspecialchars($item['nome']); ?></a></td>
                 <td><?php echo htmlspecialchars($item['patrimonio_novo']); ?></td>
-                <td><?php echo htmlspecialchars($item['local_nome']); ?></td>
+                <td><a href="local_itens.php?id=<?php echo $item['local_id']; ?>"><?php echo htmlspecialchars($item['local_nome']); ?></a></td>
                 <td><?php echo htmlspecialchars($item['estado']); ?></td>
             </tr>
             <?php endforeach; ?>
@@ -82,7 +87,7 @@ mysqli_close($link);
     <?php endif; ?>
 
     <br>
-    <a href="usuarios.php" class="btn btn-editar">Voltar para Usuários</a>
+    <a href="usuarios.php" class="btn-custom">Voltar para Usuários</a>
 </main>
 
 <?php

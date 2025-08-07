@@ -2,6 +2,12 @@
 require_once 'includes/header.php';
 require_once 'config/db.php';
 
+// Verifica se o usuário é administrador
+if($_SESSION["permissao"] != 'Administrador'){
+    header("location: index.php");
+    exit;
+}
+
 if($_SERVER["REQUEST_METHOD"] == "POST"){
     $sql = "INSERT INTO locais (nome) VALUES (?)";
 
@@ -27,6 +33,7 @@ if($_SERVER["REQUEST_METHOD"] == "POST"){
     </div>
     <div>
         <input type="submit" value="Adicionar">
+        <a href="locais.php" class="btn-custom">Cancelar</a>
     </div>
 </form>
 

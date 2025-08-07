@@ -38,6 +38,7 @@ if($stmt = mysqli_prepare($link, $sql)){
     </div>
     <div>
         <input type="submit" value="Salvar Alterações">
+        <a href="locais.php" class="btn-custom">Cancelar</a>
     </div>
 </form>
 

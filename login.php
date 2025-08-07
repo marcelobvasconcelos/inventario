@@ -26,7 +26,7 @@ if($_SERVER["REQUEST_METHOD"] == "POST"){
     }
     
     if(empty($email_err) && empty($senha_err)){
-        $sql = "SELECT id, nome, email, senha, permissao, status FROM usuarios WHERE email = ?";
+        $sql = "SELECT u.id, u.nome, u.email, u.senha, p.nome as perfil_nome, u.status FROM usuarios u JOIN perfis p ON u.permissao_id = p.id WHERE u.email = ?";
         
         if($stmt = mysqli_prepare($link, $sql)){
             mysqli_stmt_bind_param($stmt, "s", $param_email);

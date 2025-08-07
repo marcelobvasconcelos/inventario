@@ -55,12 +55,15 @@ CREATE TABLE `itens` (
   `estado` enum('Bom','Razoável','Inservível') NOT NULL,
   `observacao` text DEFAULT NULL,
   `data_cadastro` timestamp NOT NULL DEFAULT current_timestamp(),
+  `usuario_anterior_id` int(11) DEFAULT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `patrimonio_novo` (`patrimonio_novo`),
   KEY `local_id` (`local_id`),
   KEY `responsavel_id` (`responsavel_id`),
+  KEY `usuario_anterior_id` (`usuario_anterior_id`),
   CONSTRAINT `itens_ibfk_1` FOREIGN KEY (`local_id`) REFERENCES `locais` (`id`),
-  CONSTRAINT `itens_ibfk_2` FOREIGN KEY (`responsavel_id`) REFERENCES `usuarios` (`id`)
+  CONSTRAINT `itens_ibfk_2` FOREIGN KEY (`responsavel_id`) REFERENCES `usuarios` (`id`),
+  CONSTRAINT `itens_ibfk_3` FOREIGN KEY (`usuario_anterior_id`) REFERENCES `usuarios` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- --------------------------------------------------------

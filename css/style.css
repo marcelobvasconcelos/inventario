@@ -243,3 +243,216 @@ form input[type='submit'] {
     box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
     margin: 50px auto; /* Centraliza horizontalmente e adiciona margem superior */
 }
+
+.btn-custom {
+    display: inline-block;
+    padding: 10px 20px;
+    background-color: #28a745; /* Um verde para destaque */
+    color: white;
+    text-decoration: none;
+    border-radius: 5px;
+    font-weight: bold;
+    transition: background-color 0.3s ease;
+}
+
+.btn-custom:hover {
+    background-color: #218838;
+}
+
+/* Espaçamento para ícones de ação */
+td a i {
+    margin-right: 8px;
+}
+
+/* Estilos para o menu de usuário */
+.user-menu {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    display: inline-block;
+}
+
+.user-menu-button {
+    background-color: #0069d9;
+    color: white;
+    padding: 8px 12px;
+    font-size: 16px;
+    border: 1px solid #0056b3;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+.user-menu-content {
+    display: none;
+    position: absolute;
+    right: 0;
+    background-color: #d1e7ff;
+    min-width: 160px;
+    box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
+    z-index: 1;
+}
+
+.user-menu-content a {
+    color: black;
+    padding: 12px 16px;
+    text-decoration: none;
+    display: block;
+}
+
+.user-menu-content a:hover {background-color: #f1f1f1}
+
+.user-menu:hover .user-menu-content {
+    display: block;
+}
+
+.user-menu:hover .user-menu-button {
+    background-color: #0056b3;
+}
+
+.pagination a.active {
+    font-weight: bold;
+    color: white;
+    background-color: #007bff; /* ou a cor de destaque que preferir */
+}
+
+.search-form {
+    margin-bottom: 20px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid #dee2e6;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.search-form form {
+    display: flex;
+    width: 100%;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.search-form .search-criteria {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.search-form .search-input {
+    flex: 2;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.search-form input[type='text'] {
+    flex-grow: 1;
+}
+
+.items-header-controls {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.items-header-controls .btn-custom {
+    margin-right: 20px; /* Espaço entre o botão e o formulário de pesquisa */
+}
+
+.controls-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    flex-wrap: wrap; /* Permite que os itens quebrem a linha em telas menores */
+}
+
+.controls-container .btn-custom {
+    margin-right: 20px; /* Espaço entre o botão e o formulário de pesquisa */
+}
+
+.controls-container .search-form {
+    flex-grow: 1;
+    margin-bottom: 0; /* Remove a margem inferior que já está no container */
+    padding-bottom: 0; /* Remove o padding inferior que já está no container */
+    border-bottom: none; /* Remove a borda inferior que já está no container */
+}
+
+.disabled-icon {
+    color: #ccc; /* Cor cinza para indicar desativado */
+    cursor: not-allowed; /* Cursor de "não permitido" */
+    pointer-events: none; /* Desativa eventos de clique */
+}
+
+/* Estilos para a documentação */
+.documentacao-container {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    line-height: 1.8;
+    color: #333;
+    padding: 20px;
+    background-color: #f9f9f9;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.documentacao-container h1, .documentacao-container h2, .documentacao-container h3 {
+    color: #0056b3;
+    margin-top: 1.5em;
+    margin-bottom: 0.8em;
+}
+
+.documentacao-container h1 {
+    font-size: 2.2em;
+    border-bottom: 2px solid #007bff;
+    padding-bottom: 10px;
+}
+
+.documentacao-container h2 {
+    font-size: 1.8em;
+    border-bottom: 1px solid #b8daff;
+    padding-bottom: 5px;
+}
+
+.documentacao-container h3 {
+    font-size: 1.4em;
+}
+
+.documentacao-container p {
+    margin-bottom: 1em;
+}
+
+.documentacao-container ul {
+    list-style-type: disc;
+    margin-left: 20px;
+    margin-bottom: 1em;
+}
+
+.documentacao-container ul li {
+    margin-bottom: 0.5em;
+}
+
+.documentacao-container strong {
+    color: #007bff;
+}
+
+.documentacao-container code {
+    background-color: #e9ecef;
+    padding: 2px 4px;
+    border-radius: 4px;
+    font-family: 'Consolas', 'Courier New', monospace;
+    font-size: 0.9em;
+}
+
+.documentacao-container pre {
+    background-color: #e9ecef;
+    padding: 10px;
+    border-radius: 4px;
+    overflow-x: auto;
+    font-family: 'Consolas', 'Courier New', monospace;
+    font-size: 0.9em;
+}
+
+.documentacao-container .fas {
+    margin-right: 5px;
+}

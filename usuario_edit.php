@@ -3,7 +3,7 @@ require_once 'includes/header.php';
 require_once 'config/db.php';
 
 // Validação da sessão e permissão
-if(!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true || $_SESSION["permissao"] != 'admin'){
+if(!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true || $_SESSION["permissao"] != 'Administrador'){
     echo "<main><h2>Acesso negado.</h2></main>";
     require_once 'includes/footer.php';
     exit;
@@ -17,8 +17,12 @@ if(!isset($_GET['id']) || empty(trim($_GET['id'])) || !ctype_digit($_GET['id']))
 }
 
 $id = $_GET['id'];
-$nome = $email = $permissao = "";
+$nome = $email = $permissao_id = "";
 $senha_err = $nome_err = $email_err = "";
+
+// Obter perfis disponíveis
+$perfis_sql = "SELECT id, nome FROM perfis ORDER BY nome ASC";
+$perfis_result = mysqli_query($link, $perfis_sql);
 
 // Processamento do formulário quando enviado
 if($_SERVER["REQUEST_METHOD"] == "POST"){
@@ -35,7 +39,7 @@ if($_SERVER["REQUEST_METHOD"] == "POST"){
         $email = trim($_POST["email"]);
     }
     
-    $permissao = $_POST["permissao"];
+    $permissao_id = $_POST["permissao_id"];
 
     // Validação da nova senha (se preenchida)
     if(!empty($_POST['nova_senha'])){
@@ -50,18 +54,18 @@ if($_SERVER["REQUEST_METHOD"] == "POST"){
     if(empty($nome_err) && empty($email_err) && empty($senha_err)){
         // Prepara a query de atualização
         if(!empty($_POST['nova_senha'])){
-            $sql = "UPDATE usuarios SET nome = ?, email = ?, permissao = ?, senha = ? WHERE id = ?";
+            $sql = "UPDATE usuarios SET nome = ?, email = ?, permissao_id = ?, senha = ? WHERE id = ?";
             $hashed_password = password_hash($_POST['nova_senha'], PASSWORD_DEFAULT);
         } else {
-            $sql = "UPDATE usuarios SET nome = ?, email = ?, permissao = ? WHERE id = ?";
+            $sql = "UPDATE usuarios SET nome = ?, email = ?, permissao_id = ? WHERE id = ?";
         }
 
         if($stmt = mysqli_prepare($link, $sql)){
             // Binda os parâmetros
             if(!empty($_POST['nova_senha'])){
-                mysqli_stmt_bind_param($stmt, "ssssi", $nome, $email, $permissao, $hashed_password, $id);
+                mysqli_stmt_bind_param($stmt, "ssisi", $nome, $email, $permissao_id, $hashed_password, $id);
             } else {
-                mysqli_stmt_bind_param($stmt, "sssi", $nome, $email, $permissao, $id);
+                mysqli_stmt_bind_param($stmt, "ssii", $nome, $email, $permissao_id, $id);
             }
 
             if(mysqli_stmt_execute($stmt)){
@@ -76,7 +80,7 @@ if($_SERVER["REQUEST_METHOD"] == "POST"){
 }
 
 // Busca os dados atuais do usuário para preencher o formulário
-$sql_user = "SELECT nome, email, permissao FROM usuarios WHERE id = ?";
+$sql_user = "SELECT u.nome, u.email, u.permissao_id, p.nome as perfil_nome FROM usuarios u JOIN perfis p ON u.permissao_id = p.id WHERE u.id = ?";
 if($stmt_user = mysqli_prepare($link, $sql_user)){
     mysqli_stmt_bind_param($stmt_user, "i", $id);
     if(mysqli_stmt_execute($stmt_user)){
@@ -85,7 +89,7 @@ if($stmt_user = mysqli_prepare($link, $sql_user)){
             $usuario = mysqli_fetch_assoc($result);
             $nome = $usuario['nome'];
             $email = $usuario['email'];
-            $permissao = $usuario['permissao'];
+            $permissao_id = $usuario['permissao_id'];
         } else {
             echo "<main><h2>Usuário não encontrado.</h2></main>";
             require_once 'includes/footer.php';
@@ -115,9 +119,14 @@ mysqli_close($link);
         </div>
         <div>
             <label>Permissão</label>
-            <select name="permissao">
-                <option value="usuario" <?php echo ($permissao == 'usuario') ? 'selected' : ''; ?>>Usuário</option>
-                <option value="admin" <?php echo ($permissao == 'admin') ? 'selected' : ''; ?>>Administrador</option>
+            <select name="permissao_id">
+                <?php 
+                // Resetar o ponteiro do resultado para o início para usar novamente
+                mysqli_data_seek($perfis_result, 0);
+                while($perfil = mysqli_fetch_assoc($perfis_result)): 
+                ?>
+                    <option value="<?php echo $perfil['id']; ?>" <?php echo ($perfil['id'] == $permissao_id) ? 'selected' : ''; ?>><?php echo $perfil['nome']; ?></option>
+                <?php endwhile; ?>
             </select>
         </div>
         <hr>
