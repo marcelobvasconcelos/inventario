@@ -1,23 +1,31 @@
 <?php
+// Inicia a sessão PHP para gerenciar o estado do usuário
+if (session_status() == PHP_SESSION_NONE) {
+    session_start();
+}
+
+// Inclui o cabeçalho HTML padrão e a conexão com o banco de dados
 require_once 'includes/header.php';
 require_once 'config/db.php';
 
-// Apenas administradores e gestores podem adicionar itens
+// Verifica se o usuário tem permissão para adicionar itens (Administrador ou Gestor)
 if($_SESSION["permissao"] != 'Administrador' && $_SESSION["permissao"] != 'Gestor'){
     echo "<div class='alert alert-danger'>Acesso negado. Você não tem permissão para executar esta ação.</div>";
     require_once 'includes/footer.php';
     exit;
 }
 
+// Inicializa variáveis para os campos do formulário e mensagens de erro
 $nome = $patrimonio_novo = $patrimonio_secundario = $local_id = $responsavel_id = $estado = $observacao = "";
 $nome_err = $patrimonio_novo_err = $local_id_err = $responsavel_id_err = $estado_err = "";
 
+// Variável de controle para gestores sem local associado
 $is_gestor_sem_local = false;
 
-// Lógica para gestores sem local
+// Lógica específica para usuários com permissão de 'Gestor'
 if($_SESSION["permissao"] == 'Gestor'){
     $usuario_logado_id = $_SESSION['id'];
-    // Verifica se o gestor já tem algum item cadastrado
+    // Verifica se o gestor já tem algum item cadastrado sob sua responsabilidade
     $check_itens_sql = "SELECT COUNT(*) FROM itens WHERE responsavel_id = ?";
     if($stmt_check_itens = mysqli_prepare($link, $check_itens_sql)){
         mysqli_stmt_bind_param($stmt_check_itens, "i", $usuario_logado_id);
@@ -26,14 +34,14 @@ if($_SESSION["permissao"] == 'Gestor'){
         mysqli_stmt_fetch($stmt_check_itens);
         mysqli_stmt_close($stmt_check_itens);
 
+        // Se o gestor não tem itens, ele precisa selecionar um local primeiro
         if($count_itens == 0){
             $is_gestor_sem_local = true;
-            // Se o gestor não tem itens, ele precisa selecionar um local primeiro
-            // Obter todos os locais para que ele possa escolher
+            // Obtém todos os locais disponíveis para que ele possa escolher
             $locais_sql = "SELECT id, nome FROM locais ORDER BY nome ASC";
             $locais_result = mysqli_query($link, $locais_sql);
         } else {
-            // Se o gestor já tem itens, obter os locais associados a ele
+            // Se o gestor já tem itens, obtém apenas os locais associados a ele
             $locais_sql = "SELECT DISTINCT l.id, l.nome FROM locais l JOIN itens i ON l.id = i.local_id WHERE i.responsavel_id = ? ORDER BY l.nome ASC";
             if($stmt_locais = mysqli_prepare($link, $locais_sql)){
                 mysqli_stmt_bind_param($stmt_locais, "i", $usuario_logado_id);
@@ -41,41 +49,42 @@ if($_SESSION["permissao"] == 'Gestor'){
                 $locais_result = mysqli_stmt_get_result($stmt_locais);
             } else {
                 echo "Erro ao preparar a consulta de locais: " . mysqli_error($link);
-                $locais_result = false;
+                $locais_result = false; // Para evitar erro no loop
             }
         }
     } else {
         echo "Erro ao verificar itens do gestor: " . mysqli_error($link);
         $locais_result = false; // Para evitar erro no loop
     }
-} else { // Administrador
+} else { // Lógica para Administradores: obtém todos os locais
     $locais_sql = "SELECT id, nome FROM locais ORDER BY nome ASC";
     $locais_result = mysqli_query($link, $locais_sql);
 }
 
-// Obter usuários disponíveis (apenas para Administrador, Gestor é predefinido)
+// Obtém usuários disponíveis para serem responsáveis (apenas para Administrador)
 if($_SESSION["permissao"] == 'Administrador'){
     $usuarios_sql = "SELECT id, nome FROM usuarios WHERE status = 'aprovado' ORDER BY nome ASC";
     $usuarios_result = mysqli_query($link, $usuarios_sql);
-} else { // Gestor
+} else { // Para Gestores, o próprio gestor é o responsável
     $responsavel_id = $_SESSION['id']; // O próprio gestor é o responsável
-    $usuarios_result = false; // Não precisa de um resultado de query para o dropdown
+    $usuarios_result = false; // Não precisa de um resultado de query para o dropdown de usuários
 }
 
+// Processa o formulário quando ele é submetido (método POST)
 if($_SERVER["REQUEST_METHOD"] == "POST"){
-    // Se o gestor está sem local e submeteu a seleção de local
+    // Lógica para gestores que precisam selecionar um local primeiro
     if($is_gestor_sem_local && isset($_POST['selecionar_local_primeiro'])){
         $local_id = $_POST['local_id'];
         if(empty($local_id)){
             $local_id_err = "Por favor, selecione um local.";
         } else {
-            // Redireciona para a própria página com o local_id selecionado
+            // Redireciona para a própria página com o local_id selecionado na URL
             // Isso fará com que o formulário completo seja exibido com o local pré-selecionado
             header("location: item_add.php?local_id=" . $local_id);
             exit();
         }
     } else {
-        // Validação dos campos
+        // Validação e sanitização dos campos do formulário
         if(empty(trim($_POST["nome"]))){
             $nome_err = "Por favor, insira o nome do item.";
         } else {
@@ -116,23 +125,42 @@ if($_SERVER["REQUEST_METHOD"] == "POST"){
             }
         }
 
-        // Define o responsavel_id com base na permissão
+        // Define o responsavel_id com base na permissão do usuário logado
         if($_SESSION["permissao"] == 'Gestor'){
             $responsavel_id = $_SESSION['id'];
-        } else {
+        } else { // Administrador
             $responsavel_id = $_POST['responsavel_id'];
             if(empty($responsavel_id)){
                 $responsavel_id_err = "Por favor, selecione um responsável.";
             }
         }
 
+        // Se não houver erros de validação, insere o item no banco de dados
         if(empty($nome_err) && empty($patrimonio_novo_err) && empty($local_id_err) && empty($responsavel_id_err)){
-            $sql = "INSERT INTO itens (nome, patrimonio_novo, patrimonio_secundario, local_id, responsavel_id, estado, observacao, data_cadastro) VALUES (?, ?, ?, ?, ?, ?, ?, NOW())";
+            // Prepara a consulta SQL para inserir um novo item, incluindo o status_confirmacao como 'Pendente'
+            $sql = "INSERT INTO itens (nome, patrimonio_novo, patrimonio_secundario, local_id, responsavel_id, estado, observacao, data_cadastro, status_confirmacao) VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), 'Pendente')";
 
             if($stmt = mysqli_prepare($link, $sql)){
+                // Vincula os parâmetros à consulta preparada
                 mysqli_stmt_bind_param($stmt, "sssiiss", $nome, $patrimonio_novo, $patrimonio_secundario, $local_id, $responsavel_id, $estado, $observacao);
 
+                // Executa a consulta de inserção
                 if(mysqli_stmt_execute($stmt)){
+                    $novo_item_id = mysqli_insert_id($link); // Obtém o ID do item recém-adicionado
+
+                    // --- Lógica de Notificação --- //
+                    // Prepara os dados para a notificação
+                    $admin_id = $_SESSION['id']; // O administrador que está adicionando o item
+                    $mensagem_notificacao = "Você recebeu um novo item: " . htmlspecialchars($nome) . " (Patrimônio: " . htmlspecialchars($patrimonio_novo) . "). Por favor, confirme o recebimento.";
+                    $itens_ids_notificacao = $novo_item_id; // IDs dos itens envolvidos (apenas um item neste caso)
+
+                    // Prepara e executa a inserção da notificação usando PDO
+                    $sql_notificacao = "INSERT INTO notificacoes (usuario_id, administrador_id, tipo, itens_ids, mensagem, status) VALUES (?, ?, ?, ?, ?, 'Pendente')";
+                    $stmt_notificacao = $pdo->prepare($sql_notificacao);
+                    $stmt_notificacao->execute([$responsavel_id, $admin_id, 'atribuicao', $itens_ids_notificacao, $mensagem_notificacao]);
+                    // --- Fim Lógica de Notificação --- //
+
+                    // Redireciona para a página de listagem de itens após o sucesso
                     header("location: itens.php");
                     exit();
                 } else{
@@ -145,7 +173,7 @@ if($_SERVER["REQUEST_METHOD"] == "POST"){
     }
 }
 
-// Se o local_id foi passado via GET (após o gestor selecionar o local)
+// Se o local_id foi passado via GET (após o gestor selecionar o local na primeira etapa)
 if(isset($_GET['local_id']) && $_SESSION["permissao"] == 'Gestor' && $is_gestor_sem_local){
     $local_id = $_GET['local_id'];
 }

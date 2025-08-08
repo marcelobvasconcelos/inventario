@@ -30,8 +30,8 @@ if($stmt_user = mysqli_prepare($link, $user_sql)){
     mysqli_stmt_close($stmt_user);
 }
 
-// Buscar itens do usuário, incluindo o ID do local
-$sql = "SELECT i.id, i.nome, i.patrimonio_novo, l.id as local_id, l.nome as local_nome, i.estado 
+// Buscar itens do usuário, incluindo o ID do local e status_confirmacao
+$sql = "SELECT i.id, i.nome, i.patrimonio_novo, l.id as local_id, l.nome as local_nome, i.estado, i.status_confirmacao 
         FROM itens i 
         JOIN locais l ON i.local_id = l.id 
         WHERE i.responsavel_id = ? 
@@ -68,6 +68,7 @@ mysqli_close($link);
                 <th>Patrimônio</th>
                 <th>Local</th>
                 <th>Estado</th>
+                <th>Status Confirmação</th>
             </tr>
         </thead>
         <tbody>
@@ -78,6 +79,20 @@ mysqli_close($link);
                 <td><?php echo htmlspecialchars($item['patrimonio_novo']); ?></td>
                 <td><a href="local_itens.php?id=<?php echo $item['local_id']; ?>"><?php echo htmlspecialchars($item['local_nome']); ?></a></td>
                 <td><?php echo htmlspecialchars($item['estado']); ?></td>
+                <td>
+                    <?php
+                        $status_confirmacao = $item['status_confirmacao'];
+                        $badge_class = '';
+                        if ($status_confirmacao == 'Pendente') {
+                            $badge_class = 'badge-warning';
+                        } elseif ($status_confirmacao == 'Confirmado') {
+                            $badge_class = 'badge-success';
+                        } elseif ($status_confirmacao == 'Nao Confirmado') {
+                            $badge_class = 'badge-danger';
+                        }
+                    ?>
+                    <span class="badge <?php echo $badge_class; ?>"><?php echo htmlspecialchars($status_confirmacao); ?></span>
+                </td>
             </tr>
             <?php endforeach; ?>
         </tbody>

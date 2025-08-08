@@ -1,4 +1,10 @@
 <?php
+// Inicia a sessão PHP para gerenciar o estado do usuário
+if (session_status() == PHP_SESSION_NONE) {
+    session_start();
+}
+
+// Inclui o cabeçalho HTML padrão e a conexão com o banco de dados
 require_once 'includes/header.php';
 require_once 'config/db.php';
 
@@ -9,20 +15,25 @@ if($_SESSION["permissao"] != 'Administrador'){
     exit;
 }
 
+// Processa o formulário quando ele é submetido (método POST)
 if($_SERVER["REQUEST_METHOD"] == "POST"){
+    // Obtém os itens selecionados, local de destino e novo responsável
     $selected_items = isset($_POST['selected_items']) ? $_POST['selected_items'] : [];
     $local_destino_id = $_POST['local_destino_id'];
     $novo_responsavel_id = $_POST['novo_responsavel_id'];
-    $usuario_id = $_SESSION['id'];
+    $usuario_id = $_SESSION['id']; // ID do administrador que está realizando a movimentação
     $local_origem_id_form = $_POST['local_origem_id']; // Local de origem selecionado no formulário
 
+    // Verifica se pelo menos um item foi selecionado
     if (empty($selected_items)) {
         echo "<div class='alert alert-danger'>Por favor, selecione pelo menos um item para movimentar.</div>";
     } else {
+        // Inicia uma transação para garantir a atomicidade das operações no banco de dados
         mysqli_begin_transaction($link);
         try {
+            // Loop através de cada item selecionado para movimentação
             foreach ($selected_items as $item_id) {
-                // Obter local de origem e responsável atual do item
+                // Obter local de origem e responsável atual do item antes da atualização
                 $sql_origem = "SELECT local_id, responsavel_id FROM itens WHERE id = ?";
                 if($stmt_origem = mysqli_prepare($link, $sql_origem)){
                     mysqli_stmt_bind_param($stmt_origem, "i", $item_id);
@@ -36,7 +47,7 @@ if($_SERVER["REQUEST_METHOD"] == "POST"){
                     throw new Exception("Erro ao preparar consulta de origem: " . mysqli_error($link));
                 }
 
-                // Inserir movimentação
+                // Inserir registro da movimentação na tabela 'movimentacoes'
                 $sql_mov = "INSERT INTO movimentacoes (item_id, local_origem_id, local_destino_id, usuario_id, usuario_anterior_id) VALUES (?, ?, ?, ?, ?)";
                 if($stmt_mov = mysqli_prepare($link, $sql_mov)){
                     mysqli_stmt_bind_param($stmt_mov, "iiiii", $item_id, $local_origem_id, $local_destino_id, $usuario_id, $usuario_anterior_id);
@@ -48,8 +59,9 @@ if($_SERVER["REQUEST_METHOD"] == "POST"){
                     throw new Exception("Erro ao preparar inserção de movimentação: " . mysqli_error($link));
                 }
 
-                // Atualizar o local e o responsável do item
-                $sql_update = "UPDATE itens SET local_id = ?, responsavel_id = ? WHERE id = ?";
+                // Atualizar o local, o responsável e o status de confirmação do item na tabela 'itens'
+                // O status_confirmacao é definido como 'Pendente' para que o novo responsável confirme
+                $sql_update = "UPDATE itens SET local_id = ?, responsavel_id = ?, status_confirmacao = 'Pendente' WHERE id = ?";
                 if($stmt_update = mysqli_prepare($link, $sql_update)){
                     mysqli_stmt_bind_param($stmt_update, "iii", $local_destino_id, $novo_responsavel_id, $item_id);
                     if(!mysqli_stmt_execute($stmt_update)){
@@ -61,17 +73,53 @@ if($_SERVER["REQUEST_METHOD"] == "POST"){
                 }
             }
 
+            // --- Lógica de Notificação para Movimentação em Massa --- //
+            // Após todas as atualizações de itens, criar uma única notificação para a movimentação em massa
+            $admin_id = $_SESSION['id']; // O administrador que realizou a movimentação
+            $itens_ids_notificacao = implode(',', $selected_items); // IDs dos itens envolvidos, separados por vírgula
+            
+            // Obter nomes dos itens para incluir na mensagem da notificação
+            $item_names = [];
+            // Prepara placeholders para a cláusula IN (segurança contra SQL Injection)
+            $placeholders = implode(',', array_fill(0, count($selected_items), '?'));
+            $sql_get_item_names = "SELECT nome FROM itens WHERE id IN ($placeholders)";
+            $stmt_get_item_names = $pdo->prepare($sql_get_item_names);
+            // Vincula os parâmetros dinamicamente
+            foreach ($selected_items as $k => $id) {
+                $stmt_get_item_names->bindValue(($k+1), $id, PDO::PARAM_INT);
+            }
+            $stmt_get_item_names->execute();
+            // Coleta os nomes dos itens
+            while ($row = $stmt_get_item_names->fetch(PDO::FETCH_ASSOC)) {
+                $item_names[] = $row['nome'];
+            }
+            $nomes_itens_str = implode(', ', $item_names); // Converte o array de nomes em uma string
+
+            // Constrói a mensagem da notificação
+            $mensagem_notificacao = "Uma movimentação de inventário foi registrada para os seguintes itens: " . htmlspecialchars($nomes_itens_str) . ". Eles foram atribuídos a você. Por favor, confirme o recebimento.";
+            
+            // Insere a notificação na tabela 'notificacoes' usando PDO
+            $sql_notificacao = "INSERT INTO notificacoes (usuario_id, administrador_id, tipo, itens_ids, mensagem, status) VALUES (?, ?, ?, ?, ?, 'Pendente')";
+            $stmt_notificacao = $pdo->prepare($sql_notificacao);
+            $stmt_notificacao->execute([$novo_responsavel_id, $admin_id, 'transferencia', $itens_ids_notificacao, $mensagem_notificacao]);
+            // --- Fim Lógica de Notificação --- //
+
+            // Confirma a transação se todas as operações foram bem-sucedidas
             mysqli_commit($link);
+            // Redireciona para a página de movimentações após o sucesso
             header("location: movimentacoes.php");
             exit();
         } catch (Exception $e) {
+            // Em caso de erro, reverte a transação
             mysqli_rollback($link);
             echo "<div class='alert alert-danger'>Oops! Algo deu errado. Por favor, tente novamente mais tarde. Erro: " . $e->getMessage() . "</div>";
         }
     }
 }
 
+// Obtém a lista de locais para os dropdowns
 $locais = mysqli_query($link, "SELECT id, nome FROM locais ORDER BY nome ASC");
+// Obtém a lista de usuários ativos para o dropdown de responsável
 $usuarios_ativos = mysqli_query($link, "SELECT id, nome FROM usuarios WHERE status = 'aprovado' ORDER BY nome ASC");
 
 ?>
