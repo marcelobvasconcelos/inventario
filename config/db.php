@@ -1,4 +1,7 @@
 <?php
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 
 define('DB_SERVER', 'localhost');
 define('DB_USERNAME', 'inventario');

@@ -42,8 +42,6 @@ if($_SERVER["REQUEST_METHOD"] == "POST"){
                         if(password_verify($senha, $hashed_senha)){
                             // Verifica o status do usuário
                             if($status == 'aprovado'){
-                                session_start();
-                                
                                 $_SESSION["loggedin"] = true;
                                 $_SESSION["id"] = $id;
                                 $_SESSION["nome"] = $nome;
