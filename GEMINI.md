@@ -16,6 +16,19 @@ Este documento contém diretrizes e informações importantes para a IA ao inter
 4.  **Documentação:** Mantenha a documentação do projeto atualizada, especialmente o `docs/FILE_STRUCTURE.md` e o `docs/USER_MANUAL.md`.
 5.  **Testes:** Sempre que possível e relevante, mencione a importância de testar as funcionalidades após as alterações.
 
+# Regras para Edição de Código PHP
+
+1. Sempre manter a estrutura original do código, alterando apenas o necessário.
+2. Nunca remover ou mover chaves `{` e `}` sem verificar se a contagem total bate.
+3. Antes de entregar o código, verificar se:
+   - Todas as chaves estão abertas e fechadas corretamente.
+   - O código abre e fecha corretamente `<?php` e `?>` (se houver).
+   - O número de `{` é igual ao número de `}`.
+4. Se encontrar mais de um problema, corrigir todos de uma só vez.
+5. Nunca repetir o mesmo trecho mais de uma vez na mesma resposta.
+6. Antes de gerar código, fazer um resumo claro das mudanças que serão feitas.
+7. Se não tiver certeza da alteração, perguntar antes de modificar.
+
 ## Estado Atual do Projeto (Últimas Implementações Relevantes)
 
 *   **Sistema de Notificações:** Uma funcionalidade de notificação e confirmação de movimentações de inventário foi implementada.
@@ -26,6 +39,7 @@ Este documento contém diretrizes e informações importantes para a IA ao inter
 *   **Manual do Usuário:** O `docs/USER_MANUAL.md` foi reestruturado para exibir conteúdo baseado nas permissões do usuário (`docs.php`).
 *   **Configurações PDF:** A funcionalidade de geração de PDF (`gerar_pdf_itens.php`, `configuracoes_pdf.php`) está presente.
 *   **Leitura de Código de Barras:** A tentativa de implementar a leitura de código de barras via câmera foi abortada e o código relacionado foi removido.
+
 
 ## Próximos Passos (Sugestões)
 

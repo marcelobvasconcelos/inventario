@@ -152,12 +152,19 @@ if($_SERVER["REQUEST_METHOD"] == "POST"){
                     // Prepara os dados para a notificação
                     $admin_id = $_SESSION['id']; // O administrador que está adicionando o item
                     $mensagem_notificacao = "Você recebeu um novo item: " . htmlspecialchars($nome) . " (Patrimônio: " . htmlspecialchars($patrimonio_novo) . "). Por favor, confirme o recebimento.";
-                    $itens_ids_notificacao = $novo_item_id; // IDs dos itens envolvidos (apenas um item neste caso)
 
                     // Prepara e executa a inserção da notificação usando PDO
-                    $sql_notificacao = "INSERT INTO notificacoes (usuario_id, administrador_id, tipo, itens_ids, mensagem, status) VALUES (?, ?, ?, ?, ?, 'Pendente')";
+                    $sql_notificacao = "INSERT INTO notificacoes (usuario_id, administrador_id, tipo, mensagem, status) VALUES (?, ?, ?, ?, 'Pendente')";
                     $stmt_notificacao = $pdo->prepare($sql_notificacao);
-                    $stmt_notificacao->execute([$responsavel_id, $admin_id, 'atribuicao', $itens_ids_notificacao, $mensagem_notificacao]);
+                    $stmt_notificacao->execute([$responsavel_id, $admin_id, 'atribuicao', $mensagem_notificacao]);
+
+                    // Obtém o ID da notificação recém-criada
+                    $notificacao_id = $pdo->lastInsertId();
+
+                    // Insere o detalhe do item na nova tabela
+                    $sql_insert_detalhes = "INSERT INTO notificacoes_itens_detalhes (notificacao_id, item_id, status_item) VALUES (?, ?, 'Pendente')";
+                    $stmt_insert_detalhes = $pdo->prepare($sql_insert_detalhes);
+                    $stmt_insert_detalhes->execute([$notificacao_id, $novo_item_id]);
                     // --- Fim Lógica de Notificação --- //
 
                     // Redireciona para a página de listagem de itens após o sucesso

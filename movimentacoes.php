@@ -88,7 +88,7 @@ if($stmt = mysqli_prepare($link, $sql)){
     <a href="movimentacao_add.php" class="btn-custom">Registrar Nova Movimentação</a>
 <?php endif; ?>
 
-<table>
+<table class="table-striped table-hover">
     <thead>
         <tr>
             <th data-column="id">ID <span class="sort-arrow"></span></th>

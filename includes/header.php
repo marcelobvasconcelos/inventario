@@ -30,9 +30,10 @@ if (isset($_SESSION['id'])) {
     <title>Sistema de Inventário</title>
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
 </head>
 <body>
-    <header>
+    <header class="main-header">
         <h1>Sistema de Inventário</h1>
         <nav>
             <a href="index.php">Início</a>

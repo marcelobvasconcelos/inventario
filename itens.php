@@ -181,7 +181,7 @@ if($stmt = mysqli_prepare($link, $sql)){
 </div>
 <?php endif; ?>
 
-<table>
+<table class="table-striped table-hover">
     <thead>
         <tr>
             <?php if($_SESSION['permissao'] == 'Administrador'): ?>

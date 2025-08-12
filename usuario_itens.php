@@ -60,7 +60,7 @@ mysqli_close($link);
     </div>
 
     <?php if(!empty($itens)): ?>
-    <table>
+    <table class="table-striped table-hover">
         <thead>
             <tr>
                 <th>ID</th>

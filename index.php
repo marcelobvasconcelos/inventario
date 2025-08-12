@@ -73,7 +73,7 @@ if($stmt = mysqli_prepare($link, $sql)){
 <div class="atividades-recentes">
     <h3>Últimas Atividades</h3>
     <?php if(mysqli_num_rows($movimentacoes) > 0): ?>
-        <table>
+        <table class="table-striped table-hover">
             <thead>
                 <tr>
                     <th>Data</th>

@@ -48,7 +48,7 @@ if($stmt_itens = mysqli_prepare($link, $sql_itens)){
 <p><a href="locais.php" class="btn-custom">Voltar para Locais</a></p>
 
 <?php if($itens && mysqli_num_rows($itens) > 0): // Verifica se há itens para exibir ?>
-    <table>
+    <table class="table-striped table-hover">
         <thead>
             <tr>
                 <th data-column="id">ID <span class="sort-arrow"></span></th>

@@ -98,3 +98,28 @@ CREATE TABLE `movimentacoes` (
   CONSTRAINT `movimentacoes_ibfk_3` FOREIGN KEY (`local_destino_id`) REFERENCES `locais` (`id`),
   CONSTRAINT `movimentacoes_ibfk_4` FOREIGN KEY (`usuario_id`) REFERENCES `usuarios` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- --------------------------------------------------------
+
+--
+-- Estrutura da tabela `notificacoes_movimentacao`
+--
+
+CREATE TABLE `notificacoes_movimentacao` (
+  `id` INT(11) NOT NULL AUTO_INCREMENT,
+  `movimentacao_id` INT(11) NOT NULL,
+  `item_id` INT(11) NOT NULL,
+  `usuario_notificado_id` INT(11) NOT NULL, -- O usuário que precisa confirmar/rejeitar
+  `status_confirmacao` ENUM('pendente', 'confirmado', 'rejeitado', 'replicado') NOT NULL DEFAULT 'pendente',
+  `justificativa_usuario` TEXT DEFAULT NULL, -- Justificativa do usuário para rejeição
+  `resposta_admin` TEXT DEFAULT NULL, -- Resposta do administrador à justificativa do usuário
+  `data_notificacao` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP(),
+  `data_atualizacao` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP() ON UPDATE CURRENT_TIMESTAMP(),
+  PRIMARY KEY (`id`),
+  KEY `movimentacao_id` (`movimentacao_id`),
+  KEY `item_id` (`item_id`),
+  KEY `usuario_notificado_id` (`usuario_notificado_id`),
+  CONSTRAINT `notificacoes_movimentacao_ibfk_1` FOREIGN KEY (`movimentacao_id`) REFERENCES `movimentacoes` (`id`),
+  CONSTRAINT `notificacoes_movimentacao_ibfk_2` FOREIGN KEY (`item_id`) REFERENCES `itens` (`id`),
+  CONSTRAINT `notificacoes_movimentacao_ibfk_3` FOREIGN KEY (`usuario_notificado_id`) REFERENCES `usuarios` (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
