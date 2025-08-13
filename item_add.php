@@ -137,41 +137,40 @@ if($_SERVER["REQUEST_METHOD"] == "POST"){
 
         // Se não houver erros de validação, insere o item no banco de dados
         if(empty($nome_err) && empty($patrimonio_novo_err) && empty($local_id_err) && empty($responsavel_id_err)){
-            // Prepara a consulta SQL para inserir um novo item, incluindo o status_confirmacao como 'Pendente'
-            $sql = "INSERT INTO itens (nome, patrimonio_novo, patrimonio_secundario, local_id, responsavel_id, estado, observacao, data_cadastro, status_confirmacao) VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), 'Pendente')";
+            // Define status_confirmacao: se o responsável for o próprio usuário logado, já fica 'Confirmado'
+            $status_confirmacao = ($responsavel_id == $_SESSION['id']) ? 'Confirmado' : 'Pendente';
+            $sql = "INSERT INTO itens (nome, patrimonio_novo, patrimonio_secundario, local_id, responsavel_id, estado, observacao, data_cadastro, status_confirmacao) VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), ?)";
 
             if($stmt = mysqli_prepare($link, $sql)){
-                // Vincula os parâmetros à consulta preparada
-                mysqli_stmt_bind_param($stmt, "sssiiss", $nome, $patrimonio_novo, $patrimonio_secundario, $local_id, $responsavel_id, $estado, $observacao);
+                mysqli_stmt_bind_param($stmt, "sssiisss", $nome, $patrimonio_novo, $patrimonio_secundario, $local_id, $responsavel_id, $estado, $observacao, $status_confirmacao);
 
-                // Executa a consulta de inserção
                 if(mysqli_stmt_execute($stmt)){
-                    $novo_item_id = mysqli_insert_id($link); // Obtém o ID do item recém-adicionado
+                    $novo_item_id = mysqli_insert_id($link);
 
-                    // --- Lógica de Notificação --- //
-                    // Prepara os dados para a notificação
-                    $admin_id = $_SESSION['id']; // O administrador que está adicionando o item
-                    $mensagem_notificacao = "Você recebeu um novo item: " . htmlspecialchars($nome) . " (Patrimônio: " . htmlspecialchars($patrimonio_novo) . "). Por favor, confirme o recebimento.";
-
-                    // Prepara e executa a inserção da notificação usando PDO
+                    // Notifica o administrador sobre o novo item
+                    $admin_id = $_SESSION['id'];
+                    $mensagem_notificacao = "Novo item adicionado: " . htmlspecialchars($nome) . " (Patrimônio: " . htmlspecialchars($patrimonio_novo) . ").";
                     $sql_notificacao = "INSERT INTO notificacoes (usuario_id, administrador_id, tipo, mensagem, status) VALUES (?, ?, ?, ?, 'Pendente')";
                     $stmt_notificacao = $pdo->prepare($sql_notificacao);
-                    $stmt_notificacao->execute([$responsavel_id, $admin_id, 'atribuicao', $mensagem_notificacao]);
+                    $stmt_notificacao->execute([$admin_id, $admin_id, 'cadastro', $mensagem_notificacao]);
 
-                    // Obtém o ID da notificação recém-criada
+                    // Detalhe do item na notificação
                     $notificacao_id = $pdo->lastInsertId();
-
-                    // Insere o detalhe do item na nova tabela
-                    $sql_insert_detalhes = "INSERT INTO notificacoes_itens_detalhes (notificacao_id, item_id, status_item) VALUES (?, ?, 'Pendente')";
+                    $sql_insert_detalhes = "INSERT INTO notificacoes_itens_detalhes (notificacao_id, item_id, status_item) VALUES (?, ?, ?)";
                     $stmt_insert_detalhes = $pdo->prepare($sql_insert_detalhes);
-                    $stmt_insert_detalhes->execute([$notificacao_id, $novo_item_id]);
-                    // --- Fim Lógica de Notificação --- //
+                    $stmt_insert_detalhes->execute([$notificacao_id, $novo_item_id, $status_confirmacao]);
 
-                    // Redireciona para a página de listagem de itens após o sucesso
                     header("location: itens.php");
                     exit();
                 } else{
-                    echo "Oops! Algo deu errado. Por favor, tente novamente mais tarde. " . mysqli_error($link);
+                    // Verifica se o erro é de entrada duplicada
+                    if (mysqli_errno($link) == 1062 && strpos(mysqli_error($link), 'patrimonio_novo') !== false) {
+                        preg_match("/Duplicate entry '([^']+)' for key 'patrimonio_novo'/", mysqli_error($link), $matches);
+                        $patrimonio_duplicado = isset($matches[1]) ? $matches[1] : '';
+                        echo "<div class='alert alert-danger'>Este patrimônio " . htmlspecialchars($patrimonio_duplicado) . " já está cadastrado!</div>";
+                    } else {
+                        echo "<div class='alert alert-danger'>Oops! Algo deu errado. Por favor, tente novamente mais tarde.</div>";
+                    }
                 }
             } else {
                 echo "Erro ao preparar a consulta de inserção: " . mysqli_error($link);
@@ -267,8 +266,9 @@ if(isset($_GET['local_id']) && $_SESSION["permissao"] == 'Gestor' && $is_gestor_
             <label>Estado</label>
             <select name="estado" required>
                 <option value="">Selecione o Estado</option>
-                <option value="Bom" <?php echo ($estado == 'Bom') ? 'selected' : ''; ?>>Bom</option>
-                <option value="Razoável" <?php echo ($estado == 'Razoável') ? 'selected' : ''; ?>>Razoável</option>
+                <option value="Em uso" <?php echo ($estado == 'Em uso') ? 'selected' : ''; ?>>Em uso</option>
+                <option value="Ocioso" <?php echo ($estado == 'Ocioso') ? 'selected' : ''; ?>>Ocioso</option>
+                <option value="Recuperável" <?php echo ($estado == 'Recuperável') ? 'selected' : ''; ?>>Recuperável</option>
                 <option value="Inservível" <?php echo ($estado == 'Inservível') ? 'selected' : ''; ?>>Inservível</option>
             </select>
             <span class="help-block"><?php echo $estado_err; ?></span>

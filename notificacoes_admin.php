@@ -48,8 +48,8 @@ if(isset($_POST['is_ajax']) && $_POST['is_ajax'] == 'true') {
                 if (empty($admin_reply)) {
                     throw new Exception("Por favor, forneça uma resposta para a disputa.");
                 }
-                // Atualiza o registro em notificacoes_movimentacao com a resposta do admin e muda o status para 'Replicado'
-                $new_item_status = 'Replicado'; // Changed to uppercase
+                // Atualiza o registro em notificacoes_movimentacao com a resposta do admin e muda o status para 'Pendente'
+                $new_item_status = 'Pendente';
                 $sql_update_notif_mov = "UPDATE notificacoes_movimentacao SET status_confirmacao = ?, resposta_admin = ?, data_atualizacao = ? WHERE id = ?";
                 $stmt_update_notif_mov = $pdo->prepare($sql_update_notif_mov);
                 $stmt_update_notif_mov->execute([$new_item_status, $admin_reply, $data_atualizacao, $notificacao_movimentacao_id]);
@@ -59,7 +59,12 @@ if(isset($_POST['is_ajax']) && $_POST['is_ajax'] == 'true') {
                 $stmt_update_item_main = $pdo->prepare($sql_update_item_main);
                 $stmt_update_item_main->execute([$item_id]);
 
-                $response['message'] = "Resposta enviada para o item #{$item_id}. Status do item atualizado para Replicado (aguardando nova confirmação do usuário). ";
+                // Insere a resposta do administrador no histórico
+                $sql_insert_history = "INSERT INTO notificacoes_respostas_historico (notificacao_movimentacao_id, remetente_id, tipo_remetente, conteudo_resposta, data_resposta) VALUES (?, ?, ?, ?, ?)";
+                $stmt_insert_history = $pdo->prepare($sql_insert_history);
+                $stmt_insert_history->execute([$notificacao_movimentacao_id, $administrador_logado_id, 'admin', $admin_reply, $data_atualizacao]);
+
+                $response['message'] = "Resposta enviada para o item #{$item_id}. O status foi atualizado para 'Pendente' e o usuário foi notificado para uma nova confirmação.";
                 $response['new_item_status'] = $new_item_status;
 
             } elseif ($action == 'desfazer_movimentacao_item') {
@@ -70,18 +75,18 @@ if(isset($_POST['is_ajax']) && $_POST['is_ajax'] == 'true') {
                 $mov_details = $stmt_get_mov_details->fetch(PDO::FETCH_ASSOC);
 
                 if ($mov_details) {
-                    // Reverte o item para o local e responsável de origem da movimentação
-                    $new_item_status = 'Movimento Desfeito';
+                    // Reverte o item para o local e responsável de origem da movimentação e status 'Confirmado'
+                    $new_item_status = 'Confirmado';
                     $sql_update_item_main = "UPDATE itens SET local_id = ?, responsavel_id = ?, status_confirmacao = ? WHERE id = ?";
                     $stmt_update_item_main = $pdo->prepare($sql_update_item_main);
                     $stmt_update_item_main->execute([$mov_details['local_origem_id'], $mov_details['usuario_anterior_id'], $new_item_status, $item_id]);
 
-                    // Atualiza o status na notificacoes_movimentacao para 'Movimento Desfeito'
+                    // Atualiza o status na notificacoes_movimentacao para 'Confirmado'
                     $sql_update_notif_mov = "UPDATE notificacoes_movimentacao SET status_confirmacao = ?, data_atualizacao = ? WHERE id = ?";
                     $stmt_update_notif_mov = $pdo->prepare($sql_update_notif_mov);
                     $stmt_update_notif_mov->execute([$new_item_status, $data_atualizacao, $notificacao_movimentacao_id]);
 
-                    $response['message'] = "Movimentação do item #{$item_id} desfeita. Status do item atualizado para Movimento Desfeito.";
+                    $response['message'] = "Movimentação do item #{$item_id} desfeita. Status do item atualizado para Confirmado.";
                     $response['new_item_status'] = $new_item_status;
                 } else {
                     throw new Exception("Não foi possível desfazer a movimentação do item #{$item_id}: Detalhes da movimentação não encontrados.");
@@ -100,14 +105,15 @@ if(isset($_POST['is_ajax']) && $_POST['is_ajax'] == 'true') {
 
                 // 3. Calcular o status geral
                 $unique_statuses = array_unique($statuses);
-                if (in_array('Em Disputa', $unique_statuses) || in_array('Pendente', $unique_statuses) || in_array('Replicado', $unique_statuses)) { // Changed 'replicado' to 'Replicado'
-                    $new_notif_status = 'Pendente'; // Se ainda há itens pendentes, em disputa ou replicados, a notificação geral fica pendente.
+                if (in_array('Em Disputa', $unique_statuses) || in_array('Pendente', $unique_statuses)) {
+                    $new_notif_status = 'Pendente'; // Se ainda há itens pendentes ou em disputa, a notificação geral fica pendente.
                 } elseif (count($unique_statuses) == 1 && $unique_statuses[0] == 'Confirmado') {
                     $new_notif_status = 'Confirmado';
-                } elseif (count($unique_statuses) == 1 && $unique_statuses[0] == 'Movimento Desfeito') {
+                }
+                elseif (count($unique_statuses) == 1 && $unique_statuses[0] == 'Movimento Desfeito') {
                     $new_notif_status = 'Movimento Desfeito';
                 } else {
-                    // Se houver uma mistura de "Confirmado" e "Movimento Desfeito", mas sem pendentes/disputas/replicados
+                    // Se houver uma mistura de "Confirmado" e "Movimento Desfeito", mas sem pendentes/disputas
                     $new_notif_status = 'Confirmado'; // Ou um status como 'Parcialmente Resolvido' se for o caso
                 }
             }
@@ -124,8 +130,11 @@ if(isset($_POST['is_ajax']) && $_POST['is_ajax'] == 'true') {
     } else {
         $response['message'] = 'Dados incompletos na requisição.';
     }
+    // Garante que não há saída anterior
+    if (ob_get_length()) ob_end_clean();
+    header('Content-Type: application/json');
     echo json_encode($response);
-    exit; // Importante para parar a execução após a resposta AJAX
+    exit; // Important to stop execution after AJAX response
 }
 
 // --- Lógica para exibir uma única notificação ou todas ---
@@ -136,11 +145,13 @@ $notificacoes = []; // Este array agora conterá os registros de notificacoes_mo
 $filtro_status = isset($_GET['status']) ? $_GET['status'] : 'Todos';
 
 // SQL base para buscar notificações de movimentação
+
 $sql = "
     SELECT
-        nm.id, nm.status_confirmacao, nm.justificativa_usuario, nm.resposta_admin,
+        nm.id, nm.status_confirmacao as notif_status, nm.justificativa_usuario, nm.resposta_admin,
         nm.data_notificacao, nm.data_atualizacao,
         i.id as item_id, i.nome as item_nome, i.patrimonio_novo, i.patrimonio_secundario, i.estado, i.observacao,
+        i.status_confirmacao as item_status,
         l.nome as local_nome,
         resp.nome as responsavel_nome,
         mov.usuario_id as admin_id,
@@ -151,8 +162,8 @@ $sql = "
     FROM notificacoes_movimentacao nm
     JOIN itens i ON nm.item_id = i.id
     JOIN movimentacoes mov ON nm.movimentacao_id = mov.id
-    JOIN usuarios admin_user ON mov.usuario_id = admin_user.id -- Admin que fez a movimentação
-    JOIN usuarios user_notified ON nm.usuario_notificado_id = user_notified.id -- Usuário que recebeu a notificação
+    JOIN usuarios admin_user ON mov.usuario_id = admin_user.id
+    JOIN usuarios user_notified ON nm.usuario_notificado_id = user_notified.id
     LEFT JOIN locais l ON i.local_id = l.id
     LEFT JOIN usuarios resp ON i.responsavel_id = resp.id
     WHERE 1=1
@@ -164,9 +175,9 @@ if ($notificacao_unica_id > 0) {
     $sql .= " AND nm.id = ?";
     $params[] = $notificacao_unica_id;
 } else {
-    // Adiciona cláusula WHERE se um filtro de status específico for selecionado
+    // Filtra pelo status do item, não da notificação
     if ($filtro_status != 'Todos') {
-        $sql .= " AND nm.status_confirmacao = ?";
+        $sql .= " AND i.status_confirmacao = ?";
         $params[] = $filtro_status;
     }
 }
@@ -180,23 +191,23 @@ $notificacoes_movimentacao_raw = $stmt->fetchAll(PDO::FETCH_ASSOC);
 // Reestrutura os dados para compatibilidade com o HTML existente
 foreach ($notificacoes_movimentacao_raw as $nm) {
     $notificacoes[] = [
-        'id' => $nm['id'], // ID da notificacoes_movimentacao
-        'tipo' => 'transferencia', // Tipo fixo para compatibilidade
-        'mensagem' => "Movimentação do item: " . htmlspecialchars($nm['item_nome']) . " (Patrimônio: " . htmlspecialchars($nm['patrimonio_novo']) . "). Status: " . htmlspecialchars($nm['status_confirmacao']),
-        'status' => $nm['status_confirmacao'], // Status do item
+        'id' => $nm['id'],
+        'tipo' => 'transferencia',
+        'mensagem' => "Movimentação do item: " . htmlspecialchars($nm['item_nome']) . " (Patrimônio: " . htmlspecialchars($nm['patrimonio_novo']) . "). Status: " . htmlspecialchars($nm['item_status']),
+        'status' => $nm['item_status'], // Status do item
         'data_envio' => $nm['data_notificacao'],
-        'usuario_nome' => $nm['usuario_notificado_nome'], // O usuário que recebeu a notificação
-        'administrador_nome' => $nm['admin_nome'], // O admin que fez a movimentação
+        'usuario_nome' => $nm['usuario_notificado_nome'],
+        'administrador_nome' => $nm['admin_nome'],
         'assunto_titulo' => 'Movimentação de Item',
-        'assunto_resumo' => "Item: " . htmlspecialchars($nm['item_nome']) . " - Status: " . htmlspecialchars($nm['status_confirmacao']),
-        'justificativa' => $nm['justificativa_usuario'], // Justificativa do usuário
-        'data_resposta' => $nm['data_atualizacao'], // Data da justificativa/resposta
-        'admin_reply' => $nm['resposta_admin'], // Resposta do admin
-        'admin_reply_date' => $nm['data_atualizacao'], // Data da resposta do admin
-        'detalhes_itens' => [ // Cada "notificacao" terá apenas um "detalhes_itens"
+        'assunto_resumo' => "Item: " . htmlspecialchars($nm['item_nome']) . " - Status: " . htmlspecialchars($nm['item_status']),
+        'justificativa' => $nm['justificativa_usuario'],
+        'data_resposta' => $nm['data_atualizacao'],
+        'admin_reply' => $nm['resposta_admin'],
+        'admin_reply_date' => $nm['data_atualizacao'],
+        'detalhes_itens' => [
             [
                 'id' => $nm['item_id'],
-                'status_confirmacao' => $nm['status_confirmacao'],
+                'status_confirmacao' => $nm['item_status'],
                 'justificativa_usuario' => $nm['justificativa_usuario'],
                 'admin_reply' => $nm['resposta_admin'],
                 'nome' => $nm['item_nome'],
@@ -274,21 +285,44 @@ foreach ($notificacoes_movimentacao_raw as $nm) {
                         </div>
                     </div>
                     <div class="card-body notification-details" <?php echo ($notificacao_unica_id > 0) ? '' : 'style="display: none;"'; ?>>
-                        <p><strong>Mensagem Geral:</strong> <?php echo nl2br(htmlspecialchars($notificacao['mensagem'])); ?></p>
-                        
-                        <?php if ($notificacao['status'] == 'Nao Confirmado' || $notificacao['status'] == 'Em Disputa'): ?>
-                            <div class="alert alert-warning mt-2">
-                                <strong>Justificativa do Usuário:</strong> <?php echo nl2br(htmlspecialchars($notificacao['justificativa'])); ?><br>
-                                <small>Respondido em: <?php echo date('d/m/Y H:i', strtotime($notificacao['data_resposta'])); ?></small>
-                            </div>
-                        <?php endif; ?>
 
-                        <?php if (!empty($notificacao['admin_reply'])): ?>
-                            <div class="alert alert-info mt-2">
-                                <strong>Sua Resposta Anterior:</strong> <?php echo nl2br(htmlspecialchars($notificacao['admin_reply'])); ?><br>
-                                <small>Respondido em: <?php echo date('d/m/Y H:i', strtotime($notificacao['admin_reply_date'])); ?></small>
+                        <p><strong>Mensagem Geral:</strong> <?php echo nl2br(htmlspecialchars($notificacao['mensagem'])); ?></p>
+
+                        <!-- Histórico de Conversa -->
+                        <?php
+                        // Buscar histórico de respostas para esta notificação
+                        $sql_historico = "SELECT * FROM notificacoes_respostas_historico WHERE notificacao_movimentacao_id = ? ORDER BY data_resposta ASC";
+                        $stmt_historico = $pdo->prepare($sql_historico);
+                        $stmt_historico->execute([$notificacao['id']]);
+                        $historico_respostas = $stmt_historico->fetchAll(PDO::FETCH_ASSOC);
+                        ?>
+                        <div class="card mt-3 mb-3">
+                            <div class="card-header"><strong>Histórico da Conversa</strong></div>
+                            <div class="card-body" style="max-height:350px; overflow-y:auto; background:#f8f9fa;">
+                                <style>
+                                .chat-bubble { max-width: 70%; padding: 10px 15px; border-radius: 15px; margin-bottom: 8px; position: relative; }
+                                .chat-admin { background: #e3f0fa; color: #124a80; align-self: flex-end; margin-left:auto; }
+                                .chat-user { background: #e9ecef; color: #333; align-self: flex-start; margin-right:auto; }
+                                .chat-meta { font-size: 0.85em; color: #888; margin-bottom: 2px; }
+                                .chat-container { display: flex; flex-direction: column; }
+                                </style>
+                                <div class="chat-container">
+                                <?php if (empty($historico_respostas)): ?>
+                                    <div class="text-muted">Nenhuma mensagem registrada ainda.</div>
+                                <?php else: ?>
+                                    <?php foreach ($historico_respostas as $msg): ?>
+                                        <div class="chat-bubble chat-<?php echo $msg['tipo_remetente'] === 'admin' ? 'admin' : 'user'; ?>">
+                                            <div class="chat-meta">
+                                                <strong><?php echo $msg['tipo_remetente'] === 'admin' ? 'Administrador' : 'Usuário'; ?></strong>
+                                                &bull; <?php echo date('d/m/Y H:i', strtotime($msg['data_resposta'])); ?>
+                                            </div>
+                                            <div><?php echo nl2br(htmlspecialchars($msg['conteudo_resposta'])); ?></div>
+                                        </div>
+                                    <?php endforeach; ?>
+                                <?php endif; ?>
+                                </div>
                             </div>
-                        <?php endif; ?>
+                        </div>
 
                         <h6 class="mt-4">Detalhes dos Itens Associados:</h6>
                         <?php if (!empty($notificacao['detalhes_itens'])): ?>
@@ -315,10 +349,10 @@ foreach ($notificacoes_movimentacao_raw as $nm) {
                                         <?php if (!empty($item['admin_reply'])): ?>
                                             <div class="alert alert-info mt-2">
                                                 <strong>Sua Resposta Anterior (Item):</strong> <?php echo nl2br(htmlspecialchars($item['admin_reply'])); ?><br>
-                                                <small>Respondido em: <?php echo date('d/m/Y H:i', strtotime($item['admin_reply_date'])); ?></small>
+                                                <small>Respondido em: <?php echo date('d/m/Y H:i', strtotime($item['data_admin_reply'])); ?></small>
                                             </div>
                                         <?php endif; ?>
-                                        <?php if ($item['status_confirmacao'] == 'Nao Confirmado' || $item['status_confirmacao'] == 'Em Disputa' || $item['status_confirmacao'] == 'replicado'): ?>
+                                        <?php if ($item['status_confirmacao'] == 'Nao Confirmado' || $item['status_confirmacao'] == 'Em Disputa'): ?>
                                             <div class="admin-item-actions mt-2">
                                                 <form class="d-inline-block admin-item-action-form" data-notif-id="<?php echo $notificacao['id']; ?>" data-item-id="<?php echo $item['id']; ?>">
                                                     <input type="hidden" name="action" value="desfazer_movimentacao_item">
@@ -359,6 +393,18 @@ function toggleAdminReplyForm(notifId) {
         form.style.display = 'block';
     } else {
         form.style.display = 'none';
+    }
+}
+
+// Função para exibir/esconder o formulário de resposta do administrador para ITENS
+function toggleAdminItemReplyForm(notifId, itemId) {
+    const form = document.getElementById(`admin_item_reply_form_${notifId}_${itemId}`);
+    if (form) {
+        if (form.style.display === 'none' || form.style.display === '') {
+            form.style.display = 'block';
+        } else {
+            form.style.display = 'none';
+        }
     }
 }
 
@@ -403,7 +449,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         }
                         // Esconde o formulário de resposta do admin para este item
                         if (action === 'responder_item_disputa') {
-                            toggleAdminItemReplyForm(notifId, itemId);
+                            // No longer calling toggleAdminItemReplyForm here as it's handled by the button click
                         }
                     }
 
@@ -441,28 +487,16 @@ document.addEventListener('DOMContentLoaded', function() {
         badge.className = 'badge '; // Reseta classes
         if (status === 'Pendente') badge.classList.add('badge-warning');
         else if (status === 'Confirmado') badge.classList.add('badge-success');
-        else if (status === 'Nao Confirmado' || status === 'Em Disputa' || status === 'Replicado') badge.classList.add('badge-danger'); // Adicionado 'Replicado'
+        else if (status === 'Nao Confirmado' || status === 'Em Disputa') badge.classList.add('badge-danger');
         else if (status === 'Movimento Desfeito') badge.classList.add('badge-info');
         else badge.classList.add('badge-secondary');
     }
 
     function updateNotifIcon(icon, status) {
         icon.className = 'fas'; // Reseta classes
-        if (status === 'Pendente' || status === 'Em Disputa' || status === 'Replicado') icon.classList.add('fa-envelope'); // Adicionado 'Replicado'
+        if (status === 'Pendente' || status === 'Em Disputa') icon.classList.add('fa-envelope');
         else if (status === 'Confirmado' || status === 'Movimento Desfeito') icon.classList.add('fa-envelope-open');
         else icon.classList.add('fa-envelope');
-    }
-
-    // Função para exibir/esconder o formulário de resposta do administrador para ITENS
-    function toggleAdminItemReplyForm(notifId, itemId) {
-        const form = document.getElementById(`admin_item_reply_form_${notifId}_${itemId}`);
-        if (form) {
-            if (form.style.display === 'none' || form.style.display === '') {
-                form.style.display = 'block';
-            } else {
-                form.style.display = 'none';
-            }
-        }
     }
 });
 </script>

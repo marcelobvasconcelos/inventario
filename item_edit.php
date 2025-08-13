@@ -106,8 +106,9 @@ $usuarios = mysqli_query($link, "SELECT id, nome FROM usuarios");
     <div>
         <label>Estado</label>
         <select name="estado">
-            <option value="Bom" <?php echo ($item['estado'] == 'Bom') ? 'selected' : ''; ?>>Bom</option>
-            <option value="Razoável" <?php echo ($item['estado'] == 'Razoável') ? 'selected' : ''; ?>>Razoável</option>
+            <option value="Em uso" <?php echo ($item['estado'] == 'Em uso') ? 'selected' : ''; ?>>Em uso</option>
+            <option value="Ocioso" <?php echo ($item['estado'] == 'Ocioso') ? 'selected' : ''; ?>>Ocioso</option>
+            <option value="Recuperável" <?php echo ($item['estado'] == 'Recuperável') ? 'selected' : ''; ?>>Recuperável</option>
             <option value="Inservível" <?php echo ($item['estado'] == 'Inservível') ? 'selected' : ''; ?>>Inservível</option>
         </select>
     </div>

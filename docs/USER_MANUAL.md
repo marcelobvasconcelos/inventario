@@ -1,3 +1,4 @@
+
 # Manual do Usuário do Sistema de Inventário
 
 ## [VISUALIZADOR] 1. Introdução
@@ -20,16 +21,23 @@ Para acessar o sistema, abra seu navegador web e digite o endereço fornecido pe
 *   **Login:** Na tela inicial, insira seu **Email** e **Senha** nos campos designados e clique no botão "Login".
 *   **Logout:** Para sair do sistema, clique no link "Sair" localizado no menu superior.
 
+
 ## [VISUALIZADOR] 4. Visão Geral da Interface
 
-Após o login, você verá a página inicial (Dashboard) com um menu de navegação na parte superior. As seções que você pode acessar dependem do seu nível de permissão.
+Após o login, você verá a página inicial (Dashboard) com um menu de navegação na parte superior. **Cada usuário só visualiza as funcionalidades e seções permitidas pelo seu perfil**:
+- Administradores veem todas as opções do sistema.
+- Gestores veem apenas as funções de gestão de itens e locais sob sua responsabilidade.
+- Visualizadores têm acesso apenas à consulta de dados.
+
 
 ## [VISUALIZADOR] 5. Perfis de Usuário
 
 O sistema possui diferentes níveis de acesso:
-*   **Administrador:** Acesso total a todas as funcionalidades.
-*   **Gestor:** Pode gerenciar itens (adicionar, editar), solicitar locais e visualizar dados.
-*   **Visualizador:** Pode apenas visualizar os dados do inventário.
+- **Administrador:** Acesso total a todas as funcionalidades do sistema, incluindo gerenciamento de usuários, itens, locais e movimentações.
+- **Gestor:** Pode gerenciar itens sob sua responsabilidade, solicitar novos locais, responder e justificar movimentações, e visualizar dados dos itens que gerencia.
+- **Visualizador:** Pode apenas visualizar os dados do inventário, sem permissão para editar, adicionar ou excluir informações.
+
+> **Importante:** O sistema exibe menus, botões e funcionalidades de acordo com o perfil do usuário logado. Se você não encontrar determinada função, provavelmente ela não está disponível para seu perfil.
 
 ## [VISUALIZADOR] 6. Funcionalidades Básicas (Todos os Usuários)
 
@@ -45,18 +53,26 @@ Na seção "Movimentações", você pode visualizar o histórico de movimentaç�
 ### 6.4. Meu Perfil
 Na seção "Meu Perfil", você pode visualizar seus dados e alterar sua senha.
 
+
 ## [GESTOR] 7. Funcionalidades de Gestor
 
 Como Gestor, além das funcionalidades básicas, você também pode:
 
 ### 7.1. Adicionar e Editar Itens
-*   **Adicionar Novo Item:** Na página "Itens", clique em "Adicionar Novo Item" para cadastrar um novo ativo.
-*   **Editar Item:** Você pode editar as informações dos itens pelos quais você é responsável.
-*   **Solicitar Novo Local:** Se um item precisa ser alocado em um local que não existe, o formulário de adição de item dará a opção de solicitar a criação de um novo local para o administrador.
+- **Adicionar Novo Item:** Na página "Itens", clique em "Adicionar Novo Item" para cadastrar um novo ativo sob sua responsabilidade.
+- **Editar Item:** Você pode editar as informações dos itens pelos quais você é responsável.
+- **Solicitar Novo Local:** Se um item precisa ser alocado em um local que não existe, o formulário de adição de item dará a opção de solicitar a criação de um novo local para o administrador.
+
+### 7.2. Notificações e Disputas de Movimentação
+- **Receber Notificações:** Sempre que um item for transferido para você, você receberá uma notificação.
+- **Confirmar ou Recusar Movimentação:** Você pode aceitar a movimentação ou recusar, justificando o motivo.
+- **Comunicação com o Administrador:** Caso recuse, inicia-se uma conversa (histórico de mensagens) entre você e o administrador, até que a situação seja resolvida.
+- **Acompanhar Histórico:** Todo o histórico de justificativas e respostas fica disponível para consulta na tela da notificação.
+
 
 ## [ADMINISTRADOR] 8. Funcionalidades de Administrador
 
-Como Administrador, você tem controle total sobre o sistema.
+Como Administrador, você tem controle total sobre o sistema e pode:
 
 ### 8.1. Gerenciamento Completo de Itens
 *   **Adicionar, Editar e Excluir Itens:** Você pode realizar todas as operações em qualquer item do inventário.
@@ -66,13 +82,16 @@ Como Administrador, você tem controle total sobre o sistema.
 *   **Adicionar, Editar e Excluir Locais:** Controle total sobre os locais de armazenamento.
 *   **Aprovar/Rejeitar Solicitações:** Gerencie as solicitações de novos locais feitas pelos Gestores.
 
+
 ### 8.3. Gerenciamento de Movimentações
-*   **Registrar Movimentação:** Registre movimentações de itens individuais ou em massa entre locais e responsáveis.
+- **Registrar Movimentação:** Registre movimentações de itens individuais ou em massa entre locais e responsáveis.
+- **Notificações e Disputas:** Ao transferir um item para um gestor, o sistema envia uma notificação. Caso o gestor recuse, você pode responder justificando a movimentação ou desfazer a transferência, retornando o item ao local e responsável anterior. Todo o histórico da comunicação fica registrado e visível para ambos.
 
 ### 8.4. Gerenciamento de Usuários
 *   **Adicionar, Editar e Excluir Usuários:** Crie, modifique e remova contas de usuário.
 *   **Gerenciar Permissões:** Defina o perfil de cada usuário (Administrador, Gestor, Visualizador).
 *   **Aprovar Contas:** Aprove ou rejeite o registro de novas contas de usuário.
+
 
 ## [VISUALIZADOR] 9. Ícones Utilizados
 
@@ -96,5 +115,10 @@ Como Administrador, você tem controle total sobre o sistema.
 Este sistema foi desenvolvido pela [Seção de Tecnologia da Informação (STI-UAST)](https://uast.ufrpe.br/sti).
 
 ---
+
+
+---
+
+> **Observação:** Caso você tenha dúvidas sobre alguma funcionalidade que não aparece para seu perfil, entre em contato com o administrador do sistema.
 
 **Fim do Manual do Usuário.**

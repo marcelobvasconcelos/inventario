@@ -70,3 +70,38 @@ if (isset($_SESSION['id'])) {
         </div>
     </header>
     <main>
+
+    <script>
+    // Função para atualizar o badge do sino de notificações
+    function atualizarBadgeNotificacoes() {
+        fetch('api/get_notificacoes_pendentes.php')
+            .then(response => response.json())
+            .then(data => {
+                const badge = document.querySelector('.notification-bell .notification-badge');
+                if (data.count > 0) {
+                    if (badge) {
+                        badge.textContent = data.count;
+                    } else {
+                        // Cria o badge se não existir
+                        const bell = document.querySelector('.notification-bell');
+                        if (bell) {
+                            const span = document.createElement('span');
+                            span.className = 'notification-badge';
+                            span.textContent = data.count;
+                            bell.appendChild(span);
+                        }
+                    }
+                } else {
+                    if (badge) badge.remove();
+                }
+            });
+    }
+
+    // Atualiza a cada 30 segundos
+    setInterval(atualizarBadgeNotificacoes, 30000);
+    // Atualiza ao carregar a página
+    document.addEventListener('DOMContentLoaded', atualizarBadgeNotificacoes);
+
+    // Exemplo: para atualizar após ações AJAX, chame atualizarBadgeNotificacoes() no sucesso do fetch das ações.
+    window.atualizarBadgeNotificacoes = atualizarBadgeNotificacoes;
+    </script>
