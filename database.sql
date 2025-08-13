@@ -9,24 +9,23 @@ CREATE TABLE `configuracoes` (
 -- Estrutura para tabela `itens`
 CREATE TABLE `itens` (
   `id` int(11) NOT NULL,
+  `processo_documento` varchar(100) DEFAULT NULL,
+  `fornecedor` varchar(150) DEFAULT NULL,
+  `cnpj_cpf_fornecedor` varchar(20) DEFAULT NULL,
   `nome` varchar(150) NOT NULL,
+  `descricao_detalhada` varchar(200) DEFAULT NULL,
+  `numero_serie` varchar(100) DEFAULT NULL,
+  `quantidade` int(11) DEFAULT 1,
+  `valor` decimal(10,2) DEFAULT NULL,
+  `nota_fiscal_documento` varchar(100) DEFAULT NULL,
+  `data_entrada_aceitacao` date DEFAULT NULL,
   `patrimonio_novo` varchar(50) NOT NULL,
-  `patrimonio_secundario` varchar(50) DEFAULT NULL,
+  `estado` enum('Em uso','Ocioso','Recuperável','Inservível') NOT NULL,
   `local_id` int(11) NOT NULL,
   `responsavel_id` int(11) NOT NULL,
-  `estado` enum('Em uso','Ocioso','Recuperável','Inservível') NOT NULL,
   `observacao` text DEFAULT NULL,
   `data_cadastro` timestamp NOT NULL DEFAULT current_timestamp(),
   `usuario_anterior_id` int(11) DEFAULT NULL,
-  `empenho` varchar(100) DEFAULT NULL,
-  `data_emissao_empenho` date DEFAULT NULL,
-  `fornecedor` varchar(150) DEFAULT NULL,
-  `cnpj_fornecedor` varchar(20) DEFAULT NULL,
-  `categoria` varchar(100) DEFAULT NULL,
-  `valor_nf` decimal(10,2) DEFAULT NULL,
-  `nd_nota_despesa` varchar(100) DEFAULT NULL,
-  `unidade_medida` varchar(50) DEFAULT NULL,
-  `valor` decimal(10,2) DEFAULT NULL,
   `status_confirmacao` enum('Pendente','Confirmado','Nao Confirmado','Movimento Desfeito') DEFAULT 'Pendente',
   `admin_reply` text DEFAULT NULL,
   `admin_reply_date` timestamp NULL DEFAULT NULL
@@ -242,4 +241,3 @@ ALTER TABLE `notificacoes_movimentacao`
 
 ALTER TABLE `usuarios`
   ADD CONSTRAINT `fk_permissao` FOREIGN KEY (`permissao_id`) REFERENCES `perfis` (`id`);
-  

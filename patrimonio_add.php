@@ -45,21 +45,28 @@ if($_SERVER["REQUEST_METHOD"] == "POST"){
     // Lógica de busca de itens para atualização
     if(isset($_POST['search_action'])){
         $search_term = mysqli_real_escape_string($link, $_POST['search']);
+        $search_by = isset($_POST['search_by']) ? $_POST['search_by'] : 'patrimonio_novo';
         if(strlen($search_term) >= 3){
-            $sql_search = "SELECT id, nome, patrimonio_novo FROM itens WHERE patrimonio_novo LIKE '$search_term%' ORDER BY patrimonio_novo ASC";
+            if ($search_by == 'id') {
+                $sql_search = "SELECT id, nome, patrimonio_novo FROM itens WHERE id LIKE '%$search_term%' ORDER BY id ASC";
+            } elseif ($search_by == 'nome') {
+                $sql_search = "SELECT id, nome, patrimonio_novo FROM itens WHERE nome LIKE '%$search_term%' ORDER BY nome ASC";
+            } else {
+                $sql_search = "SELECT id, nome, patrimonio_novo FROM itens WHERE patrimonio_novo LIKE '$search_term%' ORDER BY patrimonio_novo ASC";
+            }
             $result_search = mysqli_query($link, $sql_search);
             if($result_search){
                 while($row = mysqli_fetch_assoc($result_search)){
                     $itens[] = $row;
                 }
                 if(empty($itens)){
-                    $message = "Nenhum item encontrado com o patrimônio inicial '$search_term'.";
+                    $message = "Nenhum item encontrado com o termo '$search_term'.";
                 }
             } else {
                 $error = "Erro ao buscar itens: " . mysqli_error($link);
             }
         } else {
-            $error = "Por favor, insira pelo menos 3 dígitos do patrimônio para buscar.";
+            $error = "Por favor, insira pelo menos 3 caracteres para buscar.";
         }
     }
 
@@ -99,14 +106,14 @@ if($_SERVER["REQUEST_METHOD"] == "POST"){
                 throw new Exception("A quantidade e o patrimônio inicial devem ser números positivos.");
             }
 
-            $sql_insert = "INSERT INTO itens (nome, patrimonio_novo, local_id, responsavel_id, estado, observacao, empenho, data_emissao_empenho, fornecedor, cnpj_fornecedor, categoria, valor_nf, nd_nota_despesa, unidade_medida, valor) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+            $sql_insert = "INSERT INTO itens (nome, patrimonio_novo, local_id, responsavel_id, estado, observacao, descricao_detalhada, empenho, data_emissao_empenho, fornecedor, cnpj_fornecedor, categoria, valor_nf, nd_nota_despesa, unidade_medida, valor) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
             $stmt_insert = mysqli_prepare($link, $sql_insert);
 
             for($i = 0; $i < $quantidade; $i++){
                 $patrimonio_atual = $patrimonio_inicial + $i;
-                mysqli_stmt_bind_param($stmt_insert, "ssiissssssddssd",
+                mysqli_stmt_bind_param($stmt_insert, "ssiissssssddsssd",
                     $_POST['nome'], $patrimonio_atual, $_POST['local_id'], $_POST['responsavel_id'],
-                    $_POST['estado'], $_POST['observacao'], $_POST['empenho_bulk'], 
+                    $_POST['estado'], $_POST['observacao'], $_POST['descricao_detalhada'], $_POST['empenho_bulk'], 
                     $_POST['data_emissao_empenho_bulk'], $_POST['fornecedor_bulk'], 
                     $_POST['cnpj_fornecedor_bulk'], $_POST['categoria_bulk'], $_POST['valor_nf_bulk'],
                     $_POST['nd_nota_despesa_bulk'], $_POST['unidade_medida_bulk'], $_POST['valor_bulk']
@@ -324,22 +331,52 @@ $usuarios_result = mysqli_query($link, "SELECT id, nome FROM usuarios WHERE stat
 <!-- Formulário de Atualização -->
 <div id="update" class="tab-content <?php if($active_tab == 'update') echo 'active'; ?>">
     <form action="patrimonio_add.php" method="post">
-        <h3>1. Preencha as Informações de Aquisição</h3>
+        <h3>1. Preencha as Informações do Item</h3>
         <div class="form-grid">
-            <div><label>Empenho:</label><input type="text" name="empenho" value="<?php echo htmlspecialchars($empenho); ?>"></div>
-            <div><label>Data Emissão Empenho:</label><input type="date" name="data_emissao_empenho" value="<?php echo htmlspecialchars($data_emissao_empenho); ?>"></div>
+            <div><label>Processo/Documento:</label><input type="text" name="processo_documento" value="<?php echo isset($_POST['processo_documento']) ? htmlspecialchars($_POST['processo_documento']) : ''; ?>"></div>
             <div><label>Fornecedor:</label><input type="text" name="fornecedor" value="<?php echo htmlspecialchars($fornecedor); ?>"></div>
-            <div><label>CNPJ Fornecedor:</label><input type="text" name="cnpj_fornecedor" value="<?php echo htmlspecialchars($cnpj_fornecedor); ?>"></div>
-            <div><label>Categoria:</label><input type="text" name="categoria" value="<?php echo htmlspecialchars($categoria); ?>"></div>
-            <div><label>Número NF:</label><input type="number" step="0.01" name="valor_nf" value="<?php echo htmlspecialchars($valor_nf); ?>"></div>
-            <div><label>ND-Nota de Despesa:</label><input type="text" name="nd_nota_despesa" value="<?php echo htmlspecialchars($nd_nota_despesa); ?>"></div>
-            <div><label>Unidade de Medida:</label><input type="text" name="unidade_medida" value="<?php echo htmlspecialchars($unidade_medida); ?>"></div>
+            <div><label>CNPJ ou CPF Fornecedor:</label><input type="text" name="cnpj_cpf_fornecedor" value="<?php echo isset($_POST['cnpj_cpf_fornecedor']) ? htmlspecialchars($_POST['cnpj_cpf_fornecedor']) : ''; ?>"></div>
+            <div><label>Nome do Item:</label><input type="text" name="nome" value="<?php echo isset($_POST['nome']) ? htmlspecialchars($_POST['nome']) : ''; ?>" required></div>
+            <div><label>Descrição Detalhada:</label><textarea name="descricao_detalhada" maxlength="200" placeholder="Máximo 200 caracteres"><?php echo isset($_POST['descricao_detalhada']) ? htmlspecialchars($_POST['descricao_detalhada']) : ''; ?></textarea></div>
+            <div><label>Número de Série:</label><input type="text" name="numero_serie" value="<?php echo isset($_POST['numero_serie']) ? htmlspecialchars($_POST['numero_serie']) : ''; ?>"></div>
+            <div><label>Quantidade:</label><input type="number" name="quantidade" min="1" value="<?php echo isset($_POST['quantidade']) ? htmlspecialchars($_POST['quantidade']) : '1'; ?>" required></div>
             <div><label>Valor Unitário:</label><input type="number" step="0.01" name="valor" value="<?php echo htmlspecialchars($valor); ?>"></div>
+            <div><label>Nota Fiscal/Documento:</label><input type="text" name="nota_fiscal_documento" value="<?php echo isset($_POST['nota_fiscal_documento']) ? htmlspecialchars($_POST['nota_fiscal_documento']) : ''; ?>"></div>
+            <div><label>Data de Entrada/Aceitação:</label><input type="date" name="data_entrada_aceitacao" value="<?php echo isset($_POST['data_entrada_aceitacao']) ? htmlspecialchars($_POST['data_entrada_aceitacao']) : ''; ?>"></div>
+            <div><label>Patrimônio Inicial:</label><input type="number" name="patrimonio_inicial" value="<?php echo isset($_POST['patrimonio_inicial']) ? htmlspecialchars($_POST['patrimonio_inicial']) : ''; ?>" required></div>
+            <div><label>Estado:</label>
+                <select name="estado" required>
+                    <option value="Em uso">Em uso</option>
+                    <option value="Ocioso">Ocioso</option>
+                    <option value="Recuperável">Recuperável</option>
+                    <option value="Inservível">Inservível</option>
+                </select>
+            </div>
+            <div><label>Local:</label>
+                <select name="local_id" required>
+                    <option value="">Selecione...</option>
+                    <?php while($local = mysqli_fetch_assoc($locais_result)) echo "<option value='{$local['id']}'>".htmlspecialchars($local['nome'])."</option>"; ?>
+                </select>
+            </div>
+            <div><label>Responsável:</label>
+                <select name="responsavel_id" required>
+                    <option value="">Selecione...</option>
+                    <?php mysqli_data_seek($usuarios_result, 0); ?>
+                    <?php while($user = mysqli_fetch_assoc($usuarios_result)) echo "<option value='{$user['id']}'>".htmlspecialchars($user['nome'])."</option>"; ?>
+                </select>
+            </div>
+            <div><label>Observação:</label><textarea name="observacao"><?php echo isset($_POST['observacao']) ? htmlspecialchars($_POST['observacao']) : ''; ?></textarea></div>
         </div>
         
         <h3 style="margin-top: 20px;">2. Selecione os Itens para Atualizar</h3>
         <div class="form-inline">
-             <input type="text" name="search" placeholder="Buscar pelos 3 primeiros dígitos do patrimônio" value="<?php echo htmlspecialchars($search_term); ?>">
+            <label for="search_by">Pesquisar por:</label>
+            <select name="search_by" id="search_by">
+                <option value="patrimonio_novo" <?php echo (isset($_POST['search_by']) && $_POST['search_by'] == 'patrimonio_novo') ? 'selected' : ''; ?>>Patrimônio</option>
+                <option value="id" <?php echo (isset($_POST['search_by']) && $_POST['search_by'] == 'id') ? 'selected' : ''; ?>>ID</option>
+                <option value="nome" <?php echo (isset($_POST['search_by']) && $_POST['search_by'] == 'nome') ? 'selected' : ''; ?>>Nome do Item</option>
+            </select>
+             <input type="text" name="search" placeholder="Digite o termo de busca" value="<?php echo htmlspecialchars($search_term); ?>">
              <button type="submit" name="search_action" class="btn-custom">Buscar</button>
         </div>
 
@@ -373,14 +410,23 @@ $usuarios_result = mysqli_query($link, "SELECT id, nome FROM usuarios WHERE stat
         <h3>Informações dos Novos Itens</h3>
         <div class="form-grid">
             <div class="form-section">
-                <h4>Detalhes Básicos</h4>
+                <h4>Dados do Processo</h4>
+                <div><label>Processo/Documento:</label><input type="text" name="processo_documento"></div>
+                <div><label>Fornecedor:</label><input type="text" name="fornecedor"></div>
+                <div><label>CNPJ ou CPF Fornecedor:</label><input type="text" name="cnpj_cpf_fornecedor"></div>
                 <div><label>Nome do Item:</label><input type="text" name="nome" required></div>
+                <div><label>Descrição Detalhada:</label><textarea name="descricao_detalhada" maxlength="200" placeholder="Máximo 200 caracteres"></textarea></div>
+                <div><label>Número de Série:</label><input type="text" name="numero_serie"></div>
+                <div><label>Quantidade:</label><input type="number" name="quantidade" min="1" value="1" required></div>
+                <div><label>Valor Unitário:</label><input type="number" step="0.01" name="valor"></div>
+                <div><label>Nota Fiscal/Documento:</label><input type="text" name="nota_fiscal_documento"></div>
+                <div><label>Data de Entrada/Aceitação:</label><input type="date" name="data_entrada_aceitacao"></div>
                 <div><label>Patrimônio Inicial:</label><input type="number" name="patrimonio_inicial" required></div>
-                <div><label>Quantidade:</label><input type="number" name="quantidade" required></div>
                 <div><label>Estado:</label>
                     <select name="estado" required>
-                        <option value="Bom">Bom</option>
-                        <option value="Razoável">Razoável</option>
+                        <option value="Em uso">Em uso</option>
+                        <option value="Ocioso">Ocioso</option>
+                        <option value="Recuperável">Recuperável</option>
                         <option value="Inservível">Inservível</option>
                     </select>
                 </div>
