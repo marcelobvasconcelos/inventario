@@ -11,12 +11,13 @@ header('Content-Type: application/json');
 
 $response = ['count' => 0];
 if (isset($_SESSION['id'])) {
-    // Verificar notificações em ambas as tabelas
+    // Para notificações gerais, contar apenas as com status 'Pendente'
     $sql1 = "SELECT COUNT(id) FROM notificacoes WHERE usuario_id = ? AND status = 'Pendente'";
     $stmt1 = $pdo->prepare($sql1);
     $stmt1->execute([$_SESSION['id']]);
     $count1 = (int)$stmt1->fetchColumn();
     
+    // Para notificações de movimentação, contar apenas as com status_confirmacao 'Pendente'
     $sql2 = "SELECT COUNT(id) FROM notificacoes_movimentacao WHERE usuario_notificado_id = ? AND status_confirmacao = 'Pendente'";
     $stmt2 = $pdo->prepare($sql2);
     $stmt2->execute([$_SESSION['id']]);
