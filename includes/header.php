@@ -14,21 +14,13 @@ if(!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true){
 require_once __DIR__ . '/../config/db.php';
 
 // Busca o número de notificações pendentes para o usuário logado
+// Conta diretamente os itens que pertencem ao usuário e estão pendentes
 $notif_count = 0;
 if (isset($_SESSION['id'])) {
-    // Para notificações gerais, contar apenas as com status 'Pendente'
-    $sql_count1 = "SELECT COUNT(id) FROM notificacoes WHERE usuario_id = ? AND status = 'Pendente'";
-    $stmt_count1 = $pdo->prepare($sql_count1);
-    $stmt_count1->execute([$_SESSION['id']]);
-    $count1 = $stmt_count1->fetchColumn();
-    
-    // Para notificações de movimentação, contar apenas as com status_confirmacao 'Pendente'
-    $sql_count2 = "SELECT COUNT(id) FROM notificacoes_movimentacao WHERE usuario_notificado_id = ? AND status_confirmacao = 'Pendente'";
-    $stmt_count2 = $pdo->prepare($sql_count2);
-    $stmt_count2->execute([$_SESSION['id']]);
-    $count2 = $stmt_count2->fetchColumn();
-    
-    $notif_count = $count1 + $count2;
+    $sql_count = "SELECT COUNT(id) FROM itens WHERE responsavel_id = ? AND status_confirmacao = 'Pendente'";
+    $stmt_count = $pdo->prepare($sql_count);
+    $stmt_count->execute([$_SESSION['id']]);
+    $notif_count = $stmt_count->fetchColumn();
 }
 ?>
 
