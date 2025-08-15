@@ -62,6 +62,10 @@ if($stmt = mysqli_prepare($link, $sql)){
         <i class="fas fa-exchange-alt"></i>
         <span>Movimentações</span>
     </a>
+    <a href="almoxarifado/index.php" class="atalho-item">
+        <i class="fas fa-warehouse"></i>
+        <span>Almoxarifado</span>
+    </a>
     <?php if($_SESSION["permissao"] == 'Administrador'): ?>
     <a href="usuarios.php" class="atalho-item">
         <i class="fas fa-users"></i>
