@@ -246,20 +246,22 @@ require_once 'includes/header.php';
                 <?php
                 // O status da notificação deve refletir o status da notificação na tabela notificacoes_movimentacao
                 // e não apenas o status do item
-                $notificacao['status'] = $notificacao['status_confirmacao'];
-                if ($notificacao['status'] == 'Pendente' || $notificacao['status'] == 'Em Disputa') {
+                // Para notificações de movimentação, o status está em 'status'
+                // Para notificações gerais, precisamos verificar de outra forma
+                $notificacao_status = $notificacao['status'] ?? 'Pendente';
+                if ($notificacao_status == 'Pendente' || $notificacao_status == 'Em Disputa') {
                     $notif_card_class = 'notif-pendente';
                 } else {
                     $notif_card_class = 'notif-nao-pendente';
                 }
                 ?>
-                <div class="notification-item card mb-1 <?php echo $notif_card_class; ?>" data-notif-id="<?php echo $notificacao['id']; ?>" data-item-statuses="<?php echo $notificacao['data_item_statuses']; ?>" style="padding: 0.5rem 0.7rem; border-radius: 8px;">
+                <div class="notification-item card mb-1 <?php echo $notif_card_class; ?>" data-notif-id="<?php echo $notificacao['id']; ?>" data-item-statuses="<?php echo htmlspecialchars($notificacao['data_item_statuses']); ?>" style="padding: 0.5rem 0.7rem; border-radius: 8px;">
                     <div class="card-header notification-summary">
                         <a href="notificacoes_usuario.php?notif_id=<?php echo $notificacao['id']; ?>" class="d-flex justify-content-between align-items-center w-100 text-decoration-none text-dark">
                             <div>
                                 <i class="fas <?php 
-                                    if ($notificacao['status'] == 'Pendente' || $notificacao['status'] == 'Em Disputa') echo 'fa-envelope';
-                                    else if ($notificacao['status'] == 'Confirmado' || $notificacao['status'] == 'Movimento Desfeito') echo 'fa-envelope-open';
+                                    if ($notificacao_status == 'Pendente' || $notificacao_status == 'Em Disputa') echo 'fa-envelope';
+                                    else if ($notificacao_status == 'Confirmado' || $notificacao_status == 'Movimento Desfeito') echo 'fa-envelope-open';
                                     else echo 'fa-envelope';
                                 ?>"></i>
                                 <strong><?php echo htmlspecialchars($notificacao['administrador_nome']); ?></strong>
