@@ -234,6 +234,7 @@ require_once 'includes/header.php';
             <button class="btn btn-sm btn-outline-secondary filter-btn" data-filter="Pendente">Pendentes</button>
             <button class="btn btn-sm btn-outline-secondary filter-btn" data-filter="Confirmado">Confirmados</button>
             <button class="btn btn-sm btn-outline-secondary filter-btn" data-filter="Nao Confirmado">Não Confirmados</button>
+            <button class="btn btn-sm btn-outline-secondary filter-btn" data-filter="Em Disputa">Em Disputa</button>
         </div>
         <?php endif; ?>
 
@@ -243,25 +244,12 @@ require_once 'includes/header.php';
         <div class="notification-inbox">
         <?php foreach ($notificacoes as $notificacao): ?>
                 <?php
-                // Sempre sincroniza o status da notificação com o status do item principal
-                $item_status_raw = $notificacao['detalhes_itens'][0]['status_confirmacao'] ?? '';
-                if (empty($item_status_raw)) {
-                    $notificacao['status'] = 'Pendente';
+                // O status da notificação deve refletir o status da notificação na tabela notificacoes_movimentacao
+                // e não apenas o status do item
+                $notificacao['status'] = $notificacao['status_confirmacao'];
+                if ($notificacao['status'] == 'Pendente' || $notificacao['status'] == 'Em Disputa') {
                     $notif_card_class = 'notif-pendente';
-                } elseif ($item_status_raw === 'Nao Confirmado') {
-                    $notificacao['status'] = 'Não Confirmado';
-                    $notif_card_class = 'notif-nao-pendente';
-                } elseif ($item_status_raw === 'Confirmado') {
-                    $notificacao['status'] = 'Confirmado';
-                    $notif_card_class = 'notif-nao-pendente';
-                } elseif ($item_status_raw === 'Movimento Desfeito') {
-                    $notificacao['status'] = 'Movimento Desfeito';
-                    $notif_card_class = 'notif-nao-pendente';
-                } elseif ($item_status_raw === 'Em Disputa') {
-                    $notificacao['status'] = 'Em Disputa';
-                    $notif_card_class = 'notif-nao-pendente';
                 } else {
-                    $notificacao['status'] = ucfirst($item_status_raw);
                     $notif_card_class = 'notif-nao-pendente';
                 }
                 ?>
