@@ -1,5 +1,4 @@
 <?php
-echo "<pre>DEBUG: Script movimentacao_add.php iniciado.</pre>";
 /**
  * Página para registrar a movimentação de um ou mais itens de inventário.
  * Permite que um administrador mova itens de um local de origem para um local de destino,
@@ -70,15 +69,6 @@ if($_SERVER["REQUEST_METHOD"] == "POST"){
                 mysqli_stmt_close($stmt_update);
 
                 // --- DEBUG TEMPORÁRIO: Verificar se a movimentação foi inserida --- //
-                echo "<pre>DEBUG: Item ID processado: " . htmlspecialchars($item_id) . "</pre>";
-                $check_mov_sql = "SELECT id FROM movimentacoes WHERE item_id = ? ORDER BY id DESC LIMIT 1";
-                $stmt_check_mov = mysqli_prepare($link, $check_mov_sql);
-                mysqli_stmt_bind_param($stmt_check_mov, "i", $item_id);
-                mysqli_stmt_execute($stmt_check_mov);
-                $result_check_mov = mysqli_stmt_get_result($stmt_check_mov);
-                $debug_mov_id = mysqli_fetch_assoc($result_check_mov)['id'] ?? 'N/A';
-                echo "<pre>DEBUG: Último Movimentacao ID para item " . htmlspecialchars($item_id) . ": " . htmlspecialchars($debug_mov_id) . "</pre>";
-                mysqli_stmt_close($stmt_check_mov);
                 // --- FIM DEBUG TEMPORÁRIO --- //
             }
 
@@ -96,18 +86,13 @@ if($_SERVER["REQUEST_METHOD"] == "POST"){
                 $movimentacao_id = $movimentacao_data['id'] ?? null;
                 mysqli_stmt_close($stmt_get_mov_id);
 
-                echo "<pre>DEBUG: Movimentacao ID para notificação (item " . htmlspecialchars($item_id) . "): " . htmlspecialchars($movimentacao_id) . "</pre>";
-
                 if ($movimentacao_id) {
                     // Insere a notificação individual para o item na tabela notificacoes_movimentacao.
                     $sql_insert_notificacao_item = "INSERT INTO notificacoes_movimentacao (movimentacao_id, item_id, usuario_notificado_id, status_confirmacao) VALUES (?, ?, ?, 'Pendente')";
                     $stmt_insert_notificacao_item = mysqli_prepare($link, $sql_insert_notificacao_item);
                     mysqli_stmt_bind_param($stmt_insert_notificacao_item, "iii", $movimentacao_id, $item_id, $novo_responsavel_id);
                     $notif_exec_success = mysqli_stmt_execute($stmt_insert_notificacao_item);
-                    echo "<pre>DEBUG: Notificação para item " . htmlspecialchars($item_id) . " inserida? " . ($notif_exec_success ? 'Sim' : 'Não') . ". Erro: " . htmlspecialchars(mysqli_error($link)) . "</pre>";
                     mysqli_stmt_close($stmt_insert_notificacao_item);
-                } else {
-                    echo "<pre>DEBUG: ERRO: Movimentacao ID não encontrado para item " . htmlspecialchars($item_id) . ". Notificação não inserida.</pre>";
                 }
             }
 
