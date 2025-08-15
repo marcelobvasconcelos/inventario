@@ -41,6 +41,37 @@ if (empty($item_ids) || empty($novo_local_id) || empty($novo_responsavel_id)) {
     exit;
 }
 
+// --- Verificações de Segurança ---
+// Verificar se os itens podem ser movimentados
+foreach ($item_ids as $item_id) {
+    // 1. Verificar se o item está com status "Confirmado"
+    $sql_check_status = "SELECT status_confirmacao FROM itens WHERE id = ?";
+    $stmt_check_status = $pdo->prepare($sql_check_status);
+    $stmt_check_status->execute([$item_id]);
+    $item_status = $stmt_check_status->fetch(PDO::FETCH_ASSOC);
+    
+    if (!$item_status) {
+        echo json_encode(['success' => false, 'message' => "Item com ID {$item_id} não encontrado."]);
+        exit;
+    }
+    
+    if ($item_status['status_confirmacao'] !== 'Confirmado') {
+        echo json_encode(['success' => false, 'message' => "O item com ID {$item_id} não pode ser movimentado porque seu status não é 'Confirmado'."]);
+        exit;
+    }
+    
+    // 2. Verificar se o item já possui uma solicitação de movimentação pendente
+    $sql_check_pending = "SELECT COUNT(*) FROM notificacoes_movimentacao WHERE item_id = ? AND status_confirmacao = 'Pendente'";
+    $stmt_check_pending = $pdo->prepare($sql_check_pending);
+    $stmt_check_pending->execute([$item_id]);
+    $pending_count = $stmt_check_pending->fetchColumn();
+    
+    if ($pending_count > 0) {
+        echo json_encode(['success' => false, 'message' => "Este item não pode ser movimentado porque já se encontra pendente de confirmação de outro usuário."]);
+        exit;
+    }
+}
+
 // --- Lógica da Transação ---
 // Inicia uma transação para garantir que todas as operações sejam executadas com sucesso
 $pdo->beginTransaction();
