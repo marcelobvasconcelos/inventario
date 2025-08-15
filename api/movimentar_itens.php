@@ -56,7 +56,7 @@ foreach ($item_ids as $item_id) {
     }
     
     if ($item_status['status_confirmacao'] !== 'Confirmado') {
-        echo json_encode(['success' => false, 'message' => "O item com ID {$item_id} não pode ser movimentado porque seu status não é 'Confirmado'."]);
+        echo json_encode(['success' => false, 'message' => "O item com ID {$item_id} não pode ser movimentado porque seu status não é 'Confirmado'. Status atual: '{$item_status['status_confirmacao']}'"]);
         exit;
     }
     

@@ -24,7 +24,7 @@ if ($_SESSION['permissao'] == 'Administrador') {
 
 // (O resto do seu código PHP de paginação e busca continua aqui...)
 // Configurações de paginação
-$itens_por_pagina = 20;
+$itens_por_pagina = 60;
 $pagina_atual = isset($_GET['pagina']) ? (int)$_GET['pagina'] : 1;
 $offset = ($pagina_atual - 1) * $itens_por_pagina;
 
