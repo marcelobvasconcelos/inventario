@@ -11,7 +11,7 @@ if(!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true){
 }
 
 // Inclui a conexão com o banco de dados para buscar notificações
-require_once 'config/db.php';
+require_once __DIR__ . '/../config/db.php';
 
 // Busca o número de notificações pendentes para o usuário logado
 $notif_count = 0;
@@ -28,7 +28,14 @@ if (isset($_SESSION['id'])) {
 <head>
     <meta charset="UTF-8">
     <title>Sistema de Inventário</title>
-    <link rel="stylesheet" href="css/style.css">
+    <?php
+    // Gerar o caminho correto para o CSS, independentemente de onde a página esteja
+    $css_path = '';
+    if (strpos($_SERVER['REQUEST_URI'], '/almoxarifado/') !== false) {
+        $css_path = '../';
+    }
+    ?>
+    <link rel="stylesheet" href="<?php echo $css_path; ?>css/style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
 </head>
@@ -40,6 +47,7 @@ if (isset($_SESSION['id'])) {
             <a href="itens.php">Itens</a>
             <a href="locais.php">Locais</a>
             <a href="movimentacoes.php">Movimentações</a>
+            <a href="almoxarifado/index.php">Almoxarifado</a>
             <a href="notificacoes_usuario.php">Notificações</a> <!-- Link para notificações -->
             <?php if($_SESSION["permissao"] == 'Administrador'): // Links visíveis apenas para Administradores ?>
                 <a href="usuarios.php">Usuários</a>
