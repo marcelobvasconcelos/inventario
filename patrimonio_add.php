@@ -353,20 +353,18 @@ $usuarios_result = mysqli_query($link, "SELECT id, nome FROM usuarios WHERE stat
                 </select>
             </div>
             <div><label>Local:</label>
-                <select name="local_id" required>
-                    <option value="">Selecione...</option>
-                    <?php 
-                    // Resetar o ponteiro do resultado para reutilizar os dados
-                    mysqli_data_seek($locais_result, 0);
-                    while($local = mysqli_fetch_assoc($locais_result)) echo "<option value='{$local['id']}'>".htmlspecialchars($local['nome'])."</option>"; ?>
-                </select>
+                <div class="autocomplete-container">
+                    <input type="text" id="search_local_update" name="search_local_update" placeholder="Digite para buscar um local..." autocomplete="off">
+                    <input type="hidden" name="local_id" id="local_id_update" required>
+                    <div id="local_suggestions_update" class="suggestions-list"></div>
+                </div>
             </div>
             <div><label>Responsável:</label>
-                <select name="responsavel_id" required>
-                    <option value="">Selecione...</option>
-                    <?php mysqli_data_seek($usuarios_result, 0); ?>
-                    <?php while($user = mysqli_fetch_assoc($usuarios_result)) echo "<option value='{$user['id']}'>".htmlspecialchars($user['nome'])."</option>"; ?>
-                </select>
+                <div class="autocomplete-container">
+                    <input type="text" id="search_responsavel_update" name="search_responsavel_update" placeholder="Digite para buscar um responsável..." autocomplete="off">
+                    <input type="hidden" name="responsavel_id" id="responsavel_id_update" required>
+                    <div id="responsavel_suggestions_update" class="suggestions-list"></div>
+                </div>
             </div>
             <div><label>Observação:</label><textarea name="observacao"><?php echo isset($_POST['observacao']) ? htmlspecialchars($_POST['observacao']) : ''; ?></textarea></div>
         </div>
@@ -434,20 +432,18 @@ $usuarios_result = mysqli_query($link, "SELECT id, nome FROM usuarios WHERE stat
                     </select>
                 </div>
                 <div><label>Local:</label>
-                    <select name="local_id" required>
-                        <option value="">Selecione...</option>
-                        <?php 
-                        // Resetar o ponteiro do resultado para reutilizar os dados
-                        mysqli_data_seek($locais_result, 0);
-                        while($local = mysqli_fetch_assoc($locais_result)) echo "<option value='{$local['id']}'>".htmlspecialchars($local['nome'])."</option>"; ?>
-                    </select>
+                    <div class="autocomplete-container">
+                        <input type="text" id="search_local_create" name="search_local_create" placeholder="Digite para buscar um local..." autocomplete="off">
+                        <input type="hidden" name="local_id" id="local_id_create" required>
+                        <div id="local_suggestions_create" class="suggestions-list"></div>
+                    </div>
                 </div>
                 <div><label>Responsável:</label>
-                    <select name="responsavel_id" required>
-                        <option value="">Selecione...</option>
-                        <?php mysqli_data_seek($usuarios_result, 0); ?>
-                        <?php while($user = mysqli_fetch_assoc($usuarios_result)) echo "<option value='{$user['id']}'>".htmlspecialchars($user['nome'])."</option>"; ?>
-                    </select>
+                    <div class="autocomplete-container">
+                        <input type="text" id="search_responsavel_create" name="search_responsavel_create" placeholder="Digite para buscar um responsável..." autocomplete="off">
+                        <input type="hidden" name="responsavel_id" id="responsavel_id_create" required>
+                        <div id="responsavel_suggestions_create" class="suggestions-list"></div>
+                    </div>
                 </div>
                 <div><label>Observação:</label><textarea name="observacao"></textarea></div>
             </div>
@@ -551,6 +547,98 @@ function showTab(event, tabName) {
     document.getElementById(tabName).classList.add("active");
     event.currentTarget.className += " active";
 }
+
+// Função genérica para busca com autocomplete
+function setupAutocomplete(inputEl, suggestionsEl, hiddenIdEl, searchUrl) {
+    let debounceTimeout;
+    
+    inputEl.addEventListener('input', function() {
+        clearTimeout(debounceTimeout);
+        const searchTerm = this.value;
+        suggestionsEl.innerHTML = '';
+        hiddenIdEl.value = '';
+        
+        if (searchTerm.length < 2) {
+            suggestionsEl.style.display = 'none';
+            return;
+        }
+        
+        // Debounce: Atraso de 300ms para evitar chamadas excessivas à API
+        debounceTimeout = setTimeout(() => {
+            fetch(`${searchUrl}?term=${searchTerm}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.error) {
+                        console.error(data.error);
+                        return;
+                    }
+                    if (data.length > 0) {
+                        data.forEach(item => {
+                            const div = document.createElement('div');
+                            div.textContent = item.nome;
+                            div.dataset.id = item.id;
+                            div.addEventListener('click', function() {
+                                inputEl.value = this.textContent;
+                                hiddenIdEl.value = this.dataset.id;
+                                suggestionsEl.innerHTML = '';
+                                suggestionsEl.style.display = 'none';
+                            });
+                            suggestionsEl.appendChild(div);
+                        });
+                        suggestionsEl.style.display = 'block';
+                    } else {
+                        suggestionsEl.innerHTML = '<div class="search-result-item">Nenhum resultado encontrado</div>';
+                        suggestionsEl.style.display = 'block';
+                    }
+                })
+                .catch(error => console.error('Erro no autocomplete:', error));
+        }, 300);
+    });
+    
+    // Esconder sugestões se clicar fora
+    document.addEventListener('click', function(e) {
+        if (e.target !== inputEl) {
+            suggestionsEl.style.display = 'none';
+        }
+    });
+}
+
+// Configurar autocomplete para ambas as abas
+document.addEventListener('DOMContentLoaded', function() {
+    // Aba de Atualização
+    const searchLocalUpdate = document.getElementById('search_local_update');
+    const localSuggestionsUpdate = document.getElementById('local_suggestions_update');
+    const localIdUpdate = document.getElementById('local_id_update');
+    
+    const searchResponsavelUpdate = document.getElementById('search_responsavel_update');
+    const responsavelSuggestionsUpdate = document.getElementById('responsavel_suggestions_update');
+    const responsavelIdUpdate = document.getElementById('responsavel_id_update');
+    
+    if (searchLocalUpdate && localSuggestionsUpdate && localIdUpdate) {
+        setupAutocomplete(searchLocalUpdate, localSuggestionsUpdate, localIdUpdate, 'api/search_locais.php');
+    }
+    
+    if (searchResponsavelUpdate && responsavelSuggestionsUpdate && responsavelIdUpdate) {
+        setupAutocomplete(searchResponsavelUpdate, responsavelSuggestionsUpdate, responsavelIdUpdate, 'api/search_usuarios.php');
+    }
+    
+    // Aba de Criação
+    const searchLocalCreate = document.getElementById('search_local_create');
+    const localSuggestionsCreate = document.getElementById('local_suggestions_create');
+    const localIdCreate = document.getElementById('local_id_create');
+    
+    const searchResponsavelCreate = document.getElementById('search_responsavel_create');
+    const responsavelSuggestionsCreate = document.getElementById('responsavel_suggestions_create');
+    const responsavelIdCreate = document.getElementById('responsavel_id_create');
+    
+    if (searchLocalCreate && localSuggestionsCreate && localIdCreate) {
+        setupAutocomplete(searchLocalCreate, localSuggestionsCreate, localIdCreate, 'api/search_locais.php');
+    }
+    
+    if (searchResponsavelCreate && responsavelSuggestionsCreate && responsavelIdCreate) {
+        setupAutocomplete(searchResponsavelCreate, responsavelSuggestionsCreate, responsavelIdCreate, 'api/search_usuarios.php');
+    }
+});
 </script>
 
 <?php
