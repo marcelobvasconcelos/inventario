@@ -355,7 +355,10 @@ $usuarios_result = mysqli_query($link, "SELECT id, nome FROM usuarios WHERE stat
             <div><label>Local:</label>
                 <select name="local_id" required>
                     <option value="">Selecione...</option>
-                    <?php while($local = mysqli_fetch_assoc($locais_result)) echo "<option value='{$local['id']}'>".htmlspecialchars($local['nome'])."</option>"; ?>
+                    <?php 
+                    // Resetar o ponteiro do resultado para reutilizar os dados
+                    mysqli_data_seek($locais_result, 0);
+                    while($local = mysqli_fetch_assoc($locais_result)) echo "<option value='{$local['id']}'>".htmlspecialchars($local['nome'])."</option>"; ?>
                 </select>
             </div>
             <div><label>Responsável:</label>
@@ -433,7 +436,10 @@ $usuarios_result = mysqli_query($link, "SELECT id, nome FROM usuarios WHERE stat
                 <div><label>Local:</label>
                     <select name="local_id" required>
                         <option value="">Selecione...</option>
-                        <?php while($local = mysqli_fetch_assoc($locais_result)) echo "<option value='{$local['id']}'>".htmlspecialchars($local['nome'])."</option>"; ?>
+                        <?php 
+                        // Resetar o ponteiro do resultado para reutilizar os dados
+                        mysqli_data_seek($locais_result, 0);
+                        while($local = mysqli_fetch_assoc($locais_result)) echo "<option value='{$local['id']}'>".htmlspecialchars($local['nome'])."</option>"; ?>
                     </select>
                 </div>
                 <div><label>Responsável:</label>
