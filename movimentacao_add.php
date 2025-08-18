@@ -35,6 +35,46 @@ if($_SERVER["REQUEST_METHOD"] == "POST"){
     if (empty($selected_items) || empty($local_destino_id) || empty($novo_responsavel_id)) {
         echo "<div class='alert alert-danger'>Por favor, selecione pelo menos um item, um local de destino e um novo responsável.</div>";
     } else {
+        // --- VERIFICAÇÕES DE SEGURANÇA ---
+        // Verificar se os itens podem ser movimentados
+        foreach ($selected_items as $item_id) {
+            // 1. Verificar se o item está com status "Confirmado"
+            $sql_check_status = "SELECT status_confirmacao FROM itens WHERE id = ?";
+            $stmt_check_status = mysqli_prepare($link, $sql_check_status);
+            mysqli_stmt_bind_param($stmt_check_status, "i", $item_id);
+            mysqli_stmt_execute($stmt_check_status);
+            $result_check_status = mysqli_stmt_get_result($stmt_check_status);
+            $item_status = mysqli_fetch_assoc($result_check_status);
+            mysqli_stmt_close($stmt_check_status);
+            
+            if (!$item_status) {
+                echo "<div class='alert alert-danger'>Item com ID {$item_id} não encontrado.</div>";
+                require_once 'includes/footer.php';
+                exit;
+            }
+            
+            if ($item_status['status_confirmacao'] !== 'Confirmado') {
+                echo "<div class='alert alert-danger'>O item com ID {$item_id} não pode ser movimentado porque seu status não é 'Confirmado'. Status atual: '{$item_status['status_confirmacao']}'</div>";
+                require_once 'includes/footer.php';
+                exit;
+            }
+            
+            // 2. Verificar se o item já possui uma solicitação de movimentação pendente
+            $sql_check_pending = "SELECT COUNT(*) FROM notificacoes_movimentacao WHERE item_id = ? AND status_confirmacao = 'Pendente'";
+            $stmt_check_pending = mysqli_prepare($link, $sql_check_pending);
+            mysqli_stmt_bind_param($stmt_check_pending, "i", $item_id);
+            mysqli_stmt_execute($stmt_check_pending);
+            $result_check_pending = mysqli_stmt_get_result($stmt_check_pending);
+            $pending_count = mysqli_fetch_row($result_check_pending)[0];
+            mysqli_stmt_close($stmt_check_pending);
+            
+            if ($pending_count > 0) {
+                echo "<div class='alert alert-danger'>Este item não pode ser movimentado porque já se encontra pendente de confirmação de outro usuário.</div>";
+                require_once 'includes/footer.php';
+                exit;
+            }
+        }
+        
         // --- TRANSAÇÃO DE BANCO DE DADOS ---
         // Inicia uma transação para garantir que todas as operações de banco de dados
         // sejam executadas com sucesso. Se qualquer uma falhar, todas são revertidas (rollback).
