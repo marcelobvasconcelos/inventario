@@ -41,8 +41,14 @@ Este documento contém diretrizes e informações importantes para a IA ao inter
 *   **Leitura de Código de Barras:** A tentativa de implementar a leitura de código de barras via câmera foi abortada e o código relacionado foi removido.
 
 
+## Sobre commit e push
+    
+*   Antes de fazer commit me pergunte se funcionou
+*   Depois de fazer o commit faça o push
+
 ## Próximos Passos (Sugestões)
 
 *   Continuar aprimorando a documentação do projeto.
 *   Revisar e otimizar o código existente.
 *   Implementar novas funcionalidades conforme solicitado pelo usuário.
+

@@ -25,6 +25,9 @@ $nd_nota_despesa = isset($_POST['nd_nota_despesa']) ? $_POST['nd_nota_despesa'] 
 $unidade_medida = isset($_POST['unidade_medida']) ? $_POST['unidade_medida'] : '';
 $valor = isset($_POST['valor']) ? $_POST['valor'] : '';
 
+// Variável para persistir o ID do empenho
+$empenho_id = isset($_POST['empenho_id']) ? $_POST['empenho_id'] : '';
+
 // Variáveis para a pesquisa avançada
 $search_empenho = isset($_POST['search_empenho']) ? $_POST['search_empenho'] : '';
 $search_valor_nf = isset($_POST['search_valor_nf']) ? $_POST['search_valor_nf'] : '';
@@ -36,10 +39,12 @@ if (isset($_POST['create_bulk'])) {
     $active_tab = 'create';
 } elseif (isset($_GET['advanced_search'])) {
     $active_tab = 'advanced_search';
+} elseif (isset($_GET['categorias'])) {
+    $active_tab = 'categorias';
+} elseif (isset($_GET['empenhos'])) {
+    $active_tab = 'empenhos';
 }
 
-
-// Lógica principal de processamento POST
 // Lógica principal de processamento POST
 if($_SERVER["REQUEST_METHOD"] == "POST"){
     // Lógica de busca de itens para atualização
@@ -79,13 +84,43 @@ if($_SERVER["REQUEST_METHOD"] == "POST"){
             }
             $item_ids = $_POST['item_ids'];
             
-            $sql_update = "UPDATE itens SET empenho=?, data_emissao_empenho=?, fornecedor=?, cnpj_fornecedor=?, categoria=?, valor_nf=?, nd_nota_despesa=?, unidade_medida=?, valor=? WHERE id=?";
+            // Verificar se foi selecionado um empenho para atualização
+            $empenho_id = isset($_POST['empenho_id_update']) ? (int)$_POST['empenho_id_update'] : null;
+            
+            // Se um empenho foi selecionado, obter os dados do empenho
+            $empenho_numero = isset($_POST['empenho']) ? $_POST['empenho'] : '';
+            $data_emissao_empenho = isset($_POST['data_emissao_empenho']) ? $_POST['data_emissao_empenho'] : '';
+            $fornecedor = isset($_POST['fornecedor']) ? $_POST['fornecedor'] : '';
+            $cnpj_fornecedor = isset($_POST['cnpj_fornecedor']) ? $_POST['cnpj_fornecedor'] : '';
+            $categoria = isset($_POST['categoria']) ? $_POST['categoria'] : '';
+            
+            if($empenho_id) {
+                $sql_empenho = "SELECT e.numero_empenho, e.data_emissao, e.nome_fornecedor, e.cnpj_fornecedor, c.numero as categoria_numero, c.descricao as categoria_descricao 
+                               FROM empenhos e 
+                               JOIN categorias c ON e.categoria_id = c.id 
+                               WHERE e.id = ?";
+                $stmt_empenho = mysqli_prepare($link, $sql_empenho);
+                mysqli_stmt_bind_param($stmt_empenho, "i", $empenho_id);
+                if(mysqli_stmt_execute($stmt_empenho)){
+                    $result_empenho = mysqli_stmt_get_result($stmt_empenho);
+                    if($empenho_data = mysqli_fetch_assoc($result_empenho)){
+                        $empenho_numero = $empenho_data['numero_empenho'];
+                        $data_emissao_empenho = $empenho_data['data_emissao'];
+                        $fornecedor = $empenho_data['nome_fornecedor'];
+                        $cnpj_fornecedor = $empenho_data['cnpj_fornecedor'];
+                        $categoria = $empenho_data['categoria_numero'] . ' - ' . $empenho_data['categoria_descricao'];
+                    }
+                }
+                mysqli_stmt_close($stmt_empenho);
+            }
+            
+            $sql_update = "UPDATE itens SET empenho_id=?, empenho=?, data_emissao_empenho=?, fornecedor=?, cnpj_fornecedor=?, categoria=?, valor_nf=?, nd_nota_despesa=?, unidade_medida=?, valor=? WHERE id=?";
             $stmt_update = mysqli_prepare($link, $sql_update);
 
             foreach($item_ids as $item_id){
-                mysqli_stmt_bind_param($stmt_update, "sssssddssi", 
-                    $_POST['empenho'], $_POST['data_emissao_empenho'], $_POST['fornecedor'], 
-                    $_POST['cnpj_fornecedor'], $_POST['categoria'], $_POST['valor_nf'], 
+                mysqli_stmt_bind_param($stmt_update, "isssssddssi", 
+                    $empenho_id, $empenho_numero, $data_emissao_empenho, $fornecedor, 
+                    $cnpj_fornecedor, $categoria, $_POST['valor_nf'], 
                     $_POST['nd_nota_despesa'], $_POST['unidade_medida'], $_POST['valor'],
                     $item_id
                 );
@@ -101,21 +136,48 @@ if($_SERVER["REQUEST_METHOD"] == "POST"){
         if(isset($_POST['create_bulk'])){
             $quantidade = (int)$_POST['quantidade'];
             $patrimonio_inicial = (int)$_POST['patrimonio_inicial'];
+            $empenho_id = isset($_POST['empenho_id']) ? (int)$_POST['empenho_id'] : null;
 
             if($quantidade <= 0 || $patrimonio_inicial <= 0){
                 throw new Exception("A quantidade e o patrimônio inicial devem ser números positivos.");
             }
 
-            $sql_insert = "INSERT INTO itens (nome, patrimonio_novo, local_id, responsavel_id, estado, observacao, descricao_detalhada, empenho, data_emissao_empenho, fornecedor, cnpj_fornecedor, categoria, valor_nf, nd_nota_despesa, unidade_medida, valor) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+            // Se um empenho foi selecionado, obter os dados do empenho
+            $empenho_numero = '';
+            $data_emissao_empenho = '';
+            $fornecedor = '';
+            $cnpj_fornecedor = '';
+            $categoria = '';
+            
+            if($empenho_id) {
+                $sql_empenho = "SELECT e.numero_empenho, e.data_emissao, e.nome_fornecedor, e.cnpj_fornecedor, c.numero as categoria_numero, c.descricao as categoria_descricao 
+                               FROM empenhos e 
+                               JOIN categorias c ON e.categoria_id = c.id 
+                               WHERE e.id = ?";
+                $stmt_empenho = mysqli_prepare($link, $sql_empenho);
+                mysqli_stmt_bind_param($stmt_empenho, "i", $empenho_id);
+                if(mysqli_stmt_execute($stmt_empenho)){
+                    $result_empenho = mysqli_stmt_get_result($stmt_empenho);
+                    if($empenho_data = mysqli_fetch_assoc($result_empenho)){
+                        $empenho_numero = $empenho_data['numero_empenho'];
+                        $data_emissao_empenho = $empenho_data['data_emissao'];
+                        $fornecedor = $empenho_data['nome_fornecedor'];
+                        $cnpj_fornecedor = $empenho_data['cnpj_fornecedor'];
+                        $categoria = $empenho_data['categoria_numero'] . ' - ' . $empenho_data['categoria_descricao'];
+                    }
+                }
+                mysqli_stmt_close($stmt_empenho);
+            }
+
+            $sql_insert = "INSERT INTO itens (nome, patrimonio_novo, local_id, responsavel_id, estado, observacao, descricao_detalhada, empenho_id, empenho, data_emissao_empenho, fornecedor, cnpj_fornecedor, categoria, valor_nf, nd_nota_despesa, unidade_medida, valor) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
             $stmt_insert = mysqli_prepare($link, $sql_insert);
 
             for($i = 0; $i < $quantidade; $i++){
                 $patrimonio_atual = $patrimonio_inicial + $i;
-                mysqli_stmt_bind_param($stmt_insert, "ssiissssssddsssd",
+                mysqli_stmt_bind_param($stmt_insert, "ssiiisssisssdsss",
                     $_POST['nome'], $patrimonio_atual, $_POST['local_id'], $_POST['responsavel_id'],
-                    $_POST['estado'], $_POST['observacao'], $_POST['descricao_detalhada'], $_POST['empenho_bulk'], 
-                    $_POST['data_emissao_empenho_bulk'], $_POST['fornecedor_bulk'], 
-                    $_POST['cnpj_fornecedor_bulk'], $_POST['categoria_bulk'], $_POST['valor_nf_bulk'],
+                    $_POST['estado'], $_POST['observacao'], $_POST['descricao_detalhada'], $empenho_id, $empenho_numero,
+                    $data_emissao_empenho, $fornecedor, $cnpj_fornecedor, $categoria, $_POST['valor_nf_bulk'],
                     $_POST['nd_nota_despesa_bulk'], $_POST['unidade_medida_bulk'], $_POST['valor_bulk']
                 );
                 if(!mysqli_stmt_execute($stmt_insert)){
@@ -137,9 +199,6 @@ if($_SERVER["REQUEST_METHOD"] == "POST"){
 if(isset($_GET['advanced_search'])) {
     $search_by_advanced = isset($_GET['advanced_search_by']) ? $_GET['advanced_search_by'] : '';
     $search_query_advanced = isset($_GET['advanced_search_query']) ? mysqli_real_escape_string($link, $_GET['advanced_search_query']) : '';
-
-    // DEBUG: Exibir os parâmetros de pesquisa
-    
 
     $sql_advanced_search = "SELECT i.*, l.nome as local_nome, u.nome as responsavel_nome FROM itens i 
                             JOIN locais l ON i.local_id = l.id 
@@ -210,9 +269,6 @@ if(isset($_GET['advanced_search'])) {
 
     $sql_advanced_search .= $where_clause_advanced . " ORDER BY i.id DESC";
 
-    // DEBUG: Exibir a consulta SQL gerada
-    
-
     $stmt_advanced = mysqli_prepare($link, $sql_advanced_search);
     
     if ($stmt_advanced) {
@@ -229,7 +285,6 @@ if(isset($_GET['advanced_search'])) {
             while($row = mysqli_fetch_assoc($result_advanced)){
                 $advanced_search_results[] = $row;
             }
-            // DEBUG: Exibir o número de resultados
             if(empty($advanced_search_results) && !empty($search_query_advanced)){
                     $message = "Nenhum item encontrado com os critérios fornecidos.";
                 } elseif (empty($search_query_advanced)) {
@@ -254,6 +309,20 @@ if(isset($_POST['search_action']) && isset($_POST['search'])) {
 // Buscar locais e usuários para os dropdowns
 $locais_result = mysqli_query($link, "SELECT id, nome FROM locais ORDER BY nome ASC");
 $usuarios_result = mysqli_query($link, "SELECT id, nome FROM usuarios WHERE status = 'aprovado' ORDER BY nome ASC");
+
+// Buscar empenhos abertos para o select
+$empenhos_abertos = [];
+$sql_empenhos = "SELECT e.id, e.numero_empenho, e.data_emissao, e.nome_fornecedor, e.cnpj_fornecedor, c.numero as categoria_numero, c.descricao as categoria_descricao 
+                 FROM empenhos e 
+                 JOIN categorias c ON e.categoria_id = c.id 
+                 WHERE e.status = 'Aberto' 
+                 ORDER BY e.numero_empenho ASC";
+$result_empenhos = mysqli_query($link, $sql_empenhos);
+if($result_empenhos){
+    while($row = mysqli_fetch_assoc($result_empenhos)){
+        $empenhos_abertos[] = $row;
+    }
+}
 
 ?>
 
@@ -311,6 +380,14 @@ $usuarios_result = mysqli_query($link, "SELECT id, nome FROM usuarios WHERE stat
         padding: 8px;
         text-align: left;
     }
+    .empenho-info {
+        background-color: #f0f8ff;
+        border: 1px solid #add8e6;
+        border-radius: 5px;
+        padding: 10px;
+        margin: 10px 0;
+        display: none;
+    }
 </style>
 
 <h2>Gestão de Patrimônio</h2>
@@ -325,6 +402,8 @@ $usuarios_result = mysqli_query($link, "SELECT id, nome FROM usuarios WHERE stat
 <div class="tab-container">
     <button class="tab-button <?php if($active_tab == 'update') echo 'active'; ?>" onclick="showTab(event, 'update')">Atualizar Itens Existentes</button>
     <button class="tab-button <?php if($active_tab == 'create') echo 'active'; ?>" onclick="showTab(event, 'create')">Criar Novos Itens em Lote</button>
+    <button class="tab-button <?php if($active_tab == 'categorias') echo 'active'; ?>" onclick="showTab(event, 'categorias')">Categorias</button>
+    <button class="tab-button <?php if($active_tab == 'empenhos') echo 'active'; ?>" onclick="showTab(event, 'empenhos')">Empenhos</button>
     <button class="tab-button <?php if($active_tab == 'advanced_search') echo 'active'; ?>" onclick="showTab(event, 'advanced_search')">Pesquisa Avançada</button>
 </div>
 
@@ -333,9 +412,24 @@ $usuarios_result = mysqli_query($link, "SELECT id, nome FROM usuarios WHERE stat
     <form action="patrimonio_add.php" method="post">
         <h3>1. Preencha as Informações do Item</h3>
         <div class="form-grid">
+            <!-- Campo de seleção de empenho -->
+            <div>
+                <label>Empenho:</label>
+                <select name="empenho_id_update" id="empenho_id_update" onchange="preencherDadosEmpenhoUpdate()">
+                    <option value="">Selecione um empenho (opcional)</option>
+                    <?php foreach($empenhos_abertos as $empenho_item): ?>
+                        <option value="<?php echo $empenho_item['id']; ?>" 
+                                data-categoria="<?php echo htmlspecialchars($empenho_item['categoria_numero'] . ' - ' . $empenho_item['categoria_descricao']); ?>"
+                                data-data-emissao="<?php echo $empenho_item['data_emissao']; ?>"
+                                data-fornecedor="<?php echo htmlspecialchars($empenho_item['nome_fornecedor']); ?>"
+                                data-cnpj="<?php echo $empenho_item['cnpj_fornecedor']; ?>">
+                            <?php echo htmlspecialchars($empenho_item['numero_empenho']); ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+            
             <div><label>Processo/Documento:</label><input type="text" name="processo_documento" value="<?php echo isset($_POST['processo_documento']) ? htmlspecialchars($_POST['processo_documento']) : ''; ?>"></div>
-            <div><label>Fornecedor:</label><input type="text" name="fornecedor" value="<?php echo htmlspecialchars($fornecedor); ?>"></div>
-            <div><label>CNPJ ou CPF Fornecedor:</label><input type="text" name="cnpj_cpf_fornecedor" value="<?php echo isset($_POST['cnpj_cpf_fornecedor']) ? htmlspecialchars($_POST['cnpj_cpf_fornecedor']) : ''; ?>"></div>
             <div><label>Nome do Item:</label><input type="text" name="nome" value="<?php echo isset($_POST['nome']) ? htmlspecialchars($_POST['nome']) : ''; ?>" required></div>
             <div><label>Descrição Detalhada:</label><textarea name="descricao_detalhada" maxlength="200" placeholder="Máximo 200 caracteres"><?php echo isset($_POST['descricao_detalhada']) ? htmlspecialchars($_POST['descricao_detalhada']) : ''; ?></textarea></div>
             <div><label>Número de Série:</label><input type="text" name="numero_serie" value="<?php echo isset($_POST['numero_serie']) ? htmlspecialchars($_POST['numero_serie']) : ''; ?>"></div>
@@ -367,6 +461,13 @@ $usuarios_result = mysqli_query($link, "SELECT id, nome FROM usuarios WHERE stat
                 </div>
             </div>
             <div><label>Observação:</label><textarea name="observacao"><?php echo isset($_POST['observacao']) ? htmlspecialchars($_POST['observacao']) : ''; ?></textarea></div>
+            
+            <!-- Campos ocultos para os dados do empenho -->
+            <input type="hidden" name="empenho" id="empenho_update">
+            <input type="hidden" name="data_emissao_empenho" id="data_emissao_empenho_update">
+            <input type="hidden" name="fornecedor" id="fornecedor_update">
+            <input type="hidden" name="cnpj_fornecedor" id="cnpj_fornecedor_update">
+            <input type="hidden" name="categoria" id="categoria_update">
         </div>
         
         <h3 style="margin-top: 20px;">2. Selecione os Itens para Atualizar</h3>
@@ -412,9 +513,33 @@ $usuarios_result = mysqli_query($link, "SELECT id, nome FROM usuarios WHERE stat
         <div class="form-grid">
             <div class="form-section">
                 <h4>Dados do Processo</h4>
+                <!-- Campo de seleção de empenho -->
+                <div>
+                    <label>Empenho:</label>
+                    <select name="empenho_id" id="empenho_id" onchange="preencherDadosEmpenho()">
+                        <option value="">Selecione um empenho</option>
+                        <?php foreach($empenhos_abertos as $empenho_item): ?>
+                            <option value="<?php echo $empenho_item['id']; ?>" 
+                                    data-categoria="<?php echo htmlspecialchars($empenho_item['categoria_numero'] . ' - ' . $empenho_item['categoria_descricao']); ?>"
+                                    data-data-emissao="<?php echo $empenho_item['data_emissao']; ?>"
+                                    data-fornecedor="<?php echo htmlspecialchars($empenho_item['nome_fornecedor']); ?>"
+                                    data-cnpj="<?php echo $empenho_item['cnpj_fornecedor']; ?>">
+                                <?php echo htmlspecialchars($empenho_item['numero_empenho']); ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                
+                <!-- Informações do empenho selecionado -->
+                <div id="empenho_info" class="empenho-info" style="display: none;">
+                    <h4>Informações do Empenho</h4>
+                    <div><strong>Categoria:</strong> <span id="info_categoria"></span></div>
+                    <div><strong>Data de Emissão:</strong> <span id="info_data_emissao"></span></div>
+                    <div><strong>Fornecedor:</strong> <span id="info_fornecedor"></span></div>
+                    <div><strong>CNPJ:</strong> <span id="info_cnpj"></span></div>
+                </div>
+                
                 <div><label>Processo/Documento:</label><input type="text" name="processo_documento"></div>
-                <div><label>Fornecedor:</label><input type="text" name="fornecedor"></div>
-                <div><label>CNPJ ou CPF Fornecedor:</label><input type="text" name="cnpj_cpf_fornecedor"></div>
                 <div><label>Nome do Item:</label><input type="text" name="nome" required></div>
                 <div><label>Descrição Detalhada:</label><textarea name="descricao_detalhada" maxlength="200" placeholder="Máximo 200 caracteres"></textarea></div>
                 <div><label>Número de Série:</label><input type="text" name="numero_serie"></div>
@@ -448,12 +573,13 @@ $usuarios_result = mysqli_query($link, "SELECT id, nome FROM usuarios WHERE stat
                 <div><label>Observação:</label><textarea name="observacao"></textarea></div>
             </div>
             <div class="form-section">
-                <h4>Detalhes da Aquisição</h4>
-                <div><label>Empenho:</label><input type="text" name="empenho_bulk"></div>
-                <div><label>Data Emissão Empenho:</label><input type="date" name="data_emissao_empenho_bulk"></div>
-                <div><label>Fornecedor:</label><input type="text" name="fornecedor_bulk"></div>
-                <div><label>CNPJ Fornecedor:</label><input type="text" name="cnpj_fornecedor_bulk"></div>
-                <div><label>Categoria:</label><input type="text" name="categoria_bulk"></div>
+                <h4>Detalhes da Aquisição (Preenchidos automaticamente pelo empenho)</h4>
+                <!-- Campos que serão preenchidos automaticamente -->
+                <div><label>Categoria:</label><input type="text" name="categoria_bulk" id="categoria_bulk" readonly></div>
+                <div><label>Empenho:</label><input type="text" name="empenho_bulk" id="empenho_bulk" readonly></div>
+                <div><label>Data Emissão Empenho:</label><input type="date" name="data_emissao_empenho_bulk" id="data_emissao_empenho_bulk" readonly></div>
+                <div><label>Fornecedor:</label><input type="text" name="fornecedor_bulk" id="fornecedor_bulk" readonly></div>
+                <div><label>CNPJ Fornecedor:</label><input type="text" name="cnpj_fornecedor_bulk" id="cnpj_fornecedor_bulk" readonly></div>
                 <div><label>Número NF:</label><input type="number" step="0.01" name="valor_nf_bulk"></div>
                 <div><label>ND-Nota de Despesa:</label><input type="text" name="nd_nota_despesa_bulk"></div>
                 <div><label>Unidade de Medida:</label><input type="text" name="unidade_medida_bulk"></div>
@@ -464,6 +590,105 @@ $usuarios_result = mysqli_query($link, "SELECT id, nome FROM usuarios WHERE stat
             <input type="submit" name="create_bulk" value="Criar Itens em Lote" class="btn-custom">
         </div>
     </form>
+</div>
+
+<!-- Formulário de Categorias -->
+<div id="categorias" class="tab-content <?php if($active_tab == 'categorias') echo 'active'; ?>">
+    <h3>Cadastro de Categorias</h3>
+    <p>Para cadastrar uma nova categoria, <a href="categoria_add.php" target="_blank">clique aqui</a>.</p>
+    
+    <?php
+    // Buscar todas as categorias cadastradas
+    $sql_categorias = "SELECT * FROM categorias ORDER BY numero ASC";
+    $result_categorias = mysqli_query($link, $sql_categorias);
+    $categorias = [];
+    if($result_categorias){
+        while($row = mysqli_fetch_assoc($result_categorias)){
+            $categorias[] = $row;
+        }
+    }
+    ?>
+    
+    <?php if(!empty($categorias)): ?>
+        <h4 style="margin-top: 20px;">Categorias Cadastradas</h4>
+        <div class="item-list">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Número</th>
+                        <th>Descrição</th>
+                        <th>Data de Cadastro</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php foreach($categorias as $categoria): ?>
+                        <tr>
+                            <td><?php echo htmlspecialchars($categoria['numero']); ?></td>
+                            <td><?php echo htmlspecialchars($categoria['descricao']); ?></td>
+                            <td><?php echo isset($categoria['data_cadastro']) ? date('d/m/Y H:i', strtotime($categoria['data_cadastro'])) : 'N/A'; ?></td>
+                        </tr>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
+        </div>
+    <?php else: ?>
+        <p>Nenhuma categoria cadastrada.</p>
+    <?php endif; ?>
+</div>
+
+<!-- Formulário de Empenhos -->
+<div id="empenhos" class="tab-content <?php if($active_tab == 'empenhos') echo 'active'; ?>">
+    <h3>Cadastro de Empenhos</h3>
+    <p>Para cadastrar um novo empenho, <a href="empenho_add.php" target="_blank">clique aqui</a>.</p>
+    
+    <?php
+    // Buscar todos os empenhos cadastrados com suas categorias
+    $sql_todos_empenhos = "SELECT e.*, c.numero as categoria_numero, c.descricao as categoria_descricao 
+                           FROM empenhos e 
+                           JOIN categorias c ON e.categoria_id = c.id 
+                           ORDER BY e.data_cadastro DESC";
+    $result_todos_empenhos = mysqli_query($link, $sql_todos_empenhos);
+    $todos_empenhos = [];
+    if($result_todos_empenhos){
+        while($row = mysqli_fetch_assoc($result_todos_empenhos)){
+            $todos_empenhos[] = $row;
+        }
+    }
+    ?>
+    
+    <?php if(!empty($todos_empenhos)): ?>
+        <h4 style="margin-top: 20px;">Empenhos Cadastrados</h4>
+        <div class="item-list">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Número</th>
+                        <th>Data de Emissão</th>
+                        <th>Fornecedor</th>
+                        <th>CNPJ</th>
+                        <th>Categoria</th>
+                        <th>Status</th>
+                        <th>Data de Cadastro</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php foreach($todos_empenhos as $empenho_item): ?>
+                        <tr>
+                            <td><?php echo htmlspecialchars($empenho_item['numero_empenho']); ?></td>
+                            <td><?php echo date('d/m/Y', strtotime($empenho_item['data_emissao'])); ?></td>
+                            <td><?php echo htmlspecialchars($empenho_item['nome_fornecedor']); ?></td>
+                            <td><?php echo htmlspecialchars($empenho_item['cnpj_fornecedor']); ?></td>
+                            <td><?php echo htmlspecialchars($empenho_item['categoria_numero'] . ' - ' . $empenho_item['categoria_descricao']); ?></td>
+                            <td><?php echo htmlspecialchars($empenho_item['status']); ?></td>
+                            <td><?php echo isset($empenho_item['data_cadastro']) ? date('d/m/Y H:i', strtotime($empenho_item['data_cadastro'])) : 'N/A'; ?></td>
+                        </tr>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
+        </div>
+    <?php else: ?>
+        <p>Nenhum empenho cadastrado.</p>
+    <?php endif; ?>
 </div>
 
 <!-- Formulário de Pesquisa Avançada -->
@@ -546,6 +771,77 @@ function showTab(event, tabName) {
     document.getElementById(tabName).style.display = "block";
     document.getElementById(tabName).classList.add("active");
     event.currentTarget.className += " active";
+}
+
+// Função para preencher os dados do empenho selecionado
+function preencherDadosEmpenho() {
+    const selectEmpenho = document.getElementById('empenho_id');
+    const empenhoInfo = document.getElementById('empenho_info');
+    const selectedOption = selectEmpenho.options[selectEmpenho.selectedIndex];
+    
+    if (selectedOption.value === "") {
+        // Ocultar informações do empenho e limpar campos
+        empenhoInfo.style.display = 'none';
+        document.getElementById('categoria_bulk').value = '';
+        document.getElementById('empenho_bulk').value = '';
+        document.getElementById('data_emissao_empenho_bulk').value = '';
+        document.getElementById('fornecedor_bulk').value = '';
+        document.getElementById('cnpj_fornecedor_bulk').value = '';
+        return;
+    }
+    
+    // Obter dados do empenho selecionado
+    const categoria = selectedOption.getAttribute('data-categoria');
+    const dataEmissao = selectedOption.getAttribute('data-data-emissao');
+    const fornecedor = selectedOption.getAttribute('data-fornecedor');
+    const cnpj = selectedOption.getAttribute('data-cnpj');
+    const numeroEmpenho = selectedOption.textContent;
+    
+    // Preencher campos
+    document.getElementById('categoria_bulk').value = categoria;
+    document.getElementById('empenho_bulk').value = numeroEmpenho;
+    document.getElementById('data_emissao_empenho_bulk').value = dataEmissao;
+    document.getElementById('fornecedor_bulk').value = fornecedor;
+    document.getElementById('cnpj_fornecedor_bulk').value = cnpj;
+    
+    // Preencher informações do empenho
+    document.getElementById('info_categoria').textContent = categoria;
+    document.getElementById('info_data_emissao').textContent = dataEmissao;
+    document.getElementById('info_fornecedor').textContent = fornecedor;
+    document.getElementById('info_cnpj').textContent = cnpj;
+    
+    // Mostrar informações do empenho
+    empenhoInfo.style.display = 'block';
+}
+
+// Função para preencher os dados do empenho na seção de atualização
+function preencherDadosEmpenhoUpdate() {
+    const selectEmpenho = document.getElementById('empenho_id_update');
+    const selectedOption = selectEmpenho.options[selectEmpenho.selectedIndex];
+    
+    if (selectedOption.value === "") {
+        // Limpar campos ocultos
+        document.getElementById('empenho_update').value = '';
+        document.getElementById('data_emissao_empenho_update').value = '';
+        document.getElementById('fornecedor_update').value = '';
+        document.getElementById('cnpj_fornecedor_update').value = '';
+        document.getElementById('categoria_update').value = '';
+        return;
+    }
+    
+    // Obter dados do empenho selecionado
+    const categoria = selectedOption.getAttribute('data-categoria');
+    const dataEmissao = selectedOption.getAttribute('data-data-emissao');
+    const fornecedor = selectedOption.getAttribute('data-fornecedor');
+    const cnpj = selectedOption.getAttribute('data-cnpj');
+    const numeroEmpenho = selectedOption.textContent;
+    
+    // Preencher campos ocultos
+    document.getElementById('empenho_update').value = numeroEmpenho;
+    document.getElementById('data_emissao_empenho_update').value = dataEmissao;
+    document.getElementById('fornecedor_update').value = fornecedor;
+    document.getElementById('cnpj_fornecedor_update').value = cnpj;
+    document.getElementById('categoria_update').value = categoria;
 }
 
 // Função genérica para busca com autocomplete
