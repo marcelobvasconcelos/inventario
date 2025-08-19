@@ -167,9 +167,9 @@ if($_SERVER["REQUEST_METHOD"] == "POST"){
                     if (mysqli_errno($link) == 1062 && strpos(mysqli_error($link), 'patrimonio_novo') !== false) {
                         preg_match("/Duplicate entry '([^']+)' for key 'patrimonio_novo'/", mysqli_error($link), $matches);
                         $patrimonio_duplicado = isset($matches[1]) ? $matches[1] : '';
-                        echo "<div class='alert alert-danger'>Este patrimônio " . htmlspecialchars($patrimonio_duplicado) . " já está cadastrado!</div>";
+                        $patrimonio_novo_err = "Este patrimônio " . htmlspecialchars($patrimonio_duplicado) . " já está cadastrado!";
                     } else {
-                        echo "<div class='alert alert-danger'>Oops! Algo deu errado. Por favor, tente novamente mais tarde.</div>";
+                        $nome_err = "Oops! Algo deu errado. Por favor, tente novamente mais tarde.";
                     }
                 }
             } else {

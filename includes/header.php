@@ -22,9 +22,7 @@ if (isset($_SESSION['id'])) {
     $stmt_count->execute([$_SESSION['id']]);
     $notif_count = $stmt_count->fetchColumn();
 }
-?>
-
-<!DOCTYPE html>
+?><!DOCTYPE html>
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
