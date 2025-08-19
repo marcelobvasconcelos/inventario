@@ -74,7 +74,7 @@ if(isset($_POST['is_ajax']) && $_POST['is_ajax'] == 'true') {
                 $stmt_get_mov_details->execute([$movimentacao_id]);
                 $mov_details = $stmt_get_mov_details->fetch(PDO::FETCH_ASSOC);
 
-                if ($mov_details) {
+                if ($mov_details && !empty($mov_details['usuario_anterior_id'])) {
                     // Reverte o item para o local e responsável de origem da movimentação e status 'Confirmado'
                     $new_item_status = 'Confirmado';
                     $sql_update_item_main = "UPDATE itens SET local_id = ?, responsavel_id = ?, status_confirmacao = ? WHERE id = ?";
@@ -89,8 +89,49 @@ if(isset($_POST['is_ajax']) && $_POST['is_ajax'] == 'true') {
                     $response['message'] = "Movimentação do item #{$item_id} desfeita. Status do item atualizado para Confirmado.";
                     $response['new_item_status'] = $new_item_status;
                 } else {
-                    throw new Exception("Não foi possível desfazer a movimentação do item #{$item_id}: Detalhes da movimentação não encontrados.");
+                    throw new Exception("Não é possível desfazer a movimentação inicial deste item. Selecione outro responsável.");
                 }
+            } elseif ($action == 'atribuir_novo_responsavel') {
+                $novo_responsavel_id = isset($_POST['novo_responsavel_id']) ? (int)$_POST['novo_responsavel_id'] : 0;
+                if (!$novo_responsavel_id) {
+                    throw new Exception('Selecione um novo responsável válido.');
+                }
+                // Obter dados atuais do item
+                $stmt_item = $pdo->prepare('SELECT local_id, responsavel_id FROM itens WHERE id = ?');
+                $stmt_item->execute([$item_id]);
+                $item_row = $stmt_item->fetch(PDO::FETCH_ASSOC);
+                if (!$item_row) {
+                    throw new Exception('Item não encontrado.');
+                }
+                $local_atual = (int)$item_row['local_id'];
+                $responsavel_anterior = (int)$item_row['responsavel_id'];
+
+                // Atualiza o item para o novo responsável e mantém Pendente
+                $stmt_upd_item = $pdo->prepare("UPDATE itens SET responsavel_id = ?, status_confirmacao = 'Pendente' WHERE id = ?");
+                $stmt_upd_item->execute([$novo_responsavel_id, $item_id]);
+
+                // Insere nova movimentação (mesmo local)
+                $stmt_mov = $pdo->prepare('INSERT INTO movimentacoes (item_id, local_origem_id, local_destino_id, usuario_id, usuario_anterior_id, usuario_destino_id, data_movimentacao) VALUES (?, ?, ?, ?, ?, ?, NOW())');
+                $stmt_mov->execute([$item_id, $local_atual, $local_atual, $administrador_logado_id, $responsavel_anterior, $novo_responsavel_id]);
+                $nova_mov_id = $pdo->lastInsertId();
+
+                // Cria nova notificação para o novo responsável
+                $stmt_nm = $pdo->prepare("INSERT INTO notificacoes_movimentacao (movimentacao_id, item_id, usuario_notificado_id, status_confirmacao) VALUES (?, ?, ?, 'Pendente')");
+                $stmt_nm->execute([$nova_mov_id, $item_id, $novo_responsavel_id]);
+
+                // Marca a notificação antiga como 'Movimento Desfeito'
+                $stmt_close_nm = $pdo->prepare("UPDATE notificacoes_movimentacao SET status_confirmacao = 'Movimento Desfeito', data_atualizacao = ? WHERE id = ?");
+                $stmt_close_nm->execute([$data_atualizacao, $notificacao_movimentacao_id]);
+
+                // Recupera o nome do novo responsável
+                $stmt_user = $pdo->prepare('SELECT nome FROM usuarios WHERE id = ?');
+                $stmt_user->execute([$novo_responsavel_id]);
+                $novo_resp_nome = $stmt_user->fetchColumn();
+
+                $response['message'] = 'Novo responsável atribuído e notificado.';
+                $response['new_item_status'] = 'Pendente';
+                $response['new_notif_status'] = 'Movimento Desfeito';
+                $response['novo_responsavel_nome'] = $novo_resp_nome ?: '';
             } else {
                 throw new Exception("Ação inválida.");
             }
@@ -155,6 +196,7 @@ $sql = "
         l.nome as local_nome,
         resp.nome as responsavel_nome,
         mov.usuario_id as admin_id,
+        mov.usuario_anterior_id,
         admin_user.nome as admin_nome,
         nm.usuario_notificado_id,
         user_notified.nome as usuario_notificado_nome,
@@ -187,6 +229,7 @@ $sql .= " ORDER BY nm.data_notificacao DESC";
 $stmt = $pdo->prepare($sql);
 $stmt->execute($params);
 $notificacoes_movimentacao_raw = $stmt->fetchAll(PDO::FETCH_ASSOC);
+$usuarios_aprovados = $pdo->query("SELECT id, nome FROM usuarios WHERE status = 'aprovado' ORDER BY nome ASC")->fetchAll(PDO::FETCH_ASSOC);
 
 // Reestrutura os dados para compatibilidade com o HTML existente
 foreach ($notificacoes_movimentacao_raw as $nm) {
@@ -217,6 +260,7 @@ foreach ($notificacoes_movimentacao_raw as $nm) {
                 'observacao' => $nm['observacao'],
                 'local_nome' => $nm['local_nome'],
                 'responsavel_nome' => $nm['responsavel_nome'],
+                'usuario_anterior_id' => $nm['usuario_anterior_id'],
                 'data_justificativa' => $nm['data_atualizacao'],
                 'data_admin_reply' => $nm['data_atualizacao'],
             ]
@@ -354,10 +398,30 @@ foreach ($notificacoes_movimentacao_raw as $nm) {
                                         <?php endif; ?>
                                         <?php if ($item['status_confirmacao'] == 'Nao Confirmado' || $item['status_confirmacao'] == 'Em Disputa'): ?>
                                             <div class="admin-item-actions mt-2">
-                                                <form class="d-inline-block admin-item-action-form" data-notif-id="<?php echo $notificacao['id']; ?>" data-item-id="<?php echo $item['id']; ?>">
-                                                    <input type="hidden" name="action" value="desfazer_movimentacao_item">
-                                                    <button type="submit" class="btn btn-danger btn-sm">Desfazer Movimentação</button>
-                                                </form>
+                                                <?php if (empty($item['usuario_anterior_id'])): ?>
+                                                    <button type="button" class="btn btn-warning btn-sm" onclick="toggleAssignForm(<?php echo $notificacao['id']; ?>, <?php echo $item['id']; ?>)">Escolher outro responsável</button>
+                                                    <div id="admin_assign_form_<?php echo $notificacao['id']; ?>_<?php echo $item['id']; ?>" style="display:none; margin-top:10px;">
+                                                        <form class="admin-item-action-form" data-notif-id="<?php echo $notificacao['id']; ?>" data-item-id="<?php echo $item['id']; ?>">
+                                                            <input type="hidden" name="action" value="atribuir_novo_responsavel">
+                                                            <div class="form-group">
+                                                                <label>Selecione o novo responsável:</label>
+                                                                <select name="novo_responsavel_id" class="form-control" required>
+                                                                    <option value="">Selecione...</option>
+                                                                    <?php foreach ($usuarios_aprovados as $usr): ?>
+                                                                        <option value="<?php echo $usr['id']; ?>"><?php echo htmlspecialchars($usr['nome']); ?></option>
+                                                                    <?php endforeach; ?>
+                                                                </select>
+                                                            </div>
+                                                            <button type="submit" class="btn btn-success btn-sm">Enviar notificação</button>
+                                                            <button type="button" class="btn btn-secondary btn-sm" onclick="toggleAssignForm(<?php echo $notificacao['id']; ?>, <?php echo $item['id']; ?>)">Cancelar</button>
+                                                        </form>
+                                                    </div>
+                                                <?php else: ?>
+                                                    <form class="d-inline-block admin-item-action-form" data-notif-id="<?php echo $notificacao['id']; ?>" data-item-id="<?php echo $item['id']; ?>">
+                                                        <input type="hidden" name="action" value="desfazer_movimentacao_item">
+                                                        <button type="submit" class="btn btn-danger btn-sm">Desfazer Movimentação</button>
+                                                    </form>
+                                                <?php endif; ?>
                                                 <button type="button" class="btn btn-primary btn-sm ml-2" onclick="toggleAdminItemReplyForm(<?php echo $notificacao['id']; ?>, <?php echo $item['id']; ?>)">Responder</button>
                                                 <div id="admin_item_reply_form_<?php echo $notificacao['id']; ?>_<?php echo $item['id']; ?>" style="display:none; margin-top: 10px;">
                                                     <form class="admin-item-action-form" data-notif-id="<?php echo $notificacao['id']; ?>" data-item-id="<?php echo $item['id']; ?>">
@@ -399,6 +463,17 @@ function toggleAdminReplyForm(notifId) {
 // Função para exibir/esconder o formulário de resposta do administrador para ITENS
 function toggleAdminItemReplyForm(notifId, itemId) {
     const form = document.getElementById(`admin_item_reply_form_${notifId}_${itemId}`);
+    if (form) {
+        if (form.style.display === 'none' || form.style.display === '') {
+            form.style.display = 'block';
+        } else {
+            form.style.display = 'none';
+        }
+    }
+}
+
+function toggleAssignForm(notifId, itemId) {
+    const form = document.getElementById(`admin_assign_form_${notifId}_${itemId}`);
     if (form) {
         if (form.style.display === 'none' || form.style.display === '') {
             form.style.display = 'block';

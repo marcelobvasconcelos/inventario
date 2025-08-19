@@ -58,6 +58,9 @@ if (isset($_POST['is_ajax']) && $_POST['is_ajax'] == 'true') {
             if ($action === 'confirmar_item') {
                 $sql_update_item = "UPDATE itens SET status_confirmacao = 'Confirmado' WHERE id = ?";
                 $pdo->prepare($sql_update_item)->execute([$item_id]);
+                // Atualiza a notificação desta movimentação para não ficar pendente
+                $sql_update_nm = "UPDATE notificacoes_movimentacao SET status_confirmacao = ?, data_atualizacao = ? WHERE id = ?";
+                $pdo->prepare($sql_update_nm)->execute(['Confirmado', $data_atualizacao, $notificacao_id]);
                 $new_item_status = 'Confirmado';
             } elseif ($action === 'nao_confirmar_item') {
                 if (empty($justificativa)) throw new Exception('Justificativa obrigatória para não confirmar.');
@@ -67,6 +70,9 @@ if (isset($_POST['is_ajax']) && $_POST['is_ajax'] == 'true') {
                 // Atualiza o status do item na tabela principal
                 $sql_update_item = "UPDATE itens SET status_confirmacao = 'Nao Confirmado' WHERE id = ?";
                 $pdo->prepare($sql_update_item)->execute([$item_id]);
+                // Atualiza a notificação desta movimentação para refletir a ação do usuário e registrar justificativa
+                $sql_update_nm = "UPDATE notificacoes_movimentacao SET status_confirmacao = ?, justificativa_usuario = ?, data_atualizacao = ? WHERE id = ?";
+                $pdo->prepare($sql_update_nm)->execute(['Nao Confirmado', $justificativa, $data_atualizacao, $notificacao_id]);
                 $new_item_status = 'Não Confirmado';
             } else {
                 throw new Exception('Ação inválida.');

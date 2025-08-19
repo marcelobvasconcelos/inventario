@@ -60,15 +60,14 @@ if (isset($_SESSION['id'])) {
                     <?php endif; ?>
                 </div>
             </div>
-            <a href="/inventario/notificacoes_usuario.php">Notificações</a> <!-- Link para notificações -->
-            <?php if($_SESSION["permissao"] == 'Administrador'): // Links visíveis apenas para Administradores ?>
+            <a href="/inventario/notificacoes_usuario.php">Notificações</a>
+            <?php if($_SESSION["permissao"] == 'Administrador'): ?>
                 <a href="/inventario/usuarios.php">Usuários</a>
                 <a href="/inventario/patrimonio_add.php">Patrimônio</a>
                 <a href="/inventario/notificacoes_admin.php">Gerenciar Notificações</a>
             <?php endif; ?>
         </nav>
         <div class="user-menu">
-             <!-- Ícone de Notificação -->
             <a href="/inventario/notificacoes_usuario.php" class="notification-bell">
                 <i class="fas fa-bell"></i>
                 <?php if($notif_count > 0): ?>
@@ -80,7 +79,7 @@ if (isset($_SESSION['id'])) {
                 <div class="user-menu-content">
                     <a href="/inventario/usuario_perfil.php">Editar Perfil</a>
                     <a href="/inventario/notificacoes_usuario.php">Minhas Notificações</a>
-                    <?php if($_SESSION["permissao"] == 'Administrador'): // Link de configurações PDF visível apenas para Administradores ?>
+                    <?php if($_SESSION["permissao"] == 'Administrador'): ?>
                         <a href="/inventario/configuracoes_pdf.php">Configurações PDF</a>
                     <?php endif; ?>
                     <a href="/inventario/docs.php">Ajuda</a>
@@ -90,38 +89,3 @@ if (isset($_SESSION['id'])) {
         </div>
     </header>
     <main>
-
-    <script>
-    // Função para atualizar o badge do sino de notificações
-    function atualizarBadgeNotificacoes() {
-        fetch('/inventario/api/get_notificacoes_pendentes.php')
-            .then(response => response.json())
-            .then(data => {
-                const badge = document.querySelector('.notification-bell .notification-badge');
-                if (data.count > 0) {
-                    if (badge) {
-                        badge.textContent = data.count;
-                    } else {
-                        // Cria o badge se não existir
-                        const bell = document.querySelector('.notification-bell');
-                        if (bell) {
-                            const span = document.createElement('span');
-                            span.className = 'notification-badge';
-                            span.textContent = data.count;
-                            bell.appendChild(span);
-                        }
-                    }
-                } else {
-                    if (badge) badge.remove();
-                }
-            });
-    }
-
-    // Atualiza a cada 30 segundos
-    setInterval(atualizarBadgeNotificacoes, 30000);
-    // Atualiza ao carregar a página
-    document.addEventListener('DOMContentLoaded', atualizarBadgeNotificacoes);
-
-    // Exemplo: para atualizar após ações AJAX, chame atualizarBadgeNotificacoes() no sucesso do fetch das ações.
-    window.atualizarBadgeNotificacoes = atualizarBadgeNotificacoes;
-    </script>

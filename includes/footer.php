@@ -1,4 +1,47 @@
-    </main>
+</main>
+    
+    <script>
+    // Função para atualizar o badge do sino de notificações
+    function atualizarBadgeNotificacoes() {
+        fetch('/inventario/api/get_notificacoes_pendentes.php')
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Erro na rede ou no servidor.');
+                }
+                return response.json();
+            })
+            .then(data => {
+                const badge = document.querySelector('.notification-bell .notification-badge');
+                if (data.count > 0) {
+                    if (badge) {
+                        badge.textContent = data.count;
+                    } else {
+                        const bell = document.querySelector('.notification-bell');
+                        if (bell) {
+                            const span = document.createElement('span');
+                            span.className = 'notification-badge';
+                            span.textContent = data.count;
+                            bell.appendChild(span);
+                        }
+                    }
+                } else {
+                    if (badge) badge.remove();
+                }
+            })
+            .catch(error => {
+                console.error('Erro ao buscar notificações:', error);
+            });
+    }
+
+    // Atualiza a cada 30 segundos
+    setInterval(atualizarBadgeNotificacoes, 30000);
+    // Atualiza ao carregar a página
+    document.addEventListener('DOMContentLoaded', atualizarBadgeNotificacoes);
+
+    // Expõe a função para ser chamada em outras partes do código
+    window.atualizarBadgeNotificacoes = atualizarBadgeNotificacoes;
+    </script>
+
     <footer>
         <p>&copy; <?php echo date("Y"); ?> Sistema de Inventário</p>
         <p>Sistema desenvolvido pela <a href="https://uast.ufrpe.br/sti" target="_blank" style="color: white;"><strong>Seção de Tecnologia da Informação (STI-UAST)</strong></a></p>

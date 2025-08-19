@@ -447,10 +447,5 @@ require_once 'includes/footer.php';
 // Incluir o cabeçalho no topo da página
 <?php require_once 'includes/header.php'; ?>
 
-<div class="content">
-    <h2>Página Inicial</h2>
-    <p>Bem-vindo ao sistema de inventário.</p>
-</div>
-
 // Incluir o rodapé no final da página
 <?php require_once 'includes/footer.php'; ?>

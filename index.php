@@ -103,7 +103,3 @@ if($stmt = mysqli_prepare($link, $sql)){
         <p>Nenhuma movimentação registrada ainda.</p>
     <?php endif; ?>
 </div>
-
-<?php
-require_once 'includes/footer.php';
-?>
