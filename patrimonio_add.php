@@ -231,21 +231,76 @@ if($_SERVER["REQUEST_METHOD"] == "POST"){
                 mysqli_stmt_close($stmt_empenho);
             }
 
-            $sql_insert = "INSERT INTO itens (nome, patrimonio_novo, local_id, responsavel_id, estado, observacao, descricao_detalhada, empenho_id, empenho, data_emissao_empenho, fornecedor, cnpj_fornecedor, categoria) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+            // Determinar o status de confirmação com base no responsável
+            $usuario_logado_id = $_SESSION['id'];
+            $responsavel_id = (int)$_POST['responsavel_id'];
+            $status_confirmacao = ($responsavel_id === $usuario_logado_id) ? 'Confirmado' : 'Pendente';
+            
+            // Inserir os itens
+            $sql_insert = "INSERT INTO itens (nome, patrimonio_novo, local_id, responsavel_id, estado, observacao, descricao_detalhada, empenho_id, empenho, data_emissao_empenho, fornecedor, cnpj_fornecedor, categoria, data_cadastro, status_confirmacao) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), ?)";
             $stmt_insert = mysqli_prepare($link, $sql_insert);
 
+            $itens_criados = [];
             for($i = 0; $i < $quantidade; $i++){
                 $patrimonio_atual = $patrimonio_inicial + $i;
-                mysqli_stmt_bind_param($stmt_insert, "ssiiisssisss",
-                    $_POST['nome'], $patrimonio_atual, $_POST['local_id'], $_POST['responsavel_id'],
+                mysqli_stmt_bind_param($stmt_insert, "ssiiisssisssss",
+                    $_POST['nome'], $patrimonio_atual, $_POST['local_id'], $responsavel_id,
                     $_POST['estado'], $_POST['observacao'], $_POST['descricao_detalhada'], $empenho_id, $empenho_numero,
-                    $data_emissao_empenho, $fornecedor, $cnpj_fornecedor, $categoria
+                    $data_emissao_empenho, $fornecedor, $cnpj_fornecedor, $categoria, $status_confirmacao
                 );
                 if(!mysqli_stmt_execute($stmt_insert)){
                     throw new Exception("Erro ao inserir item com patrimônio " . $patrimonio_atual . ". O patrimônio já existe?");
                 }
+                // Armazenar os IDs dos itens criados para notificação
+                $itens_criados[] = mysqli_insert_id($link);
             }
             mysqli_stmt_close($stmt_insert);
+            
+            // Se o status é pendente, criar movimentações e notificações
+            if ($status_confirmacao === 'Pendente') {
+                $ok = true;
+                $local_id = (int)$_POST['local_id'];
+                
+                foreach($itens_criados as $novo_item_id) {
+                    // 1) Criar uma movimentação inicial (cadastro) com origem = destino = local atual
+                    $sql_mov = "INSERT INTO movimentacoes (item_id, local_origem_id, local_destino_id, usuario_id, usuario_anterior_id, usuario_destino_id) VALUES (?, ?, ?, ?, NULL, ?)";
+                    $stmt_mov = mysqli_prepare($link, $sql_mov);
+                    if ($stmt_mov) {
+                        mysqli_stmt_bind_param($stmt_mov, "iiiii", $novo_item_id, $local_id, $local_id, $usuario_logado_id, $responsavel_id);
+                        if (!mysqli_stmt_execute($stmt_mov)) { 
+                            $ok = false; 
+                            $error = "Erro ao criar movimentação para o item ID " . $novo_item_id . ": " . mysqli_stmt_error($stmt_mov);
+                        }
+                        $movimentacao_id = mysqli_insert_id($link);
+                        mysqli_stmt_close($stmt_mov);
+                    } else { 
+                        $ok = false; 
+                        $error = "Erro ao preparar consulta de movimentação: " . mysqli_error($link);
+                    }
+
+                    // 2) Criar a notificação pendente atrelada à movimentação
+                    if ($ok) {
+                        $sql_nm = "INSERT INTO notificacoes_movimentacao (movimentacao_id, item_id, usuario_notificado_id, status_confirmacao) VALUES (?, ?, ?, 'Pendente')";
+                        $stmt_nm = mysqli_prepare($link, $sql_nm);
+                        if ($stmt_nm) {
+                            mysqli_stmt_bind_param($stmt_nm, "iii", $movimentacao_id, $novo_item_id, $responsavel_id);
+                            if (!mysqli_stmt_execute($stmt_nm)) { 
+                                $ok = false; 
+                                $error = "Erro ao criar notificação para o item ID " . $novo_item_id . ": " . mysqli_stmt_error($stmt_nm);
+                            }
+                            mysqli_stmt_close($stmt_nm);
+                        } else { 
+                            $ok = false; 
+                            $error = "Erro ao preparar consulta de notificação: " . mysqli_error($link);
+                        }
+                    }
+                    
+                    if (!$ok) {
+                        throw new Exception($error);
+                    }
+                }
+            }
+            
             $message = $quantidade . " item(s) criado(s) com sucesso!";
         }
 
