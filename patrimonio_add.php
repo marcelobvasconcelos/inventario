@@ -20,17 +20,12 @@ $data_emissao_empenho = isset($_POST['data_emissao_empenho']) ? $_POST['data_emi
 $fornecedor = isset($_POST['fornecedor']) ? $_POST['fornecedor'] : '';
 $cnpj_fornecedor = isset($_POST['cnpj_fornecedor']) ? $_POST['cnpj_fornecedor'] : '';
 $categoria = isset($_POST['categoria']) ? $_POST['categoria'] : '';
-$valor_nf = isset($_POST['valor_nf']) ? $_POST['valor_nf'] : '';
-$nd_nota_despesa = isset($_POST['nd_nota_despesa']) ? $_POST['nd_nota_despesa'] : '';
-$unidade_medida = isset($_POST['unidade_medida']) ? $_POST['unidade_medida'] : '';
 $valor = isset($_POST['valor']) ? $_POST['valor'] : '';
 
 // Variável para persistir o ID do empenho
 $empenho_id = isset($_POST['empenho_id']) ? $_POST['empenho_id'] : '';
 
 // Variáveis para a pesquisa avançada
-$search_empenho = isset($_POST['search_empenho']) ? $_POST['search_empenho'] : '';
-$search_valor_nf = isset($_POST['search_valor_nf']) ? $_POST['search_valor_nf'] : '';
 $advanced_search_results = [];
 
 // Determina a aba ativa
@@ -132,10 +127,7 @@ if($_SERVER["REQUEST_METHOD"] == "POST"){
                 data_emissao_empenho = IFNULL(?, data_emissao_empenho),
                 fornecedor = IFNULL(?, fornecedor),
                 cnpj_fornecedor = IFNULL(?, cnpj_fornecedor),
-                categoria = IFNULL(?, categoria),
-                valor_nf = IFNULL(?, valor_nf),
-                nd_nota_despesa = IFNULL(?, nd_nota_despesa),
-                unidade_medida = IFNULL(?, unidade_medida)
+                categoria = IFNULL(?, categoria)
             WHERE id = ?";
             $stmt_update = mysqli_prepare($link, $sql_update);
 
@@ -171,13 +163,9 @@ if($_SERVER["REQUEST_METHOD"] == "POST"){
                 $fornecedor = ($fornecedor === '' ? null : $fornecedor);
                 $cnpj_fornecedor = ($cnpj_fornecedor === '' ? null : $cnpj_fornecedor);
                 $categoria = ($categoria === '' ? null : $categoria);
-                $valor_nf_post = (isset($_POST['valor_nf']) && trim($_POST['valor_nf']) !== '' ? $_POST['valor_nf'] : null);
-                $nd_nota_despesa_post = (isset($_POST['nd_nota_despesa']) && trim($_POST['nd_nota_despesa']) !== '' ? $_POST['nd_nota_despesa'] : null);
-                $unidade_medida_post = (isset($_POST['unidade_medida']) && trim($_POST['unidade_medida']) !== '' ? $_POST['unidade_medida'] : null);
-
                 mysqli_stmt_bind_param(
                     $stmt_update,
-                    "ssssssssssssssssssssss",
+                    "sssssssssssssssssss",
                     $processo_documento,
                     $nome_item,
                     $descricao_detalhada,
@@ -196,9 +184,6 @@ if($_SERVER["REQUEST_METHOD"] == "POST"){
                     $fornecedor,
                     $cnpj_fornecedor,
                     $categoria,
-                    $valor_nf_post,
-                    $nd_nota_despesa_post,
-                    $unidade_medida_post,
                     $item_id
                 );
                 if(!mysqli_stmt_execute($stmt_update)){
@@ -246,16 +231,15 @@ if($_SERVER["REQUEST_METHOD"] == "POST"){
                 mysqli_stmt_close($stmt_empenho);
             }
 
-            $sql_insert = "INSERT INTO itens (nome, patrimonio_novo, local_id, responsavel_id, estado, observacao, descricao_detalhada, empenho_id, empenho, data_emissao_empenho, fornecedor, cnpj_fornecedor, categoria, valor_nf, nd_nota_despesa, unidade_medida, valor) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+            $sql_insert = "INSERT INTO itens (nome, patrimonio_novo, local_id, responsavel_id, estado, observacao, descricao_detalhada, empenho_id, empenho, data_emissao_empenho, fornecedor, cnpj_fornecedor, categoria) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
             $stmt_insert = mysqli_prepare($link, $sql_insert);
 
             for($i = 0; $i < $quantidade; $i++){
                 $patrimonio_atual = $patrimonio_inicial + $i;
-                mysqli_stmt_bind_param($stmt_insert, "ssiiisssisssdsss",
+                mysqli_stmt_bind_param($stmt_insert, "ssiiisssisss",
                     $_POST['nome'], $patrimonio_atual, $_POST['local_id'], $_POST['responsavel_id'],
                     $_POST['estado'], $_POST['observacao'], $_POST['descricao_detalhada'], $empenho_id, $empenho_numero,
-                    $data_emissao_empenho, $fornecedor, $cnpj_fornecedor, $categoria, $_POST['valor_nf_bulk'],
-                    $_POST['nd_nota_despesa_bulk'], $_POST['unidade_medida_bulk'], $_POST['valor_bulk']
+                    $data_emissao_empenho, $fornecedor, $cnpj_fornecedor, $categoria
                 );
                 if(!mysqli_stmt_execute($stmt_insert)){
                     throw new Exception("Erro ao inserir item com patrimônio " . $patrimonio_atual . ". O patrimônio já existe?");
@@ -525,7 +509,7 @@ if($result_empenhos_update){
                     <tbody>
                     <?php foreach($itens as $item): ?>
                         <tr>
-                            <td><input type="radio" name="item_ids[]" value="<?php echo $item['id']; ?>" class="select-item-radio" onclick="loadItemDetails(<?php echo $item['id']; ?>)"></td>
+                            <td><input type="checkbox" name="item_ids[]" value="<?php echo $item['id']; ?>" class="select-item-checkbox" onchange="handleItemSelection()"></td>
                             <td><?php echo htmlspecialchars($item['nome']); ?></td>
                             <td><?php echo htmlspecialchars($item['patrimonio_novo']); ?></td>
                         </tr>
@@ -549,7 +533,7 @@ if($result_empenhos_update){
                                 data-data-emissao="<?php echo $empenho_item['data_emissao']; ?>"
                                 data-fornecedor="<?php echo htmlspecialchars($empenho_item['nome_fornecedor']); ?>"
                                 data-cnpj="<?php echo $empenho_item['cnpj_fornecedor']; ?>">
-                            <?php echo htmlspecialchars($empenho_item['numero_empenho'] . ' | ' . date('d/m/Y', strtotime($empenho_item['data_emissao'])) . ' | ' . $empenho_item['nome_fornecedor'] . ' | ' . $empenho_item['cnpj_fornecedor'] . ' | ' . $empenho_item['categoria_numero'] . ' - ' . $empenho_item['categoria_descricao']); ?>
+                            <?php echo htmlspecialchars($empenho_item['numero_empenho'] . ' | ' . date('d/m/Y', strtotime($empenho_item['data_emissao']))); ?>
                         </option>
                     <?php endforeach; ?>
                 </select></div>
@@ -576,9 +560,6 @@ if($result_empenhos_update){
                 <div><label>Local:</label><input type="text" id="current_local" readonly></div>
                 <div><label>Responsável:</label><input type="text" id="current_responsavel" readonly></div>
                 <div><label>Observação:</label><textarea id="current_observacao" readonly></textarea></div>
-                <div><label>Número NF:</label><input type="text" id="current_valor_nf" readonly></div>
-                <div><label>ND-Nota de Despesa:</label><input type="text" id="current_nd_nota_despesa" readonly></div>
-                <div><label>Unidade de Medida:</label><input type="text" id="current_unidade_medida" readonly></div>
             </div>
 
             <!-- Coluna 3: Campos para atualização -->
@@ -614,14 +595,11 @@ if($result_empenhos_update){
                         <div id="responsavel_suggestions_update" class="suggestions-list"></div>
                     </div>
                 </div>
-                <div id="edit_observacao"><label>Observação:</label><textarea name="observacao"><?php echo isset($_POST['observacao']) ? htmlspecialchars($_POST['observacao']) : ''; ?></textarea></div>
-                <div id="edit_valor_nf"><label>Número NF:</label><input type="text" name="valor_nf" value="<?php echo isset($_POST['valor_nf']) ? htmlspecialchars($_POST['valor_nf']) : ''; ?>"></div>
-                <div id="edit_nd_nota_despesa"><label>ND-Nota de Despesa:</label><input type="text" name="nd_nota_despesa" value="<?php echo isset($_POST['nd_nota_despesa']) ? htmlspecialchars($_POST['nd_nota_despesa']) : ''; ?>"></div>
-                <div id="edit_unidade_medida"><label>Unidade de Medida:</label><input type="text" name="unidade_medida" value="<?php echo isset($_POST['unidade_medida']) ? htmlspecialchars($_POST['unidade_medida']) : ''; ?>"></div>
+                <div><label>Observação:</label><textarea name="observacao"><?php echo isset($_POST['observacao']) ? htmlspecialchars($_POST['observacao']) : ''; ?></textarea></div>
             </div>
         </div>
         <div style="margin-top: 20px;">
-            <input type="submit" name="update_existing" id="btn_update_single" value="Atualizar Item Selecionado" class="btn-custom" disabled>
+            <input type="submit" name="update_existing" id="btn_update_single" value="Atualizar Itens Selecionados" class="btn-custom" disabled>
         </div>
     </form>
 </div>
@@ -644,7 +622,7 @@ if($result_empenhos_update){
                                     data-data-emissao="<?php echo $empenho_item['data_emissao']; ?>"
                                     data-fornecedor="<?php echo htmlspecialchars($empenho_item['nome_fornecedor']); ?>"
                                     data-cnpj="<?php echo $empenho_item['cnpj_fornecedor']; ?>">
-                                <?php echo htmlspecialchars($empenho_item['numero_empenho']); ?>
+                                <?php echo htmlspecialchars($empenho_item['numero_empenho'] . ' | ' . date('d/m/Y', strtotime($empenho_item['data_emissao']))); ?>
                             </option>
                         <?php endforeach; ?>
                     </select>
@@ -700,10 +678,6 @@ if($result_empenhos_update){
                 <div><label>Data Emissão Empenho:</label><input type="date" name="data_emissao_empenho_bulk" id="data_emissao_empenho_bulk" readonly></div>
                 <div><label>Fornecedor:</label><input type="text" name="fornecedor_bulk" id="fornecedor_bulk" readonly></div>
                 <div><label>CNPJ Fornecedor:</label><input type="text" name="cnpj_fornecedor_bulk" id="cnpj_fornecedor_bulk" readonly></div>
-                <div><label>Número NF:</label><input type="number" step="0.01" name="valor_nf_bulk"></div>
-                <div><label>ND-Nota de Despesa:</label><input type="text" name="nd_nota_despesa_bulk"></div>
-                <div><label>Unidade de Medida:</label><input type="text" name="unidade_medida_bulk"></div>
-                <div><label>Valor Unitário:</label><input type="number" step="0.01" name="valor_bulk"></div>
             </div>
         </div>
         <div style="margin-top: 20px;">
@@ -1054,11 +1028,12 @@ document.addEventListener('DOMContentLoaded', function() {
     if (searchResponsavelCreate && responsavelSuggestionsCreate && responsavelIdCreate) {
         setupAutocomplete(searchResponsavelCreate, responsavelSuggestionsCreate, responsavelIdCreate, 'api/search_usuarios.php');
     }
-// Habilita botão de atualizar ao selecionar um item
+// Habilita botão de atualizar ao selecionar um ou mais itens
     const btnUpdateSingle = document.getElementById('btn_update_single');
     document.addEventListener('change', function(e){
-        if (e.target && e.target.classList.contains('select-item-radio')){
-            if (btnUpdateSingle) btnUpdateSingle.disabled = false;
+        if (e.target && e.target.classList.contains('select-item-checkbox')){
+            const checkboxes = document.querySelectorAll('.select-item-checkbox:checked');
+            if (btnUpdateSingle) btnUpdateSingle.disabled = checkboxes.length === 0;
         }
     });
 
@@ -1074,28 +1049,26 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function updateEditVisibility(data){
         // Campos: mostrar somente os que estiverem vazios no item atual
-        toggleEditField('edit_processo_documento', !data.processo_documento);
-        toggleEditField('edit_nome', !data.nome);
-        toggleEditField('edit_descricao_detalhada', !data.descricao_detalhada);
-        toggleEditField('edit_numero_serie', !data.numero_serie);
-        toggleEditField('edit_quantidade', !(data.quantidade && String(data.quantidade) !== '' && String(data.quantidade) !== '0'));
-        toggleEditField('edit_valor', !(data.valor && String(data.valor) !== ''));
-        toggleEditField('edit_nota_fiscal_documento', !data.nota_fiscal_documento);
-        toggleEditField('edit_data_entrada_aceitacao', !data.data_entrada_aceitacao);
-        toggleEditField('edit_estado', !data.estado);
-        toggleEditField('edit_local', !(data.local_id && String(data.local_id) !== '0'));
-        toggleEditField('edit_responsavel', !(data.responsavel_id && String(data.responsavel_id) !== '0'));
-        toggleEditField('edit_observacao', !data.observacao);
-        toggleEditField('edit_valor_nf', !data.valor_nf);
-        toggleEditField('edit_nd_nota_despesa', !data.nd_nota_despesa);
-        toggleEditField('edit_unidade_medida', !data.unidade_medida);
-        // Empenho e detalhes da aquisição também apenas se não houver valores
-        toggleEditField('edit_empenho_select', !(data.empenho_id && String(data.empenho_id) !== '0'));
-        toggleEditField('edit_acq_categoria', !data.categoria);
-        toggleEditField('edit_acq_empenho', !data.empenho);
-        toggleEditField('edit_acq_data_emissao', !data.data_emissao_empenho);
-        toggleEditField('edit_acq_fornecedor', !data.fornecedor);
-        toggleEditField('edit_acq_cnpj', !data.cnpj_fornecedor);
+        // Permitir sempre a alteração de todos os campos
+        toggleEditField('edit_processo_documento', true);
+        toggleEditField('edit_nome', true);
+        toggleEditField('edit_descricao_detalhada', true);
+        toggleEditField('edit_numero_serie', true);
+        toggleEditField('edit_quantidade', true);
+        toggleEditField('edit_valor', true);
+        toggleEditField('edit_nota_fiscal_documento', true);
+        toggleEditField('edit_data_entrada_aceitacao', true);
+        toggleEditField('edit_estado', true);
+        toggleEditField('edit_local', true);
+        toggleEditField('edit_responsavel', true);
+        toggleEditField('edit_observacao', true);
+        // Empenho e detalhes da aquisição também sempre visíveis
+        toggleEditField('edit_empenho_select', true);
+        toggleEditField('edit_acq_categoria', true);
+        toggleEditField('edit_acq_empenho', true);
+        toggleEditField('edit_acq_data_emissao', true);
+        toggleEditField('edit_acq_fornecedor', true);
+        toggleEditField('edit_acq_cnpj', true);
     }
 
     // Carrega detalhes do item selecionado e preenche o formulário
@@ -1125,9 +1098,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 setVal('nota_fiscal_documento', data.nota_fiscal_documento);
                 setVal('data_entrada_aceitacao', data.data_entrada_aceitacao);
                 setVal('observacao', data.observacao);
-                setVal('valor_nf', data.valor_nf);
-                setVal('nd_nota_despesa', data.nd_nota_despesa);
-                setVal('unidade_medida', data.unidade_medida);
 
                 // Patrimônio (somente exibição)
                 const patr = document.getElementById('patrimonio_display_update');
@@ -1154,7 +1124,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 const empSelect = document.getElementById('empenho_id_update');
                 if (empSelect) {
                     empSelect.value = data.empenho_id || '';
-                    empSelect.disabled = !!(data.empenho_id && String(data.empenho_id) !== '0');
+                    // Permitir sempre a alteração do empenho
+                    empSelect.disabled = false;
                 }
                 // Preencher campos de empenho com os dados atuais do item
                 setVal('empenho', data.empenho);
@@ -1172,14 +1143,49 @@ document.addEventListener('DOMContentLoaded', function() {
                 setCurrent('current_data_entrada_aceitacao', data.data_entrada_aceitacao);
                 setCurrent('current_estado', data.estado);
                 setCurrent('current_observacao', data.observacao);
-                setCurrent('current_valor_nf', data.valor_nf);
-                setCurrent('current_nd_nota_despesa', data.nd_nota_despesa);
-                setCurrent('current_unidade_medida', data.unidade_medida);
 
                 updateEditVisibility(data);
                 if (btnUpdateSingle) btnUpdateSingle.disabled = false;
             })
             .catch(err => console.error('Erro ao carregar detalhes do item:', err));
+    };
+    
+    // Função para lidar com a seleção de múltiplos itens
+    window.handleItemSelection = function() {
+        const checkboxes = document.querySelectorAll('.select-item-checkbox:checked');
+        if (btnUpdateSingle) btnUpdateSingle.disabled = checkboxes.length === 0;
+        
+        // Se apenas um item estiver selecionado, carregar seus detalhes
+        if (checkboxes.length === 1) {
+            const itemId = checkboxes[0].value;
+            loadItemDetails(itemId);
+        } else {
+            // Se nenhum ou múltiplos itens estiverem selecionados, limpar os campos
+            clearItemDetails();
+        }
+    };
+
+    // Função para limpar os campos de detalhes do item
+    window.clearItemDetails = function() {
+        // Limpar campos de entrada
+        const inputs = document.querySelectorAll('.form-section input, .form-section textarea, .form-section select');
+        inputs.forEach(input => {
+            if (input.type === 'checkbox' || input.type === 'radio') return;
+            if (input.id.startsWith('current_')) return; // Não limpar campos "Dados atuais"
+            input.value = '';
+        });
+        
+        // Resetar selects
+        const selects = document.querySelectorAll('.form-section select');
+        selects.forEach(select => {
+            select.selectedIndex = 0;
+        });
+        
+        // Limpar campos "Dados atuais"
+        const currentFields = document.querySelectorAll('[id^="current_"]');
+        currentFields.forEach(field => {
+            field.value = '';
+        });
     };
 });
 </script>
