@@ -114,14 +114,91 @@ if($_SERVER["REQUEST_METHOD"] == "POST"){
                 mysqli_stmt_close($stmt_empenho);
             }
             
-            $sql_update = "UPDATE itens SET empenho_id=?, empenho=?, data_emissao_empenho=?, fornecedor=?, cnpj_fornecedor=?, categoria=?, valor_nf=?, nd_nota_despesa=?, unidade_medida=?, valor=? WHERE id=?";
+            $sql_update = "UPDATE itens SET 
+                processo_documento = IFNULL(?, processo_documento),
+                nome = IFNULL(?, nome),
+                descricao_detalhada = IFNULL(?, descricao_detalhada),
+                numero_serie = IFNULL(?, numero_serie),
+                quantidade = IFNULL(?, quantidade),
+                valor = IFNULL(?, valor),
+                nota_fiscal_documento = IFNULL(?, nota_fiscal_documento),
+                data_entrada_aceitacao = IFNULL(?, data_entrada_aceitacao),
+                estado = IFNULL(?, estado),
+                local_id = IFNULL(?, local_id),
+                responsavel_id = IFNULL(?, responsavel_id),
+                observacao = IFNULL(?, observacao),
+                empenho_id = IFNULL(?, empenho_id),
+                empenho = IFNULL(?, empenho),
+                data_emissao_empenho = IFNULL(?, data_emissao_empenho),
+                fornecedor = IFNULL(?, fornecedor),
+                cnpj_fornecedor = IFNULL(?, cnpj_fornecedor),
+                categoria = IFNULL(?, categoria),
+                valor_nf = IFNULL(?, valor_nf),
+                nd_nota_despesa = IFNULL(?, nd_nota_despesa),
+                unidade_medida = IFNULL(?, unidade_medida)
+            WHERE id = ?";
             $stmt_update = mysqli_prepare($link, $sql_update);
 
             foreach($item_ids as $item_id){
-                mysqli_stmt_bind_param($stmt_update, "isssssddssi", 
-                    $empenho_id, $empenho_numero, $data_emissao_empenho, $fornecedor, 
-                    $cnpj_fornecedor, $categoria, $_POST['valor_nf'], 
-                    $_POST['nd_nota_despesa'], $_POST['unidade_medida'], $_POST['valor'],
+                $processo_documento = isset($_POST['processo_documento']) ? $_POST['processo_documento'] : '';
+                $nome_item = isset($_POST['nome']) ? $_POST['nome'] : '';
+                $descricao_detalhada = isset($_POST['descricao_detalhada']) ? $_POST['descricao_detalhada'] : '';
+                $numero_serie = isset($_POST['numero_serie']) ? $_POST['numero_serie'] : '';
+                $quantidade = isset($_POST['quantidade']) ? $_POST['quantidade'] : '';
+                $valor_unitario = isset($_POST['valor']) ? $_POST['valor'] : '';
+                $nota_fiscal_documento = isset($_POST['nota_fiscal_documento']) ? $_POST['nota_fiscal_documento'] : '';
+                $data_entrada_aceitacao = isset($_POST['data_entrada_aceitacao']) ? $_POST['data_entrada_aceitacao'] : '';
+                $estado_item = isset($_POST['estado']) ? $_POST['estado'] : '';
+                $local_id_post = isset($_POST['local_id']) ? $_POST['local_id'] : '';
+                $responsavel_id_post = isset($_POST['responsavel_id']) ? $_POST['responsavel_id'] : '';
+                $observacao_post = isset($_POST['observacao']) ? $_POST['observacao'] : '';
+                // converter campos vazios em NULL para nao sobrescrever valores existentes
+                $processo_documento = ($processo_documento === '' ? null : $processo_documento);
+                $nome_item = ($nome_item === '' ? null : $nome_item);
+                $descricao_detalhada = ($descricao_detalhada === '' ? null : $descricao_detalhada);
+                $numero_serie = ($numero_serie === '' ? null : $numero_serie);
+                $quantidade = ($quantidade === '' ? null : $quantidade);
+                $valor_unitario = ($valor_unitario === '' ? null : $valor_unitario);
+                $nota_fiscal_documento = ($nota_fiscal_documento === '' ? null : $nota_fiscal_documento);
+                $data_entrada_aceitacao = ($data_entrada_aceitacao === '' ? null : $data_entrada_aceitacao);
+                $estado_item = ($estado_item === '' ? null : $estado_item);
+                $local_id_post = ($local_id_post === '' ? null : $local_id_post);
+                $responsavel_id_post = ($responsavel_id_post === '' ? null : $responsavel_id_post);
+                $observacao_post = ($observacao_post === '' ? null : $observacao_post);
+                $empenho_id = ($empenho_id === 0 ? null : $empenho_id);
+                $empenho_numero = ($empenho_numero === '' ? null : $empenho_numero);
+                $data_emissao_empenho = ($data_emissao_empenho === '' ? null : $data_emissao_empenho);
+                $fornecedor = ($fornecedor === '' ? null : $fornecedor);
+                $cnpj_fornecedor = ($cnpj_fornecedor === '' ? null : $cnpj_fornecedor);
+                $categoria = ($categoria === '' ? null : $categoria);
+                $valor_nf_post = (isset($_POST['valor_nf']) && trim($_POST['valor_nf']) !== '' ? $_POST['valor_nf'] : null);
+                $nd_nota_despesa_post = (isset($_POST['nd_nota_despesa']) && trim($_POST['nd_nota_despesa']) !== '' ? $_POST['nd_nota_despesa'] : null);
+                $unidade_medida_post = (isset($_POST['unidade_medida']) && trim($_POST['unidade_medida']) !== '' ? $_POST['unidade_medida'] : null);
+
+                mysqli_stmt_bind_param(
+                    $stmt_update,
+                    "ssssssssssssssssssssss",
+                    $processo_documento,
+                    $nome_item,
+                    $descricao_detalhada,
+                    $numero_serie,
+                    $quantidade,
+                    $valor_unitario,
+                    $nota_fiscal_documento,
+                    $data_entrada_aceitacao,
+                    $estado_item,
+                    $local_id_post,
+                    $responsavel_id_post,
+                    $observacao_post,
+                    $empenho_id,
+                    $empenho_numero,
+                    $data_emissao_empenho,
+                    $fornecedor,
+                    $cnpj_fornecedor,
+                    $categoria,
+                    $valor_nf_post,
+                    $nd_nota_despesa_post,
+                    $unidade_medida_post,
                     $item_id
                 );
                 if(!mysqli_stmt_execute($stmt_update)){
@@ -324,6 +401,19 @@ if($result_empenhos){
     }
 }
 
+// Empenhos para a aba de atualização (listar todos para preservar o empenho atual do item)
+$empenhos_update = [];
+$sql_empenhos_update = "SELECT e.id, e.numero_empenho, e.data_emissao, e.nome_fornecedor, e.cnpj_fornecedor, c.numero as categoria_numero, c.descricao as categoria_descricao 
+                        FROM empenhos e 
+                        JOIN categorias c ON e.categoria_id = c.id 
+                        ORDER BY e.numero_empenho ASC";
+$result_empenhos_update = mysqli_query($link, $sql_empenhos_update);
+if($result_empenhos_update){
+    while($row = mysqli_fetch_assoc($result_empenhos_update)){
+        $empenhos_update[] = $row;
+    }
+}
+
 ?>
 
 <style>
@@ -358,6 +448,12 @@ if($result_empenhos){
         display: grid;
         grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
         gap: 20px;
+    }
+    .form-grid-3 {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(280px, 1fr));
+        gap: 20px;
+        align-items: start;
     }
     .form-section {
         border: 1px solid #eee;
@@ -409,79 +505,19 @@ if($result_empenhos){
 
 <!-- Formulário de Atualização -->
 <div id="update" class="tab-content <?php if($active_tab == 'update') echo 'active'; ?>">
+    <form action="patrimonio_add.php" method="post" class="form-inline" style="margin-bottom:15px;">
+        <h3>1. Buscar Item</h3>
+        <label for="search_by">Pesquisar por:</label>
+        <select name="search_by" id="search_by">
+            <option value="patrimonio_novo" <?php echo (isset($_POST['search_by']) && $_POST['search_by'] == 'patrimonio_novo') ? 'selected' : ''; ?>>Patrimônio</option>
+            <option value="id" <?php echo (isset($_POST['search_by']) && $_POST['search_by'] == 'id') ? 'selected' : ''; ?>>ID</option>
+            <option value="nome" <?php echo (isset($_POST['search_by']) && $_POST['search_by'] == 'nome') ? 'selected' : ''; ?>>Nome do Item</option>
+        </select>
+        <input type="text" name="search" placeholder="Digite o termo de busca" value="<?php echo htmlspecialchars($search_term); ?>">
+        <button type="submit" name="search_action" class="btn-custom" formnovalidate>Buscar</button>
+    </form>
     <form action="patrimonio_add.php" method="post">
-        <h3>1. Preencha as Informações do Item</h3>
-        <div class="form-grid">
-            <!-- Campo de seleção de empenho -->
-            <div>
-                <label>Empenho:</label>
-                <select name="empenho_id_update" id="empenho_id_update" onchange="preencherDadosEmpenhoUpdate()">
-                    <option value="">Selecione um empenho (opcional)</option>
-                    <?php foreach($empenhos_abertos as $empenho_item): ?>
-                        <option value="<?php echo $empenho_item['id']; ?>" 
-                                data-categoria="<?php echo htmlspecialchars($empenho_item['categoria_numero'] . ' - ' . $empenho_item['categoria_descricao']); ?>"
-                                data-data-emissao="<?php echo $empenho_item['data_emissao']; ?>"
-                                data-fornecedor="<?php echo htmlspecialchars($empenho_item['nome_fornecedor']); ?>"
-                                data-cnpj="<?php echo $empenho_item['cnpj_fornecedor']; ?>">
-                            <?php echo htmlspecialchars($empenho_item['numero_empenho']); ?>
-                        </option>
-                    <?php endforeach; ?>
-                </select>
-            </div>
-            
-            <div><label>Processo/Documento:</label><input type="text" name="processo_documento" value="<?php echo isset($_POST['processo_documento']) ? htmlspecialchars($_POST['processo_documento']) : ''; ?>"></div>
-            <div><label>Nome do Item:</label><input type="text" name="nome" value="<?php echo isset($_POST['nome']) ? htmlspecialchars($_POST['nome']) : ''; ?>" required></div>
-            <div><label>Descrição Detalhada:</label><textarea name="descricao_detalhada" maxlength="200" placeholder="Máximo 200 caracteres"><?php echo isset($_POST['descricao_detalhada']) ? htmlspecialchars($_POST['descricao_detalhada']) : ''; ?></textarea></div>
-            <div><label>Número de Série:</label><input type="text" name="numero_serie" value="<?php echo isset($_POST['numero_serie']) ? htmlspecialchars($_POST['numero_serie']) : ''; ?>"></div>
-            <div><label>Quantidade:</label><input type="number" name="quantidade" min="1" value="<?php echo isset($_POST['quantidade']) ? htmlspecialchars($_POST['quantidade']) : '1'; ?>" required></div>
-            <div><label>Valor Unitário:</label><input type="number" step="0.01" name="valor" value="<?php echo htmlspecialchars($valor); ?>"></div>
-            <div><label>Nota Fiscal/Documento:</label><input type="text" name="nota_fiscal_documento" value="<?php echo isset($_POST['nota_fiscal_documento']) ? htmlspecialchars($_POST['nota_fiscal_documento']) : ''; ?>"></div>
-            <div><label>Data de Entrada/Aceitação:</label><input type="date" name="data_entrada_aceitacao" value="<?php echo isset($_POST['data_entrada_aceitacao']) ? htmlspecialchars($_POST['data_entrada_aceitacao']) : ''; ?>"></div>
-            <div><label>Patrimônio Inicial:</label><input type="number" name="patrimonio_inicial" value="<?php echo isset($_POST['patrimonio_inicial']) ? htmlspecialchars($_POST['patrimonio_inicial']) : ''; ?>" required></div>
-            <div><label>Estado:</label>
-                <select name="estado" required>
-                    <option value="Em uso">Em uso</option>
-                    <option value="Ocioso">Ocioso</option>
-                    <option value="Recuperável">Recuperável</option>
-                    <option value="Inservível">Inservível</option>
-                </select>
-            </div>
-            <div><label>Local:</label>
-                <div class="autocomplete-container">
-                    <input type="text" id="search_local_update" name="search_local_update" placeholder="Digite para buscar um local..." autocomplete="off">
-                    <input type="hidden" name="local_id" id="local_id_update" required>
-                    <div id="local_suggestions_update" class="suggestions-list"></div>
-                </div>
-            </div>
-            <div><label>Responsável:</label>
-                <div class="autocomplete-container">
-                    <input type="text" id="search_responsavel_update" name="search_responsavel_update" placeholder="Digite para buscar um responsável..." autocomplete="off">
-                    <input type="hidden" name="responsavel_id" id="responsavel_id_update" required>
-                    <div id="responsavel_suggestions_update" class="suggestions-list"></div>
-                </div>
-            </div>
-            <div><label>Observação:</label><textarea name="observacao"><?php echo isset($_POST['observacao']) ? htmlspecialchars($_POST['observacao']) : ''; ?></textarea></div>
-            
-            <!-- Campos ocultos para os dados do empenho -->
-            <input type="hidden" name="empenho" id="empenho_update">
-            <input type="hidden" name="data_emissao_empenho" id="data_emissao_empenho_update">
-            <input type="hidden" name="fornecedor" id="fornecedor_update">
-            <input type="hidden" name="cnpj_fornecedor" id="cnpj_fornecedor_update">
-            <input type="hidden" name="categoria" id="categoria_update">
-        </div>
-        
-        <h3 style="margin-top: 20px;">2. Selecione os Itens para Atualizar</h3>
-        <div class="form-inline">
-            <label for="search_by">Pesquisar por:</label>
-            <select name="search_by" id="search_by">
-                <option value="patrimonio_novo" <?php echo (isset($_POST['search_by']) && $_POST['search_by'] == 'patrimonio_novo') ? 'selected' : ''; ?>>Patrimônio</option>
-                <option value="id" <?php echo (isset($_POST['search_by']) && $_POST['search_by'] == 'id') ? 'selected' : ''; ?>>ID</option>
-                <option value="nome" <?php echo (isset($_POST['search_by']) && $_POST['search_by'] == 'nome') ? 'selected' : ''; ?>>Nome do Item</option>
-            </select>
-             <input type="text" name="search" placeholder="Digite o termo de busca" value="<?php echo htmlspecialchars($search_term); ?>">
-             <button type="submit" name="search_action" class="btn-custom">Buscar</button>
-        </div>
-
+        <h3>2. Selecione o Item para Atualizar</h3>
         <?php if(!empty($itens)): ?>
             <div class="item-list">
                 <table>
@@ -489,7 +525,7 @@ if($result_empenhos){
                     <tbody>
                     <?php foreach($itens as $item): ?>
                         <tr>
-                            <td><input type="checkbox" name="item_ids[]" value="<?php echo $item['id']; ?>"></td>
+                            <td><input type="radio" name="item_ids[]" value="<?php echo $item['id']; ?>" class="select-item-radio" onclick="loadItemDetails(<?php echo $item['id']; ?>)"></td>
                             <td><?php echo htmlspecialchars($item['nome']); ?></td>
                             <td><?php echo htmlspecialchars($item['patrimonio_novo']); ?></td>
                         </tr>
@@ -497,12 +533,96 @@ if($result_empenhos){
                     </tbody>
                 </table>
             </div>
-            <div style="margin-top: 20px;">
-                <input type="submit" name="update_existing" value="Atualizar Itens Selecionados" class="btn-custom">
-            </div>
         <?php elseif(isset($_POST['search_action']) && empty($itens) && empty($error)): ?>
             <p>Nenhum item encontrado com o patrimônio inicial "<?php echo htmlspecialchars($search_term); ?>".</p>
         <?php endif; ?>
+        <h3 style="margin-top: 20px;">3. Preencha as Informações do Item</h3>
+        <div class="form-grid-3">
+            <!-- Coluna 1: Empenho + Detalhes da Aquisição -->
+            <div class="form-section">
+                <div id="edit_empenho_select"><label>Empenho:</label>
+                <select name="empenho_id_update" id="empenho_id_update" onchange="preencherDadosEmpenhoUpdate()">
+                    <option value="">Selecione um empenho (opcional)</option>
+                    <?php foreach($empenhos_update as $empenho_item): ?>
+                        <option value="<?php echo $empenho_item['id']; ?>" 
+                                data-categoria="<?php echo htmlspecialchars($empenho_item['categoria_numero'] . ' - ' . $empenho_item['categoria_descricao']); ?>"
+                                data-data-emissao="<?php echo $empenho_item['data_emissao']; ?>"
+                                data-fornecedor="<?php echo htmlspecialchars($empenho_item['nome_fornecedor']); ?>"
+                                data-cnpj="<?php echo $empenho_item['cnpj_fornecedor']; ?>">
+                            <?php echo htmlspecialchars($empenho_item['numero_empenho'] . ' | ' . date('d/m/Y', strtotime($empenho_item['data_emissao'])) . ' | ' . $empenho_item['nome_fornecedor'] . ' | ' . $empenho_item['cnpj_fornecedor'] . ' | ' . $empenho_item['categoria_numero'] . ' - ' . $empenho_item['categoria_descricao']); ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select></div>
+                <h4 style="margin-top:10px;">Detalhes da Aquisição</h4>
+                <div id="edit_acq_categoria"><label>Categoria:</label><input type="text" name="categoria" id="categoria_update"></div>
+                <div id="edit_acq_empenho"><label>Número do Empenho:</label><input type="text" name="empenho" id="empenho_update"></div>
+                <div id="edit_acq_data_emissao"><label>Data Emissão Empenho:</label><input type="date" name="data_emissao_empenho" id="data_emissao_empenho_update"></div>
+                <div id="edit_acq_fornecedor"><label>Fornecedor:</label><input type="text" name="fornecedor" id="fornecedor_update"></div>
+                <div id="edit_acq_cnpj"><label>CNPJ Fornecedor:</label><input type="text" name="cnpj_fornecedor" id="cnpj_fornecedor_update"></div>
+            </div>
+
+            <!-- Coluna 2: Dados atuais do item (somente leitura) -->
+            <div class="form-section">
+                <h4>Dados atuais do item</h4>
+                <div><label>Patrimônio:</label><input type="text" id="current_patrimonio" readonly></div>
+                <div><label>Nome do Item:</label><input type="text" id="current_nome" readonly></div>
+                <div><label>Descrição Detalhada:</label><textarea id="current_descricao_detalhada" readonly></textarea></div>
+                <div><label>Número de Série:</label><input type="text" id="current_numero_serie" readonly></div>
+                <div><label>Quantidade:</label><input type="text" id="current_quantidade" readonly></div>
+                <div><label>Valor Unitário:</label><input type="text" id="current_valor" readonly></div>
+                <div><label>Nota Fiscal/Documento:</label><input type="text" id="current_nota_fiscal_documento" readonly></div>
+                <div><label>Data Entrada/Aceitação:</label><input type="text" id="current_data_entrada_aceitacao" readonly></div>
+                <div><label>Estado:</label><input type="text" id="current_estado" readonly></div>
+                <div><label>Local:</label><input type="text" id="current_local" readonly></div>
+                <div><label>Responsável:</label><input type="text" id="current_responsavel" readonly></div>
+                <div><label>Observação:</label><textarea id="current_observacao" readonly></textarea></div>
+                <div><label>Número NF:</label><input type="text" id="current_valor_nf" readonly></div>
+                <div><label>ND-Nota de Despesa:</label><input type="text" id="current_nd_nota_despesa" readonly></div>
+                <div><label>Unidade de Medida:</label><input type="text" id="current_unidade_medida" readonly></div>
+            </div>
+
+            <!-- Coluna 3: Campos para atualização -->
+            <div class="form-section">
+                <h4>Atualizar dados do item</h4>
+                <div id="edit_processo_documento"><label>Processo/Documento:</label><input type="text" name="processo_documento" value="<?php echo isset($_POST['processo_documento']) ? htmlspecialchars($_POST['processo_documento']) : ''; ?>"></div>
+                <div id="edit_nome"><label>Nome do Item:</label><input type="text" name="nome" value="<?php echo isset($_POST['nome']) ? htmlspecialchars($_POST['nome']) : ''; ?>"></div>
+                <div id="edit_descricao_detalhada"><label>Descrição Detalhada:</label><textarea name="descricao_detalhada" maxlength="200" placeholder="Máximo 200 caracteres"><?php echo isset($_POST['descricao_detalhada']) ? htmlspecialchars($_POST['descricao_detalhada']) : ''; ?></textarea></div>
+                <div id="edit_numero_serie"><label>Número de Série:</label><input type="text" name="numero_serie" value="<?php echo isset($_POST['numero_serie']) ? htmlspecialchars($_POST['numero_serie']) : ''; ?>"></div>
+                <div id="edit_quantidade"><label>Quantidade:</label><input type="number" name="quantidade" min="1" value="<?php echo isset($_POST['quantidade']) ? htmlspecialchars($_POST['quantidade']) : '1'; ?>"></div>
+                <div id="edit_valor"><label>Valor Unitário:</label><input type="number" step="0.01" name="valor" value="<?php echo htmlspecialchars($valor); ?>"></div>
+                <div id="edit_nota_fiscal_documento"><label>Nota Fiscal/Documento:</label><input type="text" name="nota_fiscal_documento" value="<?php echo isset($_POST['nota_fiscal_documento']) ? htmlspecialchars($_POST['nota_fiscal_documento']) : ''; ?>"></div>
+                <div id="edit_data_entrada_aceitacao"><label>Data de Entrada/Aceitação:</label><input type="date" name="data_entrada_aceitacao" value="<?php echo isset($_POST['data_entrada_aceitacao']) ? htmlspecialchars($_POST['data_entrada_aceitacao']) : ''; ?>"></div>
+                <div id="edit_estado"><label>Estado:</label>
+                    <select name="estado">
+                        <option value="Em uso">Em uso</option>
+                        <option value="Ocioso">Ocioso</option>
+                        <option value="Recuperável">Recuperável</option>
+                        <option value="Inservível">Inservível</option>
+                    </select>
+                </div>
+                <div id="edit_local"><label>Local:</label>
+                    <div class="autocomplete-container">
+                        <input type="text" id="search_local_update" name="search_local_update" placeholder="Digite para buscar um local..." autocomplete="off">
+                        <input type="hidden" name="local_id" id="local_id_update">
+                        <div id="local_suggestions_update" class="suggestions-list"></div>
+                    </div>
+                </div>
+                <div id="edit_responsavel"><label>Responsável:</label>
+                    <div class="autocomplete-container">
+                        <input type="text" id="search_responsavel_update" name="search_responsavel_update" placeholder="Digite para buscar um responsável..." autocomplete="off">
+                        <input type="hidden" name="responsavel_id" id="responsavel_id_update">
+                        <div id="responsavel_suggestions_update" class="suggestions-list"></div>
+                    </div>
+                </div>
+                <div id="edit_observacao"><label>Observação:</label><textarea name="observacao"><?php echo isset($_POST['observacao']) ? htmlspecialchars($_POST['observacao']) : ''; ?></textarea></div>
+                <div id="edit_valor_nf"><label>Número NF:</label><input type="text" name="valor_nf" value="<?php echo isset($_POST['valor_nf']) ? htmlspecialchars($_POST['valor_nf']) : ''; ?>"></div>
+                <div id="edit_nd_nota_despesa"><label>ND-Nota de Despesa:</label><input type="text" name="nd_nota_despesa" value="<?php echo isset($_POST['nd_nota_despesa']) ? htmlspecialchars($_POST['nd_nota_despesa']) : ''; ?>"></div>
+                <div id="edit_unidade_medida"><label>Unidade de Medida:</label><input type="text" name="unidade_medida" value="<?php echo isset($_POST['unidade_medida']) ? htmlspecialchars($_POST['unidade_medida']) : ''; ?>"></div>
+            </div>
+        </div>
+        <div style="margin-top: 20px;">
+            <input type="submit" name="update_existing" id="btn_update_single" value="Atualizar Item Selecionado" class="btn-custom" disabled>
+        </div>
     </form>
 </div>
 
@@ -934,6 +1054,133 @@ document.addEventListener('DOMContentLoaded', function() {
     if (searchResponsavelCreate && responsavelSuggestionsCreate && responsavelIdCreate) {
         setupAutocomplete(searchResponsavelCreate, responsavelSuggestionsCreate, responsavelIdCreate, 'api/search_usuarios.php');
     }
+// Habilita botão de atualizar ao selecionar um item
+    const btnUpdateSingle = document.getElementById('btn_update_single');
+    document.addEventListener('change', function(e){
+        if (e.target && e.target.classList.contains('select-item-radio')){
+            if (btnUpdateSingle) btnUpdateSingle.disabled = false;
+        }
+    });
+
+    function toggleEditField(id, show){
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.style.display = show ? '' : 'none';
+        // remove required de todos inputs internos quando esconder
+        if (!show){
+            el.querySelectorAll('input, select, textarea').forEach(inp => inp.required = false);
+        }
+    }
+
+    function updateEditVisibility(data){
+        // Campos: mostrar somente os que estiverem vazios no item atual
+        toggleEditField('edit_processo_documento', !data.processo_documento);
+        toggleEditField('edit_nome', !data.nome);
+        toggleEditField('edit_descricao_detalhada', !data.descricao_detalhada);
+        toggleEditField('edit_numero_serie', !data.numero_serie);
+        toggleEditField('edit_quantidade', !(data.quantidade && String(data.quantidade) !== '' && String(data.quantidade) !== '0'));
+        toggleEditField('edit_valor', !(data.valor && String(data.valor) !== ''));
+        toggleEditField('edit_nota_fiscal_documento', !data.nota_fiscal_documento);
+        toggleEditField('edit_data_entrada_aceitacao', !data.data_entrada_aceitacao);
+        toggleEditField('edit_estado', !data.estado);
+        toggleEditField('edit_local', !(data.local_id && String(data.local_id) !== '0'));
+        toggleEditField('edit_responsavel', !(data.responsavel_id && String(data.responsavel_id) !== '0'));
+        toggleEditField('edit_observacao', !data.observacao);
+        toggleEditField('edit_valor_nf', !data.valor_nf);
+        toggleEditField('edit_nd_nota_despesa', !data.nd_nota_despesa);
+        toggleEditField('edit_unidade_medida', !data.unidade_medida);
+        // Empenho e detalhes da aquisição também apenas se não houver valores
+        toggleEditField('edit_empenho_select', !(data.empenho_id && String(data.empenho_id) !== '0'));
+        toggleEditField('edit_acq_categoria', !data.categoria);
+        toggleEditField('edit_acq_empenho', !data.empenho);
+        toggleEditField('edit_acq_data_emissao', !data.data_emissao_empenho);
+        toggleEditField('edit_acq_fornecedor', !data.fornecedor);
+        toggleEditField('edit_acq_cnpj', !data.cnpj_fornecedor);
+    }
+
+    // Carrega detalhes do item selecionado e preenche o formulário
+    window.loadItemDetails = function(itemId){
+        fetch('api/get_item_details.php?id=' + itemId)
+            .then(r => r.json())
+            .then(data => {
+                if (!data || data.error){
+                    console.error(data && data.error ? data.error : 'Erro ao carregar detalhes do item');
+                    return;
+                }
+                // Campos básicos
+                const setVal = (name, val) => {
+                    const el = document.querySelector(`[name="${name}"]`);
+                    if (el) el.value = val !== null && val !== undefined ? val : '';
+                };
+                const setCurrent = (id, val) => {
+                    const el = document.getElementById(id);
+                    if (el) el.value = (val !== null && val !== undefined) ? val : '';
+                };
+                setVal('processo_documento', data.processo_documento);
+                setVal('nome', data.nome);
+                setVal('descricao_detalhada', data.descricao_detalhada);
+                setVal('numero_serie', data.numero_serie);
+                setVal('quantidade', data.quantidade);
+                setVal('valor', data.valor);
+                setVal('nota_fiscal_documento', data.nota_fiscal_documento);
+                setVal('data_entrada_aceitacao', data.data_entrada_aceitacao);
+                setVal('observacao', data.observacao);
+                setVal('valor_nf', data.valor_nf);
+                setVal('nd_nota_despesa', data.nd_nota_despesa);
+                setVal('unidade_medida', data.unidade_medida);
+
+                // Patrimônio (somente exibição)
+                const patr = document.getElementById('patrimonio_display_update');
+                if (patr) patr.value = data.patrimonio_novo || '';
+                setCurrent('current_patrimonio', data.patrimonio_novo);
+
+                // Estado
+                const estadoSel = document.querySelector('select[name="estado"]');
+                if (estadoSel && data.estado){ estadoSel.value = data.estado; }
+
+                // Local e Responsável (autocomplete + hidden id)
+                const locInput = document.getElementById('search_local_update');
+                const locHidden = document.getElementById('local_id_update');
+                if (locInput) locInput.value = data.local_nome || '';
+                if (locHidden) locHidden.value = data.local_id || '';
+                setCurrent('current_local', data.local_nome);
+                const respInput = document.getElementById('search_responsavel_update');
+                const respHidden = document.getElementById('responsavel_id_update');
+                if (respInput) respInput.value = data.responsavel_nome || '';
+                if (respHidden) respHidden.value = data.responsavel_id || '';
+                setCurrent('current_responsavel', data.responsavel_nome);
+
+                // Empenho: selecionar o registro atual, se houver
+                const empSelect = document.getElementById('empenho_id_update');
+                if (empSelect) {
+                    empSelect.value = data.empenho_id || '';
+                    empSelect.disabled = !!(data.empenho_id && String(data.empenho_id) !== '0');
+                }
+                // Preencher campos de empenho com os dados atuais do item
+                setVal('empenho', data.empenho);
+                setVal('data_emissao_empenho', data.data_emissao_empenho);
+                setVal('fornecedor', data.fornecedor);
+                setVal('cnpj_fornecedor', data.cnpj_fornecedor);
+                setVal('categoria', data.categoria);
+                // Preencher "Dados atuais" (somente leitura)
+                setCurrent('current_nome', data.nome);
+                setCurrent('current_descricao_detalhada', data.descricao_detalhada);
+                setCurrent('current_numero_serie', data.numero_serie);
+                setCurrent('current_quantidade', data.quantidade);
+                setCurrent('current_valor', data.valor);
+                setCurrent('current_nota_fiscal_documento', data.nota_fiscal_documento);
+                setCurrent('current_data_entrada_aceitacao', data.data_entrada_aceitacao);
+                setCurrent('current_estado', data.estado);
+                setCurrent('current_observacao', data.observacao);
+                setCurrent('current_valor_nf', data.valor_nf);
+                setCurrent('current_nd_nota_despesa', data.nd_nota_despesa);
+                setCurrent('current_unidade_medida', data.unidade_medida);
+
+                updateEditVisibility(data);
+                if (btnUpdateSingle) btnUpdateSingle.disabled = false;
+            })
+            .catch(err => console.error('Erro ao carregar detalhes do item:', err));
+    };
 });
 </script>
 
