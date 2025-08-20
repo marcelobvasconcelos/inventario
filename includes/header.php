@@ -60,6 +60,7 @@ if (isset($_SESSION['id'])) {
                     <?php endif; ?>
                 </div>
             </div>
+
             <a href="/inventario/notificacoes_usuario.php">Notificações</a>
             <?php if($_SESSION["permissao"] == 'Administrador'): ?>
                 <a href="/inventario/usuarios.php">Usuários</a>

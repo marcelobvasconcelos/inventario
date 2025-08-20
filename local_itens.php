@@ -54,7 +54,7 @@ if($stmt_itens = mysqli_prepare($link, $sql_itens)){
                 <th data-column="id">ID <span class="sort-arrow"></span></th>
                 <th data-column="nome">Nome <span class="sort-arrow"></span></th>
                 <th data-column="descricao">Descrição <span class="sort-arrow"></span></th>
-                <th data-column="numero_serie">Número de Série <span class="sort-arrow"></span></th>
+                <th data-column="Patrimônio">Patrimônio <span class="sort-arrow"></span></th>
                 <th data-column="data_compra">Data de Compra <span class="sort-arrow"></span></th>
                 <th data-column="status">Status <span class="sort-arrow"></span></th>
                 <th data-column="responsavel_nome">Responsável <span class="sort-arrow"></span></th>
