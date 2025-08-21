@@ -523,25 +523,6 @@ if($result_empenhos_update){
         margin: 10px 0;
         display: none;
     }
-    .btn-small {
-        padding: 5px 10px;
-        font-size: 0.9em;
-        text-decoration: none;
-        color: #fff;
-        background-color: #007bff;
-        border: none;
-        border-radius: 3px;
-        cursor: pointer;
-    }
-    .btn-small:hover {
-        background-color: #0056b3;
-    }
-    .btn-success {
-        background-color: #28a745;
-    }
-    .btn-success:hover {
-        background-color: #218838;
-    }
 </style>
 
 <h2>Gestão de Patrimônio</h2>
@@ -556,7 +537,6 @@ if($result_empenhos_update){
 <div class="tab-container">
     <button class="tab-button <?php if($active_tab == 'update') echo 'active'; ?>" onclick="showTab(event, 'update')">Atualizar Itens Existentes</button>
     <button class="tab-button <?php if($active_tab == 'create') echo 'active'; ?>" onclick="showTab(event, 'create')">Criar Novos Itens em Lote</button>
-    <button class="tab-button <?php if($active_tab == 'rascunhos') echo 'active'; ?>" onclick="showTab(event, 'rascunhos')">Rascunhos</button>
     <button class="tab-button <?php if($active_tab == 'categorias') echo 'active'; ?>" onclick="showTab(event, 'categorias')">Categorias</button>
     <button class="tab-button <?php if($active_tab == 'empenhos') echo 'active'; ?>" onclick="showTab(event, 'empenhos')">Empenhos</button>
     <button class="tab-button <?php if($active_tab == 'advanced_search') echo 'active'; ?>" onclick="showTab(event, 'advanced_search')">Pesquisa Avançada</button>
@@ -681,10 +661,6 @@ if($result_empenhos_update){
 
 <!-- Formulário de Criação em Lote -->
 <div id="create" class="tab-content <?php if($active_tab == 'create') echo 'active'; ?>">
-    <div style="margin-bottom: 20px;">
-        <a href="item_add_rascunho.php" class="btn-custom">Criar Rascunho de Item</a>
-        <p>Use o formulário abaixo para criar itens em lote com patrimônio definido, ou crie um rascunho para itens sem patrimônio ainda.</p>
-    </div>
     <form action="patrimonio_add.php" method="post">
         <h3>Informações dos Novos Itens</h3>
         <div class="form-grid">
@@ -863,168 +839,6 @@ if($result_empenhos_update){
         <p>Nenhum empenho cadastrado.</p>
     <?php endif; ?>
 </div>
-
-<!-- Formulário de Rascunhos -->
-<div id="rascunhos" class="tab-content <?php if($active_tab == 'rascunhos') echo 'active'; ?>">
-    <h3>Rascunhos de Itens</h3>
-    <p>Itens que ainda não possuem patrimônio definido podem ser criados como rascunhos e finalizados posteriormente.</p>
-    
-    <?php
-    // Buscar todos os rascunhos
-    $sql_rascunhos = "SELECT r.*, l.nome as local_nome, u.nome as responsavel_nome 
-                      FROM rascunhos_itens r
-                      LEFT JOIN locais l ON r.local_id = l.id
-                      LEFT JOIN usuarios u ON r.responsavel_id = u.id
-                      ORDER BY r.data_criacao DESC";
-    $stmt_rascunhos = mysqli_prepare($link, $sql_rascunhos);
-    $rascunhos = [];
-    if ($stmt_rascunhos) {
-        if(mysqli_stmt_execute($stmt_rascunhos)){
-            $result_rascunhos = mysqli_stmt_get_result($stmt_rascunhos);
-            while($row = mysqli_fetch_assoc($result_rascunhos)){
-                $rascunhos[] = $row;
-            }
-        }
-        mysqli_stmt_close($stmt_rascunhos);
-    }
-    ?>
-    
-    <?php if(!empty($rascunhos)): ?>
-        <div class="item-list">
-            <table>
-                <thead>
-                    <tr>
-                        <th>Nome</th>
-                        <th>Patrimônio</th>
-                        <th>Local</th>
-                        <th>Responsável</th>
-                        <th>Data de Criação</th>
-                        <th>Ações</th>
-                    </tr>
-                </thead>
-                <tbody>
-                <?php foreach($rascunhos as $rascunho): ?>
-                    <tr>
-                        <td><?php echo htmlspecialchars($rascunho['nome']); ?></td>
-                        <td><?php echo htmlspecialchars($rascunho['patrimonio_novo'] ?? 'N/A'); ?></td>
-                        <td><?php echo htmlspecialchars($rascunho['local_nome'] ?? 'N/A'); ?></td>
-                        <td><?php echo htmlspecialchars($rascunho['responsavel_nome'] ?? 'N/A'); ?></td>
-                        <td><?php echo date('d/m/Y H:i', strtotime($rascunho['data_criacao'])); ?></td>
-                        <td>
-                            <a href="item_edit_rascunho.php?id=<?php echo $rascunho['id']; ?>" class="btn-small">Editar</a>
-                            
-                            <form method="post" style="display: inline;" 
-                                  onsubmit="return confirm('Tem certeza que deseja finalizar este rascunho? Ele será movido para a lista de itens principais.')">
-                                <input type="hidden" name="rascunho_id" value="<?php echo $rascunho['id']; ?>">
-                                <input type="hidden" name="action" value="finalize_rascunho">
-                                <button type="submit" class="btn-small btn-success">Finalizar</button>
-                            </form>
-                        </td>
-                    </tr>
-                <?php endforeach; ?>
-                </tbody>
-            </table>
-        </div>
-    <?php else: ?>
-        <p>Nenhum rascunho encontrado.</p>
-    <?php endif; ?>
-    
-    <div style="margin-top: 20px;">
-        <a href="item_add_rascunho.php" class="btn-custom">Criar Novo Rascunho</a>
-    </div>
-</div>
-
-<!-- Processar ações de rascunhos -->
-<?php
-if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['action']) && $_POST['action'] == 'finalize_rascunho') {
-    $rascunho_id = (int)$_POST['rascunho_id'];
-    
-    // Obter dados do rascunho
-    $sql_get = "SELECT * FROM rascunhos_itens WHERE id = ?";
-    $stmt_get = mysqli_prepare($link, $sql_get);
-    mysqli_stmt_bind_param($stmt_get, "i", $rascunho_id);
-    if(mysqli_stmt_execute($stmt_get)){
-        $result_get = mysqli_stmt_get_result($stmt_get);
-        $rascunho = mysqli_fetch_assoc($result_get);
-        mysqli_stmt_close($stmt_get);
-        
-        if ($rascunho) {
-            mysqli_begin_transaction($link);
-            try {
-                // 1. Inserir na tabela principal 'itens'
-                $sql_insert = "INSERT INTO itens (
-                    nome, patrimonio_novo, local_id, responsavel_id, estado, observacao, 
-                    descricao_detalhada, empenho_id, empenho, data_emissao_empenho, 
-                    fornecedor, cnpj_fornecedor, categoria, data_cadastro, status_confirmacao
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), ?)";
-                
-                $stmt_insert = mysqli_prepare($link, $sql_insert);
-                $status_confirmacao = 'Confirmado'; // Status confirmado para itens finalizados
-                mysqli_stmt_bind_param($stmt_insert, "ssiiisssisssss",
-                    $rascunho['nome'], 
-                    $rascunho['patrimonio_novo'], 
-                    $rascunho['local_id'], 
-                    $rascunho['responsavel_id'], 
-                    $rascunho['estado'], 
-                    $rascunho['observacao'],
-                    $rascunho['descricao_detalhada'], 
-                    $rascunho['empenho_id'], 
-                    $rascunho['empenho'], 
-                    $rascunho['data_emissao_empenho'],
-                    $rascunho['fornecedor'], 
-                    $rascunho['cnpj_fornecedor'], 
-                    $rascunho['categoria'],
-                    $status_confirmacao
-                );
-                if(!mysqli_stmt_execute($stmt_insert)){
-                    throw new Exception("Erro ao inserir item: " . mysqli_stmt_error($stmt_insert));
-                }
-                $novo_item_id = mysqli_insert_id($link);
-                mysqli_stmt_close($stmt_insert);
-                
-                // 2. Excluir o rascunho
-                $sql_delete = "DELETE FROM rascunhos_itens WHERE id = ?";
-                $stmt_delete = mysqli_prepare($link, $sql_delete);
-                mysqli_stmt_bind_param($stmt_delete, "i", $rascunho_id);
-                if(!mysqli_stmt_execute($stmt_delete)){
-                    throw new Exception("Erro ao excluir rascunho: " . mysqli_stmt_error($stmt_delete));
-                }
-                mysqli_stmt_close($stmt_delete);
-                
-                mysqli_commit($link);
-                $message = "Rascunho finalizado e item criado com sucesso (ID: $novo_item_id).";
-                
-                // Recarregar a lista de rascunhos após a finalização
-                // Isso pode ser feito com um redirect ou reexecutando a consulta
-                echo "<script>
-                    alert('$message');
-                    window.location.href = 'patrimonio_add.php?tab=rascunhos';
-                </script>";
-                exit;
-            } catch (Exception $e) {
-                mysqli_rollback($link);
-                $error = "Erro ao finalizar o rascunho: " . $e->getMessage();
-                echo "<script>alert('$error');</script>";
-            }
-        } else {
-            $error = "Rascunho não encontrado.";
-            echo "<script>alert('$error');</script>";
-        }
-    } else {
-        $error = "Erro ao buscar o rascunho.";
-        echo "<script>alert('$error');</script>";
-    }
-}
-
-// Se houver um parâmetro 'tab' na URL, definir a aba ativa
-if (isset($_GET['tab']) && $_GET['tab'] == 'rascunhos') {
-    echo "<script>
-        document.addEventListener('DOMContentLoaded', function() {
-            showTab({currentTarget: document.querySelector('.tab-button[onclick*=\"rascunhos\"]')}, 'rascunhos');
-        });
-    </script>";
-}
-?>
 
 <!-- Formulário de Pesquisa Avançada -->
 <div id="advanced_search" class="tab-content <?php if($active_tab == 'advanced_search') echo 'active'; ?>">
