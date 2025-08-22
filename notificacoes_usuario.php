@@ -212,7 +212,7 @@ foreach ($notificacoes_movimentacao as $nm) {
         'data_item_statuses' => $status_fmt
     ];
 }
-$notificacoes = $notificacoes_p
+$notificacoes = $notificacoes_para_exibir;
 
 require_once 'includes/header.php';
 ?>
