@@ -44,15 +44,28 @@ if (isset($_POST['create_bulk'])) {
 
 // Lógica principal de processamento POST
 if($_SERVER["REQUEST_METHOD"] == "POST"){
-    // Lógica de busca de itens para atualização
-    if(isset($_POST['search_action'])){
-        $search_term = mysqli_real_escape_string($link, $_POST['search']);
+    // Lógica de busca de itens para atualização (pesquisa automática)
+    if(isset($_POST['search_action']) || (isset($_POST['search']) && strlen($_POST['search']) >= 3)){
+        $search_term = isset($_POST['search']) ? mysqli_real_escape_string($link, $_POST['search']) : '';
         $search_by = isset($_POST['search_by']) ? $_POST['search_by'] : 'patrimonio_novo';
+        
         if(strlen($search_term) >= 3){
             if ($search_by == 'id') {
                 $sql_search = "SELECT id, nome, patrimonio_novo FROM itens WHERE id LIKE '%$search_term%' ORDER BY id ASC";
             } elseif ($search_by == 'nome') {
                 $sql_search = "SELECT id, nome, patrimonio_novo FROM itens WHERE nome LIKE '%$search_term%' ORDER BY nome ASC";
+            } elseif ($search_by == 'local') {
+                $sql_search = "SELECT i.id, i.nome, i.patrimonio_novo 
+                              FROM itens i 
+                              JOIN locais l ON i.local_id = l.id 
+                              WHERE l.nome LIKE '%$search_term%' 
+                              ORDER BY l.nome ASC";
+            } elseif ($search_by == 'responsavel') {
+                $sql_search = "SELECT i.id, i.nome, i.patrimonio_novo 
+                              FROM itens i 
+                              JOIN usuarios u ON i.responsavel_id = u.id 
+                              WHERE u.nome LIKE '%$search_term%' 
+                              ORDER BY u.nome ASC";
             } else {
                 $sql_search = "SELECT id, nome, patrimonio_novo FROM itens WHERE patrimonio_novo LIKE '$search_term%' ORDER BY patrimonio_novo ASC";
             }
@@ -67,8 +80,6 @@ if($_SERVER["REQUEST_METHOD"] == "POST"){
             } else {
                 $error = "Erro ao buscar itens: " . mysqli_error($link);
             }
-        } else {
-            $error = "Por favor, insira pelo menos 3 caracteres para buscar.";
         }
     }
 
@@ -687,9 +698,11 @@ if($result_empenhos_update){
             <option value="patrimonio_novo" <?php echo (isset($_POST['search_by']) && $_POST['search_by'] == 'patrimonio_novo') ? 'selected' : ''; ?>>Patrimônio</option>
             <option value="id" <?php echo (isset($_POST['search_by']) && $_POST['search_by'] == 'id') ? 'selected' : ''; ?>>ID</option>
             <option value="nome" <?php echo (isset($_POST['search_by']) && $_POST['search_by'] == 'nome') ? 'selected' : ''; ?>>Nome do Item</option>
+            <option value="local" <?php echo (isset($_POST['search_by']) && $_POST['search_by'] == 'local') ? 'selected' : ''; ?>>Local</option>
+            <option value="responsavel" <?php echo (isset($_POST['search_by']) && $_POST['search_by'] == 'responsavel') ? 'selected' : ''; ?>>Responsável</option>
         </select>
-        <input type="text" name="search" placeholder="Digite o termo de busca" value="<?php echo htmlspecialchars($search_term); ?>">
-        <button type="submit" name="search_action" class="btn-custom" formnovalidate>Buscar</button>
+        <input type="text" name="search" id="search_input" placeholder="Digite o termo de busca (a pesquisa é automática)" value="<?php echo htmlspecialchars($search_term); ?>">
+        <!-- Removido o botão de busca -->
     </form>
     <form action="patrimonio_add.php" method="post">
         <h3>2. Selecione o Item para Atualizar</h3>
@@ -709,7 +722,7 @@ if($result_empenhos_update){
                 </table>
             </div>
         <?php elseif(isset($_POST['search_action']) && empty($itens) && empty($error)): ?>
-            <p>Nenhum item encontrado com o patrimônio inicial "<?php echo htmlspecialchars($search_term); ?>".</p>
+            <p>Nenhum item encontrado com o termo de busca.</p>
         <?php endif; ?>
         <h3 style="margin-top: 20px;">3. Preencha as Informações do Item</h3>
         <div class="form-grid-3">
@@ -1477,6 +1490,73 @@ document.addEventListener('DOMContentLoaded', function() {
             field.value = '';
         });
     };
+    
+    // Função para realizar pesquisa automática
+    function autoSearch() {
+        const searchInput = document.getElementById('search_input');
+        const searchBy = document.getElementById('search_by');
+        const form = document.querySelector('#update form');
+        
+        if (searchInput && searchBy && form) {
+            let debounceTimer;
+            
+            // Evento de input no campo de pesquisa
+            searchInput.addEventListener('input', function() {
+                const searchTerm = this.value.trim();
+                
+                // Cancelar o timer anterior se ainda estiver ativo
+                clearTimeout(debounceTimer);
+                
+                // Se tiver 3 ou mais caracteres, agendar a pesquisa
+                if (searchTerm.length >= 3) {
+                    debounceTimer = setTimeout(function() {
+                        // Criar um objeto FormData com os dados do formulário
+                        const formData = new FormData(form);
+                        formData.append('search_action', '1');
+                        
+                        // Enviar requisição via fetch
+                        fetch('patrimonio_add.php', {
+                            method: 'POST',
+                            body: formData
+                        })
+                        .then(response => response.text())
+                        .then(html => {
+                            // Criar um elemento temporário para parsear o HTML retornado
+                            const parser = new DOMParser();
+                            const doc = parser.parseFromString(html, 'text/html');
+                            
+                            // Extrair os resultados da pesquisa
+                            const newItemList = doc.querySelector('#update .item-list');
+                            const existingItemList = document.querySelector('#update .item-list');
+                            
+                            // Atualizar a lista de itens
+                            if (newItemList && existingItemList) {
+                                existingItemList.innerHTML = newItemList.innerHTML;
+                            }
+                            
+                            // Reativar os checkboxes
+                            const checkboxes = document.querySelectorAll('.select-item-checkbox');
+                            checkboxes.forEach(checkbox => {
+                                checkbox.addEventListener('change', window.handleItemSelection);
+                            });
+                        })
+                        .catch(error => {
+                            console.error('Erro na pesquisa automática:', error);
+                        });
+                    }, 500); // Aguardar 500ms antes de enviar
+                } else if (searchTerm.length === 0) {
+                    // Se o campo estiver vazio, limpar os resultados
+                    const itemList = document.querySelector('#update .item-list');
+                    if (itemList) {
+                        itemList.innerHTML = '';
+                    }
+                }
+            });
+        }
+    }
+    
+    // Iniciar a funcionalidade de pesquisa automática quando a página carregar
+    autoSearch();
 });
 </script>
 
