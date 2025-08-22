@@ -90,6 +90,7 @@ $categorias = $stmt_select->fetchAll(PDO::FETCH_ASSOC);
                 <tr>
                     <th>Número</th>
                     <th>Descrição</th>
+                    <th>Ações</th>
                 </tr>
             </thead>
             <tbody>
@@ -97,6 +98,9 @@ $categorias = $stmt_select->fetchAll(PDO::FETCH_ASSOC);
                     <tr>
                         <td><?php echo htmlspecialchars($categoria['numero']); ?></td>
                         <td><?php echo htmlspecialchars($categoria['descricao']); ?></td>
+                        <td>
+                            <a href="categoria_edit.php?id=<?php echo $categoria['id']; ?>" class="btn-custom btn-small">Editar</a>
+                        </td>
                     </tr>
                 <?php endforeach; ?>
             </tbody>
@@ -149,6 +153,10 @@ $categorias = $stmt_select->fetchAll(PDO::FETCH_ASSOC);
     
     .item-list th {
         background-color: #f2f2f2;
+    }
+    .btn-small {
+        padding: 5px 10px;
+        font-size: 12px;
     }
 </style>
 

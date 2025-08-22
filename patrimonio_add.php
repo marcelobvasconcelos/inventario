@@ -658,6 +658,10 @@ if($result_empenhos_update){
         margin: 10px 0;
         display: none;
     }
+    .btn-small {
+        padding: 5px 10px;
+        font-size: 12px;
+    }
 </style>
 
 <h2>Gestão de Patrimônio</h2>
@@ -903,6 +907,7 @@ if($result_empenhos_update){
                         <th>Número</th>
                         <th>Descrição</th>
                         <th>Data de Cadastro</th>
+                        <th>Ações</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -911,6 +916,9 @@ if($result_empenhos_update){
                             <td><?php echo htmlspecialchars($categoria['numero']); ?></td>
                             <td><?php echo htmlspecialchars($categoria['descricao']); ?></td>
                             <td><?php echo isset($categoria['data_cadastro']) ? date('d/m/Y H:i', strtotime($categoria['data_cadastro'])) : 'N/A'; ?></td>
+                            <td>
+                                <a href="categoria_edit.php?id=<?php echo $categoria['id']; ?>" class="btn-custom btn-small">Editar</a>
+                            </td>
                         </tr>
                     <?php endforeach; ?>
                 </tbody>
@@ -954,6 +962,7 @@ if($result_empenhos_update){
                         <th>Categoria</th>
                         <th>Status</th>
                         <th>Data de Cadastro</th>
+                        <th>Ações</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -966,6 +975,9 @@ if($result_empenhos_update){
                             <td><?php echo htmlspecialchars($empenho_item['categoria_numero'] . ' - ' . $empenho_item['categoria_descricao']); ?></td>
                             <td><?php echo htmlspecialchars($empenho_item['status']); ?></td>
                             <td><?php echo isset($empenho_item['data_cadastro']) ? date('d/m/Y H:i', strtotime($empenho_item['data_cadastro'])) : 'N/A'; ?></td>
+                            <td>
+                                <a href="empenho_edit.php?id=<?php echo $empenho_item['id']; ?>" class="btn-custom btn-small">Editar</a>
+                            </td>
                         </tr>
                     <?php endforeach; ?>
                 </tbody>

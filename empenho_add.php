@@ -134,6 +134,7 @@ $empenhos = $stmt_empenhos->fetchAll(PDO::FETCH_ASSOC);
                     <th>Categoria</th>
                     <th>Status</th>
                     <th>Data de Cadastro</th>
+                    <th>Ações</th>
                 </tr>
             </thead>
             <tbody>
@@ -146,6 +147,9 @@ $empenhos = $stmt_empenhos->fetchAll(PDO::FETCH_ASSOC);
                         <td><?php echo htmlspecialchars($empenho['categoria_numero'] . ' - ' . $empenho['categoria_descricao']); ?></td>
                         <td><?php echo htmlspecialchars($empenho['status']); ?></td>
                         <td><?php echo isset($empenho['data_cadastro']) ? date('d/m/Y H:i', strtotime($empenho['data_cadastro'])) : 'N/A'; ?></td>
+                        <td>
+                            <a href="empenho_edit.php?id=<?php echo $empenho['id']; ?>" class="btn-custom btn-small">Editar</a>
+                        </td>
                     </tr>
                 <?php endforeach; ?>
             </tbody>
@@ -198,6 +202,10 @@ $empenhos = $stmt_empenhos->fetchAll(PDO::FETCH_ASSOC);
     
     .item-list th {
         background-color: #f2f2f2;
+    }
+    .btn-small {
+        padding: 5px 10px;
+        font-size: 12px;
     }
 </style>
 
