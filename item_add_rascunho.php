@@ -18,41 +18,56 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         $pdo->beginTransaction();
         
         // Obter dados do formulário
+        $processo_documento = $_POST['processo_documento'] ?? '';
         $nome = $_POST['nome'] ?? '';
         $descricao_detalhada = $_POST['descricao_detalhada'] ?? '';
         $numero_serie = $_POST['numero_serie'] ?? '';
         $quantidade = (int)($_POST['quantidade'] ?? 1);
-        $valor = $_POST['valor'] ?? null;
-        $nota_fiscal_documento = $_POST['nota_fiscal_documento'] ?? '';
-        $data_entrada_aceitacao = $_POST['data_entrada_aceitacao'] ?? null;
-        $estado = $_POST['estado'] ?? 'Em uso';
+        $patrimonio_novo = $_POST['patrimonio_novo'] ?? '';
+        $patrimonio_secundario = $_POST['patrimonio_secundario'] ?? '';
         $local_id = !empty($_POST['local_id']) ? (int)$_POST['local_id'] : null;
         $responsavel_id = !empty($_POST['responsavel_id']) ? (int)$_POST['responsavel_id'] : null;
+        $estado = $_POST['estado'] ?? 'Bom';
         $observacao = $_POST['observacao'] ?? '';
-        $patrimonio_novo = $_POST['patrimonio_novo'] ?? null;
-        
-        // Dados de aquisição (empenho)
+        $usuario_anterior_id = !empty($_POST['usuario_anterior_id']) ? (int)$_POST['usuario_anterior_id'] : null;
         $empenho_id = !empty($_POST['empenho_id']) ? (int)$_POST['empenho_id'] : null;
         $empenho = $_POST['empenho'] ?? '';
         $data_emissao_empenho = $_POST['data_emissao_empenho'] ?? null;
         $fornecedor = $_POST['fornecedor'] ?? '';
+        $cnpj_cpf_fornecedor = $_POST['cnpj_cpf_fornecedor'] ?? '';
         $cnpj_fornecedor = $_POST['cnpj_fornecedor'] ?? '';
         $categoria = $_POST['categoria'] ?? '';
+        $valor_nf = $_POST['valor_nf'] ?? null;
+        $nd_nota_despesa = $_POST['nd_nota_despesa'] ?? '';
+        $unidade_medida = $_POST['unidade_medida'] ?? '';
+        $valor = $_POST['valor'] ?? null;
+        $tipo_aquisicao = $_POST['tipo_aquisicao'] ?? 'compra';
+        $tipo_aquisicao_descricao = $_POST['tipo_aquisicao_descricao'] ?? '';
+        $numero_documento = $_POST['numero_documento'] ?? '';
+        $nota_fiscal_documento = $_POST['nota_fiscal_documento'] ?? '';
+        $data_entrada_aceitacao = $_POST['data_entrada_aceitacao'] ?? null;
+        $status_confirmacao = $_POST['status_confirmacao'] ?? 'Pendente';
         
         // Inserir o rascunho
         $sql = "INSERT INTO rascunhos_itens (
-            nome, patrimonio_novo, local_id, responsavel_id, estado, observacao,
-            descricao_detalhada, numero_serie, quantidade, valor, nota_fiscal_documento,
-            data_entrada_aceitacao, empenho_id, empenho, data_emissao_empenho,
-            fornecedor, cnpj_fornecedor, categoria, data_criacao
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())";
+            processo_documento, nome, descricao_detalhada, numero_serie, quantidade,
+            patrimonio_novo, patrimonio_secundario, local_id, responsavel_id, estado,
+            observacao, usuario_anterior_id, empenho_id, empenho, data_emissao_empenho,
+            fornecedor, cnpj_cpf_fornecedor, cnpj_fornecedor, categoria, valor_nf,
+            nd_nota_despesa, unidade_medida, valor, tipo_aquisicao,
+            tipo_aquisicao_descricao, numero_documento, nota_fiscal_documento,
+            data_entrada_aceitacao, status_confirmacao
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
         
         $stmt = $pdo->prepare($sql);
         $stmt->execute([
-            $nome, $patrimonio_novo, $local_id, $responsavel_id, $estado, $observacao,
-            $descricao_detalhada, $numero_serie, $quantidade, $valor, $nota_fiscal_documento,
-            $data_entrada_aceitacao, $empenho_id, $empenho, $data_emissao_empenho,
-            $fornecedor, $cnpj_fornecedor, $categoria
+            $processo_documento, $nome, $descricao_detalhada, $numero_serie, $quantidade,
+            $patrimonio_novo, $patrimonio_secundario, $local_id, $responsavel_id, $estado,
+            $observacao, $usuario_anterior_id, $empenho_id, $empenho, $data_emissao_empenho,
+            $fornecedor, $cnpj_cpf_fornecedor, $cnpj_fornecedor, $categoria, $valor_nf,
+            $nd_nota_despesa, $unidade_medida, $valor, $tipo_aquisicao,
+            $tipo_aquisicao_descricao, $numero_documento, $nota_fiscal_documento,
+            $data_entrada_aceitacao, $status_confirmacao
         ]);
         
         $pdo->commit();
@@ -102,6 +117,12 @@ $usuarios = $usuarios_result->fetchAll(PDO::FETCH_ASSOC);
         padding: 15px;
         border-radius: 5px;
     }
+    .form-section h3 {
+        margin-top: 0;
+        color: #333;
+        border-bottom: 2px solid #f0f0f0;
+        padding-bottom: 10px;
+    }
     .autocomplete-container {
         position: relative;
     }
@@ -132,6 +153,34 @@ $usuarios = $usuarios_result->fetchAll(PDO::FETCH_ASSOC);
         margin: 10px 0;
         display: none;
     }
+    /* Estilos para campos de formulário */
+    input[type="text"], input[type="number"], input[type="date"], select, textarea {
+        width: 100%;
+        padding: 8px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        box-sizing: border-box;
+        font-family: 'Poppins', sans-serif;
+    }
+    input[type="text"]:focus, input[type="number"]:focus, input[type="date"]:focus, select:focus, textarea:focus {
+        border-color: #007bff;
+        outline: none;
+        box-shadow: 0 0 5px rgba(0, 123, 255, 0.3);
+    }
+    label {
+        display: block;
+        margin-bottom: 5px;
+        font-weight: 600;
+        color: #555;
+    }
+    .help-block {
+        color: #dc3545;
+        font-size: 0.875em;
+        margin-top: 5px;
+    }
+    div {
+        margin-bottom: 15px;
+    }
 </style>
 
 <div class="form-container">
@@ -149,6 +198,10 @@ $usuarios = $usuarios_result->fetchAll(PDO::FETCH_ASSOC);
             <div class="form-section">
                 <h3>Dados Básicos</h3>
                 <div>
+                    <label>Processo/Documento:</label>
+                    <input type="text" name="processo_documento" value="<?php echo htmlspecialchars($_POST['processo_documento'] ?? ''); ?>">
+                </div>
+                <div>
                     <label>Nome do Item: *</label>
                     <input type="text" name="nome" value="<?php echo htmlspecialchars($_POST['nome'] ?? ''); ?>" required>
                 </div>
@@ -165,8 +218,12 @@ $usuarios = $usuarios_result->fetchAll(PDO::FETCH_ASSOC);
                     <input type="number" name="quantidade" min="1" value="<?php echo htmlspecialchars($_POST['quantidade'] ?? '1'); ?>">
                 </div>
                 <div>
-                    <label>Patrimônio (opcional):</label>
+                    <label>Patrimônio Principal:</label>
                     <input type="text" name="patrimonio_novo" value="<?php echo htmlspecialchars($_POST['patrimonio_novo'] ?? ''); ?>">
+                </div>
+                <div>
+                    <label>Patrimônio Secundário:</label>
+                    <input type="text" name="patrimonio_secundario" value="<?php echo htmlspecialchars($_POST['patrimonio_secundario'] ?? ''); ?>">
                 </div>
             </div>
             
@@ -197,8 +254,35 @@ $usuarios = $usuarios_result->fetchAll(PDO::FETCH_ASSOC);
                 </div>
                 
                 <div>
-                    <label>Valor Unitário:</label>
+                    <label>Valor NF:</label>
+                    <input type="number" step="0.01" name="valor_nf" value="<?php echo htmlspecialchars($_POST['valor_nf'] ?? ''); ?>">
+                </div>
+                <div>
+                    <label>ND Nota Despesa:</label>
+                    <input type="text" name="nd_nota_despesa" value="<?php echo htmlspecialchars($_POST['nd_nota_despesa'] ?? ''); ?>">
+                </div>
+                <div>
+                    <label>Unidade Medida:</label>
+                    <input type="text" name="unidade_medida" value="<?php echo htmlspecialchars($_POST['unidade_medida'] ?? ''); ?>">
+                </div>
+                <div>
+                    <label>Valor:</label>
                     <input type="number" step="0.01" name="valor" value="<?php echo htmlspecialchars($_POST['valor'] ?? ''); ?>">
+                </div>
+                <div>
+                    <label>Tipo Aquisição:</label>
+                    <select name="tipo_aquisicao">
+                        <option value="compra" <?php echo (isset($_POST['tipo_aquisicao']) && $_POST['tipo_aquisicao'] == 'compra') ? 'selected' : ''; ?>>Compra</option>
+                        <option value="outra" <?php echo (isset($_POST['tipo_aquisicao']) && $_POST['tipo_aquisicao'] == 'outra') ? 'selected' : ''; ?>>Outra</option>
+                    </select>
+                </div>
+                <div>
+                    <label>Tipo Aquisição Descrição:</label>
+                    <input type="text" name="tipo_aquisicao_descricao" value="<?php echo htmlspecialchars($_POST['tipo_aquisicao_descricao'] ?? ''); ?>">
+                </div>
+                <div>
+                    <label>Número Documento:</label>
+                    <input type="text" name="numero_documento" value="<?php echo htmlspecialchars($_POST['numero_documento'] ?? ''); ?>">
                 </div>
                 <div>
                     <label>Nota Fiscal/Documento:</label>
@@ -207,6 +291,15 @@ $usuarios = $usuarios_result->fetchAll(PDO::FETCH_ASSOC);
                 <div>
                     <label>Data de Entrada/Aceitação:</label>
                     <input type="date" name="data_entrada_aceitacao" value="<?php echo htmlspecialchars($_POST['data_entrada_aceitacao'] ?? ''); ?>">
+                </div>
+                <div>
+                    <label>Status Confirmação:</label>
+                    <select name="status_confirmacao">
+                        <option value="Pendente" <?php echo (isset($_POST['status_confirmacao']) && $_POST['status_confirmacao'] == 'Pendente') ? 'selected' : ''; ?>>Pendente</option>
+                        <option value="Confirmado" <?php echo (isset($_POST['status_confirmacao']) && $_POST['status_confirmacao'] == 'Confirmado') ? 'selected' : ''; ?>>Confirmado</option>
+                        <option value="Nao Confirmado" <?php echo (isset($_POST['status_confirmacao']) && $_POST['status_confirmacao'] == 'Nao Confirmado') ? 'selected' : ''; ?>>Não Confirmado</option>
+                        <option value="Movimento Desfeito" <?php echo (isset($_POST['status_confirmacao']) && $_POST['status_confirmacao'] == 'Movimento Desfeito') ? 'selected' : ''; ?>>Movimento Desfeito</option>
+                    </select>
                 </div>
                 
                 <!-- Campos ocultos que serão preenchidos automaticamente -->
@@ -222,16 +315,15 @@ $usuarios = $usuarios_result->fetchAll(PDO::FETCH_ASSOC);
                 <div>
                     <label>Estado:</label>
                     <select name="estado">
-                        <option value="Em uso" <?php echo (isset($_POST['estado']) && $_POST['estado'] == 'Em uso') ? 'selected' : ''; ?>>Em uso</option>
-                        <option value="Ocioso" <?php echo (isset($_POST['estado']) && $_POST['estado'] == 'Ocioso') ? 'selected' : ''; ?>>Ocioso</option>
-                        <option value="Recuperável" <?php echo (isset($_POST['estado']) && $_POST['estado'] == 'Recuperável') ? 'selected' : ''; ?>>Recuperável</option>
+                        <option value="Bom" <?php echo (isset($_POST['estado']) && $_POST['estado'] == 'Bom') ? 'selected' : ''; ?>>Bom</option>
+                        <option value="Razoável" <?php echo (isset($_POST['estado']) && $_POST['estado'] == 'Razoável') ? 'selected' : ''; ?>>Razoável</option>
                         <option value="Inservível" <?php echo (isset($_POST['estado']) && $_POST['estado'] == 'Inservível') ? 'selected' : ''; ?>>Inservível</option>
                     </select>
                 </div>
                 <div>
                     <label>Local:</label>
                     <div class="autocomplete-container">
-                        <input type="text" id="search_local" name="search_local" placeholder="Digite para buscar um local..." autocomplete="off" 
+                        <input type="text" id="search_local" name="search_local" placeholder="Digite para buscar um local..." autocomplete="off"
                                value="<?php echo htmlspecialchars($_POST['search_local'] ?? ''); ?>">
                         <input type="hidden" name="local_id" id="local_id" value="<?php echo htmlspecialchars($_POST['local_id'] ?? ''); ?>">
                         <div id="local_suggestions" class="suggestions-list"></div>
@@ -247,13 +339,17 @@ $usuarios = $usuarios_result->fetchAll(PDO::FETCH_ASSOC);
                     </div>
                 </div>
                 <div>
+                    <label>Usuário Anterior:</label>
+                    <input type="number" name="usuario_anterior_id" value="<?php echo htmlspecialchars($_POST['usuario_anterior_id'] ?? ''); ?>">
+                </div>
+                <div>
                     <label>Observação:</label>
                     <textarea name="observacao"><?php echo htmlspecialchars($_POST['observacao'] ?? ''); ?></textarea>
                 </div>
             </div>
         </div>
         
-        <div style="margin-top: 20px; text-align: center;">
+        <div>
             <input type="submit" value="Salvar Rascunho" class="btn-custom">
             <a href="rascunhos_itens.php" class="btn-secondary">Cancelar</a>
         </div>

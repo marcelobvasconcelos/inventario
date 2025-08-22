@@ -16,11 +16,20 @@ require_once __DIR__ . '/../config/db.php';
 // Busca o número de notificações pendentes para o usuário logado
 // Conta diretamente os itens que pertencem ao usuário e estão pendentes
 $notif_count = 0;
+$draft_count = 0;
 if (isset($_SESSION['id'])) {
     $sql_count = "SELECT COUNT(id) FROM itens WHERE responsavel_id = ? AND status_confirmacao = 'Pendente'";
     $stmt_count = $pdo->prepare($sql_count);
     $stmt_count->execute([$_SESSION['id']]);
     $notif_count = $stmt_count->fetchColumn();
+    
+    // Conta o número de rascunhos (apenas para administradores)
+    if ($_SESSION["permissao"] == 'Administrador') {
+        $sql_draft_count = "SELECT COUNT(id) FROM rascunhos_itens";
+        $stmt_draft_count = $pdo->prepare($sql_draft_count);
+        $stmt_draft_count->execute();
+        $draft_count = $stmt_draft_count->fetchColumn();
+    }
 }
 ?><!DOCTYPE html>
 <html lang="pt-br">
@@ -63,6 +72,11 @@ if (isset($_SESSION['id'])) {
 
             <a href="/inventario/notificacoes_usuario.php">Notificações</a>
             <?php if($_SESSION["permissao"] == 'Administrador'): ?>
+                <a href="/inventario/rascunhos_itens.php">Rascunhos
+                    <?php if($draft_count > 0): ?>
+                        <span class="notification-badge"><?php echo $draft_count; ?></span>
+                    <?php endif; ?>
+                </a>
                 <a href="/inventario/usuarios.php">Usuários</a>
                 <a href="/inventario/patrimonio_add.php">Patrimônio</a>
                 <a href="/inventario/notificacoes_admin.php">Gerenciar Notificações</a>

@@ -32,6 +32,8 @@ $advanced_search_results = [];
 $active_tab = 'update';
 if (isset($_POST['create_bulk'])) {
     $active_tab = 'create';
+} elseif (isset($_POST['create_draft_bulk'])) {
+    $active_tab = 'draft';
 } elseif (isset($_GET['advanced_search'])) {
     $active_tab = 'advanced_search';
 } elseif (isset($_GET['categorias'])) {
@@ -72,6 +74,78 @@ if($_SERVER["REQUEST_METHOD"] == "POST"){
 
     mysqli_begin_transaction($link);
     try {
+        // Ação: Criar rascunhos em lote
+        if(isset($_POST['create_draft_bulk'])){
+            $quantidade = (int)$_POST['quantidade'];
+            
+            if($quantidade <= 0){
+                throw new Exception("A quantidade deve ser um número positivo.");
+            }
+            
+            // Se um empenho foi selecionado, obter os dados do empenho
+            $empenho_id = isset($_POST['empenho_id']) ? (int)$_POST['empenho_id'] : null;
+            $empenho_numero = '';
+            $data_emissao_empenho = '';
+            $fornecedor = '';
+            $cnpj_fornecedor = '';
+            $categoria = '';
+            
+            if($empenho_id) {
+                $sql_empenho = "SELECT e.numero_empenho, e.data_emissao, e.nome_fornecedor, e.cnpj_fornecedor, c.numero as categoria_numero, c.descricao as categoria_descricao 
+                               FROM empenhos e 
+                               JOIN categorias c ON e.categoria_id = c.id 
+                               WHERE e.id = ?";
+                $stmt_empenho = mysqli_prepare($link, $sql_empenho);
+                mysqli_stmt_bind_param($stmt_empenho, "i", $empenho_id);
+                if(mysqli_stmt_execute($stmt_empenho)){
+                    $result_empenho = mysqli_stmt_get_result($stmt_empenho);
+                    if($empenho_data = mysqli_fetch_assoc($result_empenho)){
+                        $empenho_numero = $empenho_data['numero_empenho'];
+                        $data_emissao_empenho = $empenho_data['data_emissao'];
+                        $fornecedor = $empenho_data['nome_fornecedor'];
+                        $cnpj_fornecedor = $empenho_data['cnpj_fornecedor'];
+                        $categoria = $empenho_data['categoria_numero'] . ' - ' . $empenho_data['categoria_descricao'];
+                    }
+                }
+                mysqli_stmt_close($stmt_empenho);
+            }
+            
+            // Gerar patrimônios temporários sequenciais
+            // Primeiro, encontrar o próximo número sequencial para patrimônios temporários
+            $sql_next_temp = "SELECT MAX(CAST(SUBSTRING(patrimonio_novo, 5) AS UNSIGNED)) as max_temp FROM rascunhos_itens WHERE patrimonio_novo LIKE 'temp%'";
+            $result_next_temp = mysqli_query($link, $sql_next_temp);
+            $next_temp_number = 1;
+            if($result_next_temp){
+                $row_temp = mysqli_fetch_assoc($result_next_temp);
+                $next_temp_number = $row_temp['max_temp'] ? $row_temp['max_temp'] + 1 : 1;
+            }
+            
+            // Inserir os rascunhos
+            $sql_insert = "INSERT INTO rascunhos_itens (
+                nome, patrimonio_novo, local_id, responsavel_id, estado, observacao, 
+                descricao_detalhada, empenho_id, empenho, data_emissao_empenho, 
+                fornecedor, cnpj_fornecedor, categoria, data_criacao
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())";
+            $stmt_insert = mysqli_prepare($link, $sql_insert);
+            
+            for($i = 0; $i < $quantidade; $i++){
+                // Gerar patrimônio temporário
+                $patrimonio_temp = 'temp' . ($next_temp_number + $i);
+                
+                mysqli_stmt_bind_param($stmt_insert, "sssssssssssss",
+                    $_POST['nome'], $patrimonio_temp, $_POST['local_id'], $_POST['responsavel_id'],
+                    $_POST['estado'], $_POST['observacao'], $_POST['descricao_detalhada'], $empenho_id, $empenho_numero,
+                    $data_emissao_empenho, $fornecedor, $cnpj_fornecedor, $categoria
+                );
+                if(!mysqli_stmt_execute($stmt_insert)){
+                    throw new Exception("Erro ao inserir rascunho com patrimônio " . $patrimonio_temp . ".");
+                }
+            }
+            mysqli_stmt_close($stmt_insert);
+            
+            $message = $quantidade . " rascunho(s) criado(s) com sucesso!";
+        }
+        
         // Ação: Atualizar itens existentes
         if(isset($_POST['update_existing'])){
             if(empty($_POST['item_ids'])){
@@ -302,6 +376,67 @@ if($_SERVER["REQUEST_METHOD"] == "POST"){
             }
             
             $message = $quantidade . " item(s) criado(s) com sucesso!";
+        }
+
+        // Ação: Criar rascunhos em lote
+        if(isset($_POST['create_draft_bulk'])){
+            $quantidade = (int)$_POST['quantidade'];
+            
+            if($quantidade <= 0){
+                throw new Exception("A quantidade deve ser um número positivo.");
+            }
+            
+            // Se um empenho foi selecionado, obter os dados do empenho
+            $empenho_id = isset($_POST['empenho_id']) ? (int)$_POST['empenho_id'] : null;
+            $empenho_numero = '';
+            $data_emissao_empenho = '';
+            $fornecedor = '';
+            $cnpj_fornecedor = '';
+            $categoria = '';
+            
+            if($empenho_id) {
+                $sql_empenho = "SELECT e.numero_empenho, e.data_emissao, e.nome_fornecedor, e.cnpj_fornecedor, c.numero as categoria_numero, c.descricao as categoria_descricao 
+                               FROM empenhos e 
+                               JOIN categorias c ON e.categoria_id = c.id 
+                               WHERE e.id = ?";
+                $stmt_empenho = mysqli_prepare($link, $sql_empenho);
+                mysqli_stmt_bind_param($stmt_empenho, "i", $empenho_id);
+                if(mysqli_stmt_execute($stmt_empenho)){
+                    $result_empenho = mysqli_stmt_get_result($stmt_empenho);
+                    if($empenho_data = mysqli_fetch_assoc($result_empenho)){
+                        $empenho_numero = $empenho_data['numero_empenho'];
+                        $data_emissao_empenho = $empenho_data['data_emissao'];
+                        $fornecedor = $empenho_data['nome_fornecedor'];
+                        $cnpj_fornecedor = $empenho_data['cnpj_fornecedor'];
+                        $categoria = $empenho_data['categoria_numero'] . ' - ' . $empenho_data['categoria_descricao'];
+                    }
+                }
+                mysqli_stmt_close($stmt_empenho);
+            }
+            
+            // Gerar um número de sequência para os patrimônios temporários
+            // Para garantir unicidade, vamos usar o timestamp + um número sequencial
+            $timestamp = time();
+            $sequencia_inicial = rand(1000, 9999); // Número aleatório para evitar conflitos
+            
+            // Inserir os rascunhos
+            $sql_insert = "INSERT INTO rascunhos_itens (nome, patrimonio_novo, local_id, responsavel_id, estado, observacao, descricao_detalhada, empenho_id, empenho, data_emissao_empenho, fornecedor, cnpj_fornecedor, categoria, data_criacao) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())";
+            $stmt_insert = mysqli_prepare($link, $sql_insert);
+            
+            for($i = 0; $i < $quantidade; $i++){
+                $patrimonio_temp = "temp" . ($timestamp + $i) . $sequencia_inicial;
+                mysqli_stmt_bind_param($stmt_insert, "ssiiisssissss",
+                    $_POST['nome'], $patrimonio_temp, $_POST['local_id'], $_POST['responsavel_id'],
+                    $_POST['estado'], $_POST['observacao'], $_POST['descricao_detalhada'], $empenho_id, $empenho_numero,
+                    $data_emissao_empenho, $fornecedor, $cnpj_fornecedor, $categoria
+                );
+                if(!mysqli_stmt_execute($stmt_insert)){
+                    throw new Exception("Erro ao inserir rascunho com patrimônio " . $patrimonio_temp . ".");
+                }
+            }
+            mysqli_stmt_close($stmt_insert);
+            
+            $message = $quantidade . " rascunho(s) criado(s) com sucesso!";
         }
 
         mysqli_commit($link);
@@ -539,6 +674,7 @@ if($result_empenhos_update){
     <button class="tab-button <?php if($active_tab == 'create') echo 'active'; ?>" onclick="showTab(event, 'create')">Criar Novos Itens em Lote</button>
     <button class="tab-button <?php if($active_tab == 'categorias') echo 'active'; ?>" onclick="showTab(event, 'categorias')">Categorias</button>
     <button class="tab-button <?php if($active_tab == 'empenhos') echo 'active'; ?>" onclick="showTab(event, 'empenhos')">Empenhos</button>
+    <button class="tab-button <?php if($active_tab == 'rascunhos') echo 'active'; ?>" onclick="showTab(event, 'rascunhos')">Rascunhos</button>
     <button class="tab-button <?php if($active_tab == 'advanced_search') echo 'active'; ?>" onclick="showTab(event, 'advanced_search')">Pesquisa Avançada</button>
 </div>
 
@@ -838,6 +974,105 @@ if($result_empenhos_update){
     <?php else: ?>
         <p>Nenhum empenho cadastrado.</p>
     <?php endif; ?>
+</div>
+
+<!-- Formulário de Rascunhos -->
+ <div id="rascunhos" class="tab-content <?php if($active_tab == 'rascunhos') echo 'active'; ?>">
+    <h3>Gestão de Rascunhos</h3>
+    
+    <!-- Formulário de Criação de Rascunho -->
+    <form action="patrimonio_add.php" method="post">
+        <h4>Dados do Rascunho</h4>
+        <div class="form-grid">
+            <div class="form-section">
+                <div><label>Nome do Item:</label><input type="text" name="nome" required></div>
+                <div><label>Descrição Detalhada:</label><textarea name="descricao_detalhada" maxlength="200"></textarea></div>
+                <div><label>Estado:</label>
+                    <select name="estado" required>
+                        <option value="Em uso">Em uso</option>
+                        <option value="Ocioso">Ocioso</option>
+                        <option value="Recuperável">Recuperável</option>
+                        <option value="Inservível">Inservível</option>
+                    </select>
+                </div>
+                <div><label>Local:</label>
+                    <div class="autocomplete-container">
+                        <input type="text" id="search_local_rascunho" name="search_local_rascunho" placeholder="Digite para buscar um local..." autocomplete="off">
+                        <input type="hidden" name="local_id" id="local_id_rascunho" required>
+                        <div id="local_suggestions_rascunho" class="suggestions-list"></div>
+                    </div>
+                </div>
+                <div><label>Responsável:</label>
+                    <div class="autocomplete-container">
+                        <input type="text" id="search_responsavel_rascunho" name="search_responsavel_rascunho" placeholder="Digite para buscar um responsável..." autocomplete="off">
+                        <input type="hidden" name="responsavel_id" id="responsavel_id_rascunho" required>
+                        <div id="responsavel_suggestions_rascunho" class="suggestions-list"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="form-section">
+                <div><label>Empenho:</label>
+                    <select name="empenho_id" id="empenho_id_rascunho">
+                        <option value="">Selecione um empenho (opcional)</option>
+                        <?php foreach($empenhos_abertos as $empenho_item): ?>
+                            <option value="<?php echo $empenho_item['id']; ?>" 
+                                    data-categoria="<?php echo htmlspecialchars($empenho_item['categoria_numero'] . ' - ' . $empenho_item['categoria_descricao']); ?>"
+                                    data-data-emissao="<?php echo $empenho_item['data_emissao']; ?>"
+                                    data-fornecedor="<?php echo htmlspecialchars($empenho_item['nome_fornecedor']); ?>"
+                                    data-cnpj="<?php echo $empenho_item['cnpj_fornecedor']; ?>">
+                                <?php echo htmlspecialchars($empenho_item['numero_empenho'] . ' | ' . date('d/m/Y', strtotime($empenho_item['data_emissao']))); ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <div><label>Processo/Documento:</label><input type="text" name="processo_documento"></div>
+                <div><label>Número de Série:</label><input type="text" name="numero_serie"></div>
+                <div><label>Quantidade:</label><input type="number" name="quantidade" min="1" value="1"></div>
+                <div><label>Valor Unitário:</label><input type="number" step="0.01" name="valor"></div>
+                <div><label>Nota Fiscal/Documento:</label><input type="text" name="nota_fiscal_documento"></div>
+                <div><label>Data de Entrada/Aceitação:</label><input type="date" name="data_entrada_aceitacao"></div>
+                <div><label>Observação:</label><textarea name="observacao"></textarea></div>
+            </div>
+        </div>
+        <div style="margin-top: 20px;">
+            <input type="submit" name="create_draft" value="Salvar Rascunho" class="btn-custom">
+        </div>
+    </form>
+
+    <!-- Lista de Rascunhos -->
+    <div class="item-list" style="margin-top: 20px;">
+        <h4>Rascunhos Cadastrados</h4>
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Nome</th>
+                    <th>Patrimônio Temporário</th>
+                    <th>Local</th>
+                    <th>Responsável</th>
+                    <th>Empenho</th>
+                    <th>Ações</th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php foreach($drafts as $draft): ?>
+                    <tr>
+                        <td><?php echo htmlspecialchars($draft['id']); ?></td>
+                        <td><?php echo htmlspecialchars($draft['nome']); ?></td>
+                        <td><?php echo htmlspecialchars($draft['patrimonio_novo']); ?></td>
+                        <td><?php echo htmlspecialchars($draft['local_nome']); ?></td>
+                        <td><?php echo htmlspecialchars($draft['responsavel_nome']); ?></td>
+                        <td><?php echo htmlspecialchars($draft['empenho']); ?></td>
+                        <td>
+                            <a href="item_draft_details.php?id=<?php echo $draft['id']; ?>" title="Ver Detalhes"><i class="fas fa-eye"></i></a>
+                            <a href="item_draft_edit.php?id=<?php echo $draft['id']; ?>" title="Editar"><i class="fas fa-edit"></i></a>
+                            <a href="patrimonio_add.php?finalize_draft=<?php echo $draft['id']; ?>" title="Finalizar Rascunho" onclick="return confirm('Tem certeza que deseja finalizar este rascunho?')"><i class="fas fa-check"></i></a>
+                        </td>
+                    </tr>
+                <?php endforeach; ?>
+            </tbody>
+        </table>
+    </div>
 </div>
 
 <!-- Formulário de Pesquisa Avançada -->
