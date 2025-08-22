@@ -202,6 +202,54 @@ if ($perfil !== 'Administrador' && $perfil !== 'Gestor') {
 }
 ?>
 
+<style>
+.autocomplete-container {
+    position: relative;
+    display: inline-block;
+    width: 100%;
+}
+
+.autocomplete-container input[type="text"] {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    box-sizing: border-box;
+}
+
+.suggestions-list {
+    position: absolute;
+    border: 1px solid #d4d4d4;
+    border-bottom: none;
+    border-top: none;
+    z-index: 99;
+    top: 100%;
+    left: 0;
+    right: 0;
+    max-height: 200px;
+    overflow-y: auto;
+    background-color: #fff;
+    display: none;
+}
+
+.suggestions-list div {
+    padding: 10px;
+    cursor: pointer;
+    background-color: #fff;
+    border-bottom: 1px solid #d4d4d4;
+}
+
+.suggestions-list div:hover {
+    background-color: #e9e9e9;
+}
+
+.suggestions-list .search-result-item {
+    padding: 10px;
+    color: #999;
+    font-style: italic;
+}
+</style>
+
 <h2>Adicionar Novo Item</h2>
 
 <?php if ($perfil === 'Gestor' && $is_gestor_sem_local && empty($local_id)): ?>
@@ -211,14 +259,11 @@ if ($perfil !== 'Administrador' && $perfil !== 'Gestor') {
     <form action="<?php echo htmlspecialchars($_SERVER['PHP_SELF']); ?>" method="post">
         <div>
             <label>Selecione um Local</label>
-            <select name="local_id" required>
-                <option value="">Selecione um Local</option>
-                <?php if ($locais_result): ?>
-                    <?php while($local = mysqli_fetch_assoc($locais_result)): ?>
-                        <option value="<?php echo $local['id']; ?>"><?php echo $local['nome']; ?></option>
-                    <?php endwhile; ?>
-                <?php endif; ?>
-            </select>
+            <div class="autocomplete-container">
+                <input type="text" id="search_local" name="search_local" placeholder="Digite para buscar um local..." autocomplete="off">
+                <input type="hidden" name="local_id" id="local_id" required>
+                <div id="local_suggestions" class="suggestions-list"></div>
+            </div>
             <span class="help-block"><?php echo $local_id_err; ?></span>
         </div>
         <div>
@@ -247,17 +292,28 @@ if ($perfil !== 'Administrador' && $perfil !== 'Gestor') {
         </div>
         <div>
             <label>Local</label>
-            <select name="local_id" required <?php echo ($perfil === 'Gestor' && $is_gestor_sem_local && !empty($local_id)) ? 'disabled' : ''; ?>>
-                <option value="">Selecione um Local</option>
-                <?php if ($locais_result): ?>
-                    <?php mysqli_data_seek($locais_result, 0); ?>
-                    <?php while($local = mysqli_fetch_assoc($locais_result)): ?>
-                        <option value="<?php echo $local['id']; ?>" <?php echo ($local['id'] == $local_id) ? 'selected' : ''; ?>><?php echo $local['nome']; ?></option>
-                    <?php endwhile; ?>
-                <?php endif; ?>
-            </select>
             <?php if ($perfil === 'Gestor' && $is_gestor_sem_local && !empty($local_id)): ?>
+                <?php
+                // Para gestor sem local, exibir o nome do local pré-selecionado
+                $local_nome = '';
+                if ($locais_result) {
+                    mysqli_data_seek($locais_result, 0);
+                    while($local = mysqli_fetch_assoc($locais_result)) {
+                        if ($local['id'] == $local_id) {
+                            $local_nome = $local['nome'];
+                            break;
+                        }
+                    }
+                }
+                ?>
+                <input type="text" value="<?php echo htmlspecialchars($local_nome); ?>" disabled>
                 <input type="hidden" name="local_id" value="<?php echo htmlspecialchars($local_id); ?>">
+            <?php else: ?>
+                <div class="autocomplete-container">
+                    <input type="text" id="search_local" name="search_local" placeholder="Digite para buscar um local..." autocomplete="off">
+                    <input type="hidden" name="local_id" id="local_id" value="<?php echo htmlspecialchars($local_id); ?>" required>
+                    <div id="local_suggestions" class="suggestions-list"></div>
+                </div>
             <?php endif; ?>
             <span class="help-block"><?php echo $local_id_err; ?></span>
         </div>
@@ -267,14 +323,11 @@ if ($perfil !== 'Administrador' && $perfil !== 'Gestor') {
                 <input type="text" value="<?php echo htmlspecialchars($_SESSION['nome']); ?>" disabled>
                 <input type="hidden" name="responsavel_id" value="<?php echo (int)$_SESSION['id']; ?>">
             <?php else: ?>
-                <select name="responsavel_id" required>
-                    <option value="">Selecione um Responsável</option>
-                    <?php if ($usuarios_result): ?>
-                        <?php while($usuario = mysqli_fetch_assoc($usuarios_result)): ?>
-                            <option value="<?php echo $usuario['id']; ?>" <?php echo ($usuario['id'] == $responsavel_id) ? 'selected' : ''; ?>><?php echo $usuario['nome']; ?></option>
-                        <?php endwhile; ?>
-                    <?php endif; ?>
-                </select>
+                <div class="autocomplete-container">
+                    <input type="text" id="search_responsavel" name="search_responsavel" placeholder="Digite para buscar um responsável..." autocomplete="off">
+                    <input type="hidden" name="responsavel_id" id="responsavel_id" value="<?php echo htmlspecialchars($responsavel_id); ?>" required>
+                    <div id="responsavel_suggestions" class="suggestions-list"></div>
+                </div>
                 <span class="help-block"><?php echo $responsavel_id_err; ?></span>
             <?php endif; ?>
         </div>
@@ -299,6 +352,116 @@ if ($perfil !== 'Administrador' && $perfil !== 'Gestor') {
         </div>
     </form>
 <?php endif; ?>
+
+<script>
+// Função genérica para busca com autocomplete
+function setupAutocomplete(inputEl, suggestionsEl, hiddenIdEl, searchUrl) {
+    let debounceTimeout;
+    
+    inputEl.addEventListener('input', function() {
+        clearTimeout(debounceTimeout);
+        const searchTerm = this.value;
+        suggestionsEl.innerHTML = '';
+        hiddenIdEl.value = '';
+        
+        if (searchTerm.length < 3) {
+            suggestionsEl.style.display = 'none';
+            return;
+        }
+        
+        // Debounce: Atraso de 300ms para evitar chamadas excessivas à API
+        debounceTimeout = setTimeout(() => {
+            fetch(`${searchUrl}?term=${encodeURIComponent(searchTerm)}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.error) {
+                        console.error(data.error);
+                        return;
+                    }
+                    if (data.length > 0) {
+                        data.forEach(item => {
+                            const div = document.createElement('div');
+                            div.textContent = item.nome;
+                            div.dataset.id = item.id;
+                            div.addEventListener('click', function() {
+                                inputEl.value = this.textContent;
+                                hiddenIdEl.value = this.dataset.id;
+                                suggestionsEl.innerHTML = '';
+                                suggestionsEl.style.display = 'none';
+                            });
+                            suggestionsEl.appendChild(div);
+                        });
+                        suggestionsEl.style.display = 'block';
+                    } else {
+                        suggestionsEl.innerHTML = '<div class="search-result-item">Nenhum resultado encontrado</div>';
+                        suggestionsEl.style.display = 'block';
+                    }
+                })
+                .catch(error => console.error('Erro no autocomplete:', error));
+        }, 300);
+    });
+    
+    // Esconder sugestões se clicar fora
+    document.addEventListener('click', function(e) {
+        if (e.target !== inputEl) {
+            suggestionsEl.style.display = 'none';
+        }
+    });
+}
+
+// Configurar autocomplete para locais e responsáveis
+document.addEventListener('DOMContentLoaded', function() {
+    // Campos de local
+    const searchLocal = document.getElementById('search_local');
+    const localSuggestions = document.getElementById('local_suggestions');
+    const localId = document.getElementById('local_id');
+    
+    // Campos de responsável (apenas para administradores)
+    const searchResponsavel = document.getElementById('search_responsavel');
+    const responsavelSuggestions = document.getElementById('responsavel_suggestions');
+    const responsavelId = document.getElementById('responsavel_id');
+    
+    if (searchLocal && localSuggestions && localId) {
+        setupAutocomplete(searchLocal, localSuggestions, localId, 'api/search_locais.php');
+        
+        // Se estiver editando e já tiver um local_id, buscar o nome do local
+        if (localId.value) {
+            fetch(`api/search_locais.php?term=${encodeURIComponent(localId.value)}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.length > 0) {
+                        // Encontrar o local com o ID exato
+                        const local = data.find(l => l.id == localId.value);
+                        if (local) {
+                            searchLocal.value = local.nome;
+                        }
+                    }
+                })
+                .catch(error => console.error('Erro ao buscar nome do local:', error));
+        }
+    }
+    
+    if (searchResponsavel && responsavelSuggestions && responsavelId) {
+        setupAutocomplete(searchResponsavel, responsavelSuggestions, responsavelId, 'api/search_usuarios.php');
+        
+        // Se estiver editando e já tiver um responsavel_id, buscar o nome do responsável
+        if (responsavelId.value) {
+            fetch(`api/search_usuarios.php?term=${encodeURIComponent(responsavelId.value)}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.length > 0) {
+                        // Encontrar o usuário com o ID exato
+                        const usuario = data.find(u => u.id == responsavelId.value);
+                        if (usuario) {
+                            searchResponsavel.value = usuario.nome;
+                        }
+                    }
+                })
+                .catch(error => console.error('Erro ao buscar nome do responsável:', error));
+        }
+    }
+});
+</script>
 
 <?php
 mysqli_close($link);
