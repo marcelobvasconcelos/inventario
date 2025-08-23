@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Teste de Variáveis CSS</title>
+    <style>
+        :root {
+            --cor-primaria: #ff0000; /* Vermelho para teste */
+            --cor-secundaria: #00ff00; /* Verde para teste */
+        }
+        .teste-var {
+            width: 100px;
+            height: 100px;
+            margin: 10px;
+            display: inline-block;
+            border: 2px solid black;
+        }
+        .cor-primaria { background-color: var(--cor-primaria); }
+        .cor-secundaria { background-color: var(--cor-secundaria); }
+    </style>
+</head>
+<body>
+    <h1>Teste de Variáveis CSS</h1>
+    
+    <div>
+        <h2>Cores atuais:</h2>
+        <div class="teste-var cor-primaria"></div>
+        <div class="teste-var cor-secundaria"></div>
+    </div>
+    
+    <div>
+        <h2>Mudar variáveis:</h2>
+        <button onclick="mudarVariaveis('padrao')">Padrão</button>
+        <button onclick="mudarVariaveis('azul')">Azul</button>
+        <button onclick="mudarVariaveis('verde')">Verde</button>
+        <button onclick="mudarVariaveis('roxo')">Roxo</button>
+    </div>
+    
+    <div style="margin-top: 20px;">
+        <h2>Valores das variáveis:</h2>
+        <p>Cor primária: <span id="valor-primaria">#ff0000</span></p>
+        <p>Cor secundária: <span id="valor-secundaria">#00ff00</span></p>
+    </div>
+
+    <script>
+        function mudarVariaveis(tema) {
+            console.log('Mudando variáveis para:', tema);
+            
+            // Define as variáveis CSS com base no tema
+            const root = document.documentElement;
+            let corPrimaria, corSecundaria;
+            
+            switch(tema) {
+                case 'azul':
+                    corPrimaria = '#2980b9';
+                    corSecundaria = '#3498db';
+                    break;
+                case 'verde':
+                    corPrimaria = '#27ae60';
+                    corSecundaria = '#2ecc71';
+                    break;
+                case 'roxo':
+                    corPrimaria = '#8e44ad';
+                    corSecundaria = '#9b59b6';
+                    break;
+                case 'padrao':
+                default:
+                    corPrimaria = '#124a80';
+                    corSecundaria = '#28a745';
+                    break;
+            }
+            
+            // Aplica as variáveis CSS
+            root.style.setProperty('--cor-primaria', corPrimaria);
+            root.style.setProperty('--cor-secundaria', corSecundaria);
+            
+            // Atualiza os valores exibidos
+            document.getElementById('valor-primaria').textContent = corPrimaria;
+            document.getElementById('valor-secundaria').textContent = corSecundaria;
+            
+            console.log('Variáveis atualizadas:', corPrimaria, corSecundaria);
+        }
+    </script>
+</body>
+</html>

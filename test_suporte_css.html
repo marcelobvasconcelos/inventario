@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Teste de Suporte a Variáveis CSS</title>
+    <style>
+        :root {
+            --cor-teste: #ff0000;
+        }
+        .teste-variavel {
+            width: 100px;
+            height: 100px;
+            background-color: var(--cor-teste, #0000ff);
+            margin: 10px;
+            display: inline-block;
+        }
+    </style>
+</head>
+<body>
+    <h1>Teste de Suporte a Variáveis CSS</h1>
+    
+    <div>
+        <h2>Teste de variável CSS:</h2>
+        <div class="teste-variavel"></div>
+        <p>Se este quadrado for vermelho, o navegador suporta variáveis CSS.</p>
+        <p>Se for azul, o navegador NÃO suporta variáveis CSS.</p>
+    </div>
+    
+    <div>
+        <h2>Teste dinâmico:</h2>
+        <button onclick="mudarCor()">Mudar Cor para Verde</button>
+        <button onclick="mudarCor2()">Mudar Cor para Roxo</button>
+        <button onclick="resetarCor()">Resetar Cor</button>
+    </div>
+    
+    <div style="margin-top: 20px;">
+        <h2>Resultado do teste:</h2>
+        <p id="resultado">Aguardando teste...</p>
+    </div>
+
+    <script>
+        // Verifica suporte a variáveis CSS
+        document.addEventListener('DOMContentLoaded', function() {
+            const testeElemento = document.querySelector('.teste-variavel');
+            const computedStyle = window.getComputedStyle(testeElemento);
+            const bgColor = computedStyle.backgroundColor;
+            
+            console.log('Cor de fundo computada:', bgColor);
+            
+            // Converte a cor para formato hexadecimal para comparação
+            const corHex = rgbParaHex(bgColor);
+            console.log('Cor em hexadecimal:', corHex);
+            
+            const resultadoElemento = document.getElementById('resultado');
+            
+            if (corHex.toLowerCase() === '#ff0000') {
+                resultadoElemento.textContent = 'Sucesso: O navegador suporta variáveis CSS!';
+                resultadoElemento.style.color = 'green';
+            } else if (corHex.toLowerCase() === '#0000ff') {
+                resultadoElemento.textContent = 'Problema: O navegador NÃO suporta variáveis CSS!';
+                resultadoElemento.style.color = 'red';
+            } else {
+                resultadoElemento.textContent = `Resultado inesperado: ${bgColor} (${corHex})`;
+                resultadoElemento.style.color = 'orange';
+            }
+        });
+        
+        // Função para mudar a cor
+        function mudarCor() {
+            document.documentElement.style.setProperty('--cor-teste', '#00ff00');
+        }
+        
+        function mudarCor2() {
+            document.documentElement.style.setProperty('--cor-teste', '#800080');
+        }
+        
+        function resetarCor() {
+            document.documentElement.style.removeProperty('--cor-teste');
+        }
+        
+        // Função para converter RGB para Hex
+        function rgbParaHex(rgb) {
+            // Se já for hex, retorna como está
+            if (rgb.startsWith('#')) {
+                return rgb;
+            }
+            
+            // Extrai os valores RGB
+            const match = rgb.match(/^rgb\((\d+),\s*(\d+),\s*(\d+)\)$/);
+            if (!match) {
+                return rgb;
+            }
+            
+            const r = parseInt(match[1]);
+            const g = parseInt(match[2]);
+            const b = parseInt(match[3]);
+            
+            // Converte para hex
+            return "#" + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1);
+        }
+    </script>
+</body>
+</html>

@@ -13,3 +13,31 @@
     color: #28a745;
     border-bottom: 2px solid #28a745;
 }
+
+/* Botão customizado */
+.almoxarifado .btn-custom {
+    background-color: #28a745;
+    border: none;
+    color: white;
+    padding: 10px 20px;
+    border-radius: 5px;
+    text-decoration: none;
+    display: inline-block;
+    transition: all 0.3s ease;
+    font-weight: 600;
+    font-size: 16px;
+    cursor: pointer;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+
+.almoxarifado .btn-custom:hover {
+    background-color: #218838;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+    transform: translateY(-2px);
+}
+
+.almoxarifado .btn-custom:active,
+.almoxarifado .btn-custom.btn-clicked {
+    transform: translateY(0);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}

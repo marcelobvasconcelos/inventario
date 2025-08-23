@@ -1,0 +1,32 @@
+/* teste_temas.css - CSS de teste para verificar se o tema está sendo aplicado */
+
+/* Estilos para verificar se o CSS está sendo carregado */
+.teste-tema {
+    border: 3px solid red !important;
+    background-color: yellow !important;
+    color: black !important;
+    font-weight: bold !important;
+    padding: 10px !important;
+    margin: 10px !important;
+}
+
+/* Estilos específicos para cada tema */
+.teste-tema-padrao {
+    border-color: #124a80 !important;
+    background-color: #eef2f7 !important;
+}
+
+.teste-tema-azul {
+    border-color: #2980b9 !important;
+    background-color: #e1f0fa !important;
+}
+
+.teste-tema-verde {
+    border-color: #27ae60 !important;
+    background-color: #e8f5e9 !important;
+}
+
+.teste-tema-roxo {
+    border-color: #8e44ad !important;
+    background-color: #f5e8f5 !important;
+}

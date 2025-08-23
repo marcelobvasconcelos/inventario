@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Teste Direto de CSS</title>
+    <link rel="stylesheet" id="tema-css" href="css/tema_padrao.css">
+    <style>
+        .teste-cor {
+            width: 100px;
+            height: 100px;
+            margin: 10px;
+            display: inline-block;
+            border: 2px solid black;
+        }
+        .cor-primaria {
+            background-color: var(--cor-primaria, #124a80);
+        }
+        .cor-secundaria {
+            background-color: var(--cor-secundaria, #28a745);
+        }
+    </style>
+</head>
+<body>
+    <h1>Teste Direto de CSS</h1>
+    
+    <div>
+        <h2>Cores atuais:</h2>
+        <div class="teste-cor cor-primaria"></div>
+        <div class="teste-cor cor-secundaria"></div>
+    </div>
+    
+    <div>
+        <h2>Mudar tema:</h2>
+        <button onclick="mudarTema('padrao')">Padrão</button>
+        <button onclick="mudarTema('azul')">Azul</button>
+        <button onclick="mudarTema('verde')">Verde</button>
+        <button onclick="mudarTema('roxo')">Roxo</button>
+    </div>
+    
+    <div style="margin-top: 20px;">
+        <h2>Informações:</h2>
+        <p>Tema atual: <span id="tema-atual">padrao</span></p>
+        <p>URL do CSS: <span id="css-url"></span></p>
+    </div>
+
+    <script>
+        function mudarTema(tema) {
+            console.log('Mudando tema para:', tema);
+            
+            // Atualiza o nome do tema na página
+            document.getElementById('tema-atual').textContent = tema;
+            
+            // Atualiza o CSS do tema
+            const temaLink = document.getElementById('tema-css');
+            if (temaLink) {
+                // Constrói o novo href com um timestamp para evitar cache
+                const timestamp = new Date().getTime();
+                const novoHref = `css/tema_${tema}.css?v=${timestamp}`;
+                console.log('Novo href:', novoHref);
+                
+                temaLink.href = novoHref;
+                
+                // Atualiza a URL exibida
+                document.getElementById('css-url').textContent = novoHref;
+                
+                // Força uma atualização visual após um pequeno atraso
+                setTimeout(() => {
+                    // Força reflow
+                    document.body.style.display = 'none';
+                    document.body.offsetHeight;
+                    document.body.style.display = 'block';
+                    
+                    console.log('Atualização visual forçada');
+                }, 100);
+            }
+        }
+        
+        // Inicializa a URL do CSS
+        document.addEventListener('DOMContentLoaded', function() {
+            const temaLink = document.getElementById('tema-css');
+            if (temaLink) {
+                document.getElementById('css-url').textContent = temaLink.href;
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Teste de Cache de CSS</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" id="tema-css" href="css/tema_padrao.css">
+    <style>
+        .teste-cache {
+            width: 100px;
+            height: 100px;
+            margin: 10px;
+            display: inline-block;
+            border: 2px solid black;
+        }
+        .cor-primaria { background-color: var(--cor-primaria); }
+        .cor-secundaria { background-color: var(--cor-secundaria); }
+    </style>
+</head>
+<body>
+    <h1>Teste de Cache de CSS</h1>
+    
+    <div>
+        <h2>Cores atuais:</h2>
+        <div class="teste-cache cor-primaria"></div>
+        <div class="teste-cache cor-secundaria"></div>
+    </div>
+    
+    <div>
+        <h2>Mudar tema (com timestamp para evitar cache):</h2>
+        <button onclick="mudarTema('padrao')">Padrão</button>
+        <button onclick="mudarTema('azul')">Azul</button>
+        <button onclick="mudarTema('verde')">Verde</button>
+        <button onclick="mudarTema('roxo')">Roxo</button>
+    </div>
+    
+    <div>
+        <h2>Mudar tema (sem timestamp - pode usar cache):</h2>
+        <button onclick="mudarTemaSemCache('padrao')">Padrão</button>
+        <button onclick="mudarTemaSemCache('azul')">Azul</button>
+        <button onclick="mudarTemaSemCache('verde')">Verde</button>
+        <button onclick="mudarTemaSemCache('roxo')">Roxo</button>
+    </div>
+    
+    <div style="margin-top: 20px;">
+        <h2>Botões do sistema:</h2>
+        <button class="btn btn-primary">Botão Primário</button>
+        <button class="btn btn-success">Botão Secundário</button>
+    </div>
+    
+    <div style="margin-top: 20px;">
+        <h2>Informações:</h2>
+        <p>Tema atual: <span id="tema-atual">padrao</span></p>
+        <p>URL do CSS: <span id="css-url"></span></p>
+    </div>
+
+    <script>
+        // Atualiza a URL exibida quando a página carrega
+        document.addEventListener('DOMContentLoaded', function() {
+            atualizarInfoCSS();
+        });
+        
+        function mudarTema(tema) {
+            console.log('Mudando tema (com timestamp):', tema);
+            
+            // Atualiza o nome do tema na página
+            document.getElementById('tema-atual').textContent = tema;
+            
+            // Atualiza o CSS do tema com timestamp
+            const temaLink = document.getElementById('tema-css');
+            if (temaLink) {
+                const timestamp = new Date().getTime();
+                const novoHref = `css/tema_${tema}.css?v=${timestamp}`;
+                console.log('Novo href (com timestamp):', novoHref);
+                
+                temaLink.href = novoHref;
+                
+                atualizarInfoCSS();
+            }
+        }
+        
+        function mudarTemaSemCache(tema) {
+            console.log('Mudando tema (sem timestamp):', tema);
+            
+            // Atualiza o nome do tema na página
+            document.getElementById('tema-atual').textContent = tema;
+            
+            // Atualiza o CSS do tema sem timestamp
+            const temaLink = document.getElementById('tema-css');
+            if (temaLink) {
+                const novoHref = `css/tema_${tema}.css`;
+                console.log('Novo href (sem timestamp):', novoHref);
+                
+                temaLink.href = novoHref;
+                
+                atualizarInfoCSS();
+            }
+        }
+        
+        // Função para atualizar informações do CSS
+        function atualizarInfoCSS() {
+            const temaLink = document.getElementById('tema-css');
+            if (temaLink) {
+                document.getElementById('css-url').textContent = temaLink.href;
+            }
+        }
+    </script>
+</body>
+</html>
