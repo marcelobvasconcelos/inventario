@@ -1,4 +1,4 @@
-</main>
+    </main>
     
     <script>
     // Função para atualizar o badge do sino de notificações
@@ -40,6 +40,23 @@
 
     // Expõe a função para ser chamada em outras partes do código
     window.atualizarBadgeNotificacoes = atualizarBadgeNotificacoes;
+    
+    // Padronização de comportamento dos botões btn-custom
+    document.addEventListener('DOMContentLoaded', function() {
+        const customButtons = document.querySelectorAll('.btn-custom');
+        customButtons.forEach(function(button) {
+            // Garante que botões <a> também tenham o comportamento de botão
+            if (button.tagName === 'A') {
+                button.addEventListener('click', function(e) {
+                    // Adiciona efeito visual de clique
+                    this.classList.add('btn-clicked');
+                    setTimeout(() => {
+                        this.classList.remove('btn-clicked');
+                    }, 200);
+                });
+            }
+        });
+    });
     </script>
 
     <footer>

@@ -17,7 +17,29 @@ require_once __DIR__ . '/../config/db.php';
 // Conta diretamente os itens que pertencem ao usuário e estão pendentes
 $notif_count = 0;
 $draft_count = 0;
+$tema_usuario = 'padrao';
+
 if (isset($_SESSION['id'])) {
+    // Busca o tema preferido do usuário diretamente do banco de dados
+    try {
+        $stmt_tema = $pdo->prepare("SELECT tema_preferido FROM usuarios WHERE id = ?");
+        $stmt_tema->execute([$_SESSION['id']]);
+        $tema_result = $stmt_tema->fetchColumn();
+        
+        // Se houver um tema definido, usa ele, senão usa o padrão
+        if ($tema_result) {
+            $tema_usuario = $tema_result;
+        }
+        
+        // Atualiza a sessão com o tema mais recente
+        $_SESSION['tema_preferido'] = $tema_usuario;
+    } catch (Exception $e) {
+        // Em caso de erro, usa o tema padrão
+        $tema_usuario = 'padrao';
+        $_SESSION['tema_preferido'] = $tema_usuario;
+    }
+    
+    // Busca notificações pendentes
     $sql_count = "SELECT COUNT(id) FROM itens WHERE responsavel_id = ? AND status_confirmacao = 'Pendente'";
     $stmt_count = $pdo->prepare($sql_count);
     $stmt_count->execute([$_SESSION['id']]);
@@ -31,7 +53,8 @@ if (isset($_SESSION['id'])) {
         $draft_count = $stmt_draft_count->fetchColumn();
     }
 }
-?><!DOCTYPE html>
+?>
+<!DOCTYPE html>
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
@@ -39,17 +62,29 @@ if (isset($_SESSION['id'])) {
     <?php
     // Gerar o caminho correto para o CSS, independentemente de onde a página esteja
     $css_path = '';
+    $js_path = '';
     $is_almoxarifado = (strpos($_SERVER['REQUEST_URI'], '/almoxarifado/') !== false);
     if ($is_almoxarifado) {
         $css_path = '../';
+        $js_path = '../';
     }
     ?>
     <link rel="stylesheet" href="<?php echo $css_path; ?>css/style.css">
+    <!-- Inclui o CSS do tema selecionado -->
+    <link rel="stylesheet" id="tema-css" href="<?php echo $css_path; ?>css/tema_<?php echo htmlspecialchars($tema_usuario); ?>.css">
+    <!-- Inclui o CSS para os temas -->
+    <link rel="stylesheet" href="<?php echo $css_path; ?>css/temas.css">
     <?php if($is_almoxarifado): ?>
         <link rel="stylesheet" href="<?php echo $css_path; ?>css/almoxarifado.css">
     <?php endif; ?>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+    <style>
+        /* Estilo para ícones usando a cor do tema */
+        .icone-tema {
+            color: var(--cor-icones, var(--cor-primaria));
+        }
+    </style>
 </head>
 <body<?php echo $is_almoxarifado ? ' class="almoxarifado"' : ''; ?>>
     <header class="main-header">
@@ -97,10 +132,46 @@ if (isset($_SESSION['id'])) {
                     <?php if($_SESSION["permissao"] == 'Administrador'): ?>
                         <a href="/inventario/configuracoes_pdf.php">Configurações PDF</a>
                     <?php endif; ?>
+                    <!-- Link para selecionar tema -->
+                    <a href="#" id="seletor-tema">Selecionar Tema</a>
                     <a href="/inventario/docs.php">Ajuda</a>
                     <a href="/inventario/logout.php">Sair</a>
                 </div>
             </div>
         </div>
     </header>
+    
+    <!-- Modal para seleção de tema -->
+    <div id="modal-tema" class="modal">
+        <div class="modal-content">
+            <span class="close-button">&times;</span>
+            <h2>Selecionar Tema</h2>
+            <div class="temas-container">
+                <div class="tema-opcao" data-tema="padrao">
+                    <div class="tema-preview padrao"></div>
+                    <span>Padrão</span>
+                </div>
+                <div class="tema-opcao" data-tema="azul">
+                    <div class="tema-preview azul"></div>
+                    <span>Azul</span>
+                </div>
+                <div class="tema-opcao" data-tema="verde">
+                    <div class="tema-preview verde"></div>
+                    <span>Verde</span>
+                </div>
+                <div class="tema-opcao" data-tema="roxo">
+                    <div class="tema-preview roxo"></div>
+                    <span>Roxo</span>
+                </div>
+                <div class="tema-opcao" data-tema="altocontraste">
+                    <div class="tema-preview altocontraste"></div>
+                    <span>Alto Contraste</span>
+                </div>
+            </div>
+        </div>
+    </div>
+    
     <main>
+    
+    <!-- Inclui o JavaScript para os temas -->
+    <script src="<?php echo $js_path; ?>js/temas.js"></script>

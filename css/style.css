@@ -58,16 +58,16 @@ body {
     line-height: 1.6;
     margin: 0;
     padding: 0;
-    background: #f4f6f9; /* Fundo cinza muito claro */
-    color: #333;
+    background: var(--cor-fundo);
+    color: var(--cor-texto);
 }
 
 .main-header {
-    background: #124a80; /* Azul escuro para o header */
-    color: #fff;
+    background: var(--cor-primaria);
+    color: var(--cor-texto-claro);
     padding: 1rem 0;
     text-align: center;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 2px 5px var(--sombra);
 }
 
 .main-header h1 {
@@ -75,7 +75,7 @@ body {
 }
 
 .main-header nav a {
-    color: #fff; /* Links em branco */
+    color: var(--cor-texto-claro);
     padding: 0 15px;
     text-decoration: none;
     transition: color 0.3s ease;
@@ -206,6 +206,7 @@ form input[type='submit']:hover {
     font-size: 52px; /* Aumenta o ícone */
     display: block;
     margin-bottom: 15px;
+    color: var(--cor-icones, var(--cor-primaria)); /* Ícones na cor do tema */
 }
 
 .atalho-item span {
@@ -263,36 +264,37 @@ form input[type='submit']:hover {
     cursor: pointer;
     font-weight: 600;
     margin: 5px;
-    transition: background-color 0.3s ease, box-shadow 0.3s ease;
+    transition: all 0.3s ease;
     box-shadow: 0 2px 5px rgba(0,0,0,0.1);
 }
 
 .btn:hover {
     opacity: 1;
     box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+    transform: translateY(-2px);
 }
 
 .btn-primary {
-    background-color: #124a80; /* Azul escuro */
-    color: #fff;
+    background-color: var(--cor-primaria);
+    color: var(--cor-texto-claro);
 }
 
 .btn-primary:hover {
-    background-color: #0e3a66;
+    background-color: var(--cor-primaria-escura);
 }
 
 .btn-success {
-    background-color: #2ecc71; /* Verde para sucesso/ação principal */
-    color: #fff;
+    background-color: var(--cor-secundaria);
+    color: var(--cor-texto-claro);
 }
 
 .btn-success:hover {
-    background-color: #25a25a;
+    background-color: var(--cor-secundaria-escura);
 }
 
 .btn-danger {
-    background-color: #e74c3c; /* Vermelho para perigo */
-    color: #fff;
+    background-color: var(--cor-perigo);
+    color: var(--cor-texto-claro);
 }
 
 .btn-danger:hover {
@@ -300,17 +302,17 @@ form input[type='submit']:hover {
 }
 
 .btn-info {
-    background-color: #3498db; /* Azul claro para informação */
-    color: #fff;
+    background-color: var(--cor-secundaria);
+    color: var(--cor-texto-claro);
 }
 
 .btn-info:hover {
-    background-color: #217dbb;
+    background-color: var(--cor-secundaria-escura);
 }
 
 .btn-warning {
-    background-color: #f39c12; /* Laranja para aviso */
-    color: #fff;
+    background-color: var(--cor-destaque);
+    color: var(--cor-texto-claro);
 }
 
 .btn-warning:hover {
@@ -328,21 +330,66 @@ form input[type='submit']:hover {
     box-shadow: none;
     background-color: #e0e0e0; /* Fundo suave no hover */
     color: #333;
+    transform: none; /* Remove transformação para botões pequenos */
 }
 
 .btn-custom {
-    background-color: #2ecc71; /* Verde para destaque/ação principal */
-    color: white;
+    background-color: var(--cor-secundaria);
+    color: var(--cor-texto-claro);
     text-decoration: none;
+    border: none;
     border-radius: 5px;
     font-weight: 600;
-    transition: background-color 0.3s ease, box-shadow 0.3s ease;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 5px var(--sombra);
+    padding: 10px 20px;
+    font-size: 16px;
+    cursor: pointer;
+    display: inline-block;
+    text-align: center;
 }
 
 .btn-custom:hover {
-    background-color: #25a25a;
-    box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+    background-color: var(--cor-secundaria-escura);
+    box-shadow: 0 4px 10px var(--sombra-forte);
+    transform: translateY(-2px);
+}
+
+.btn-custom:active,
+.btn-custom.btn-clicked {
+    transform: translateY(0);
+    box-shadow: 0 1px 3px var(--sombra);
+}
+
+/* Estilos específicos para botões dentro de cards */
+.card .btn-custom {
+    display: inline-block;
+    padding: 10px 20px;
+    background-color: var(--cor-secundaria);
+    color: var(--cor-texto-claro);
+    text-decoration: none;
+    border-radius: 4px;
+    transition: all 0.3s ease;
+    border: none;
+    font-weight: 500;
+    box-shadow: 0 2px 4px var(--sombra);
+}
+
+.card .btn-custom:hover {
+    background-color: var(--cor-secundaria-escura);
+    box-shadow: 0 4px 8px var(--sombra-forte);
+    transform: translateY(-2px);
+}
+
+.card .btn-custom:active,
+.card .btn-custom.btn-clicked {
+    transform: translateY(0);
+    box-shadow: 0 1px 3px var(--sombra);
+}
+
+/* Estilos para ícones */
+i[class*="fa-"] {
+    color: var(--cor-icones, var(--cor-primaria));
 }
 
 /* Espaçamento para ícones de ação */
@@ -360,18 +407,22 @@ td a i {
 }
 
 .user-menu-button {
-    background-color: transparent; /* Fundo transparente */
-    color: white;
+    background-color: transparent;
+    color: var(--cor-texto-claro);
     padding: 8px 12px;
     font-size: 16px;
-    border: none; /* Sem borda */
+    border: none;
     border-radius: 5px;
     cursor: pointer;
     transition: background-color 0.3s ease;
 }
 
 .user-menu-button:hover {
-    background-color: rgba(255, 255, 255, 0.1); /* Leve destaque no hover */
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+.user-menu-button i {
+    color: var(--cor-texto-claro); /* Ícone do botão do menu de usuário */
 }
 
 .user-menu-dropdown {
@@ -408,7 +459,7 @@ td a i {
 /* Estilos para o sino de notificação */
 .notification-bell {
     position: relative;
-    color: #fff;
+    color: var(--cor-texto-claro);
     font-size: 24px;
     margin-right: 20px;
     text-decoration: none;
@@ -733,8 +784,8 @@ td a i {
 }
 
 .pdf-form-container .btn-primary {
-    background-color: #124a80;
-    color: #fff;
+    background-color: var(--cor-primaria);
+    color: var(--cor-texto-claro);
     padding: 10px 20px;
     border-radius: 5px;
     border: none;
@@ -742,7 +793,7 @@ td a i {
 }
 
 .pdf-form-container .btn-primary:hover {
-    background-color: #0e3a66;
+    background-color: var(--cor-primaria-escura);
 }
 
 /* Badges de status */

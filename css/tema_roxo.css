@@ -1,0 +1,16 @@
+/* tema_roxo.css - Tema roxo */
+:root {
+    --cor-primaria: #8e44ad;
+    --cor-primaria-escura: #6c3483;
+    --cor-secundaria: #9b59b6;
+    --cor-secundaria-escura: #7d3c98;
+    --cor-destaque: #f39c12;
+    --cor-perigo: #e74c3c;
+    --cor-fundo: #f4f6f9;
+    --cor-texto: #333;
+    --cor-texto-claro: #fff;
+    --cor-borda: #e0e0e0;
+    --sombra: rgba(0,0,0,0.1);
+    --sombra-forte: rgba(0,0,0,0.15);
+    --cor-icones: #8e44ad; /* Ícones na cor primária do tema */
+}

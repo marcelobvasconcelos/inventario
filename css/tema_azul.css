@@ -1,0 +1,16 @@
+/* tema_azul.css - Tema azul */
+:root {
+    --cor-primaria: #2980b9;
+    --cor-primaria-escura: #1c5a8a;
+    --cor-secundaria: #3498db;
+    --cor-secundaria-escura: #217dbb;
+    --cor-destaque: #f39c12;
+    --cor-perigo: #e74c3c;
+    --cor-fundo: #f4f6f9;
+    --cor-texto: #333;
+    --cor-texto-claro: #fff;
+    --cor-borda: #e0e0e0;
+    --sombra: rgba(0,0,0,0.1);
+    --sombra-forte: rgba(0,0,0,0.15);
+    --cor-icones: #2980b9; /* Ícones na cor primária do tema */
+}

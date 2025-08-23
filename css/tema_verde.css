@@ -1,0 +1,16 @@
+/* tema_verde.css - Tema verde */
+:root {
+    --cor-primaria: #27ae60;
+    --cor-primaria-escura: #219653;
+    --cor-secundaria: #2ecc71;
+    --cor-secundaria-escura: #25a25a;
+    --cor-destaque: #f39c12;
+    --cor-perigo: #e74c3c;
+    --cor-fundo: #f4f6f9;
+    --cor-texto: #333;
+    --cor-texto-claro: #fff;
+    --cor-borda: #e0e0e0;
+    --sombra: rgba(0,0,0,0.1);
+    --sombra-forte: rgba(0,0,0,0.15);
+    --cor-icones: #27ae60; /* Ícones na cor primária do tema */
+}

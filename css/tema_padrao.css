@@ -1,0 +1,16 @@
+/* tema_padrao.css - Tema padrão */
+:root {
+    --cor-primaria: #124a80;
+    --cor-primaria-escura: #0e3a66;
+    --cor-secundaria: #28a745;
+    --cor-secundaria-escura: #218838;
+    --cor-destaque: #f39c12;
+    --cor-perigo: #e74c3c;
+    --cor-fundo: #f4f6f9;
+    --cor-texto: #333;
+    --cor-texto-claro: #fff;
+    --cor-borda: #e0e0e0;
+    --sombra: rgba(0,0,0,0.1);
+    --sombra-forte: rgba(0,0,0,0.15);
+    --cor-icones: #124a80; /* Ícones na cor primária do tema */
+}

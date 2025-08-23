@@ -1,0 +1,112 @@
+/* Estilos para o modal de seleção de temas */
+
+/* Modal de temas */
+#modal-tema {
+    display: none;
+    position: fixed;
+    z-index: 1001;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    background-color: rgba(0,0,0,0.4);
+    justify-content: center;
+    align-items: center;
+}
+
+#modal-tema .modal-content {
+    background-color: #fff;
+    margin: auto;
+    padding: 30px;
+    border: 1px solid #ddd;
+    width: 80%;
+    max-width: 500px;
+    border-radius: 8px;
+    position: relative;
+    box-shadow: 0 4px 8px 0 rgba(0,0,0,0.2), 0 6px 20px 0 rgba(0,0,0,0.19);
+}
+
+#modal-tema .close-button {
+    color: #aaa;
+    float: right;
+    font-size: 28px;
+    font-weight: bold;
+    position: absolute;
+    top: 10px;
+    right: 20px;
+}
+
+#modal-tema .close-button:hover,
+#modal-tema .close-button:focus {
+    color: #333;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+#modal-tema h2 {
+    margin-top: 0;
+    color: #333;
+    border-bottom: 2px solid #e0e0e0;
+    padding-bottom: 10px;
+}
+
+/* Container de temas */
+.temas-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+    justify-content: center;
+    margin-top: 20px;
+}
+
+/* Opções de tema */
+.tema-opcao {
+    text-align: center;
+    cursor: pointer;
+    transition: transform 0.2s;
+    width: 100px;
+}
+
+.tema-opcao:hover {
+    transform: translateY(-5px);
+}
+
+/* Previews dos temas */
+.tema-preview {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    margin: 0 auto 10px;
+    border: 3px solid #fff;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+}
+
+/* Cores dos previews */
+.tema-preview.padrao {
+    background: linear-gradient(135deg, #124a80 50%, #28a745 50%);
+}
+
+.tema-preview.azul {
+    background: linear-gradient(135deg, #2980b9 50%, #3498db 50%);
+}
+
+.tema-preview.verde {
+    background: linear-gradient(135deg, #27ae60 50%, #2ecc71 50%);
+}
+
+.tema-preview.roxo {
+    background: linear-gradient(135deg, #8e44ad 50%, #9b59b6 50%);
+}
+
+.tema-preview.altocontraste {
+    background: linear-gradient(135deg, #000000 50%, #ffff00 50%);
+    border: 3px solid #ffffff;
+}
+
+/* Texto das opções */
+.tema-opcao span {
+    display: block;
+    font-weight: 600;
+    color: #333;
+}
