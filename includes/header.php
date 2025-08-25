@@ -97,6 +97,7 @@ if (isset($_SESSION['id'])) {
             <?php if($_SESSION["permissao"] == 'Administrador'): ?>
                 <a href="/inventario/usuarios.php">Usuários</a>
                 <a href="/inventario/patrimonio_add.php">Patrimônio</a>
+                <a href="/inventario/importar_novos_itens_csv.php">Importar Itens</a>
                 <a href="/inventario/notificacoes_admin.php">Gerenciar Notificações</a>
             <?php endif; ?>
         </nav>
