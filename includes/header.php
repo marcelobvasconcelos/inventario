@@ -94,24 +94,7 @@ if (isset($_SESSION['id'])) {
             <a href="/inventario/itens.php">Itens</a>
             <a href="/inventario/locais.php">Locais</a>
             <a href="/inventario/movimentacoes.php">Movimentações</a>
-            <div class="user-menu-dropdown">
-                <a href="/inventario/almoxarifado/index.php" style="color: #007bff;">Almoxarifado</a>
-                <div class="user-menu-content">
-                    <a href="/inventario/almoxarifado/itens.php">Itens do Almoxarifado</a>
-                    <a href="/inventario/almoxarifado/notificacoes.php">Notificações do Almoxarifado</a>
-                    <?php if($_SESSION["permissao"] == 'Administrador'): ?>
-                        <a href="/inventario/almoxarifado/notificacoes_admin.php">Gerenciar Notificações do Almoxarifado</a>
-                    <?php endif; ?>
-                </div>
-            </div>
-
-            <a href="/inventario/notificacoes_usuario.php">Notificações</a>
             <?php if($_SESSION["permissao"] == 'Administrador'): ?>
-                <a href="/inventario/rascunhos_itens.php">Rascunhos
-                    <?php if($draft_count > 0): ?>
-                        <span class="notification-badge"><?php echo $draft_count; ?></span>
-                    <?php endif; ?>
-                </a>
                 <a href="/inventario/usuarios.php">Usuários</a>
                 <a href="/inventario/patrimonio_add.php">Patrimônio</a>
                 <a href="/inventario/notificacoes_admin.php">Gerenciar Notificações</a>
