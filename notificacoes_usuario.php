@@ -240,7 +240,6 @@ require_once 'includes/header.php';
             <button class="btn btn-sm btn-outline-secondary filter-btn" data-filter="Pendente">Pendentes</button>
             <button class="btn btn-sm btn-outline-secondary filter-btn" data-filter="Confirmado">Confirmados</button>
             <button class="btn btn-sm btn-outline-secondary filter-btn" data-filter="Nao Confirmado">Não Confirmados</button>
-            <button class="btn btn-sm btn-outline-secondary filter-btn" data-filter="Em Disputa">Em Disputa</button>
         </div>
         <?php endif; ?>
 
@@ -592,11 +591,30 @@ document.addEventListener('DOMContentLoaded', function() {
 
             notificationItems.forEach(item => {
                 const itemStatuses = item.dataset.itemStatuses;
-                if (filter === 'Todos' || (itemStatuses && itemStatuses.includes(filter))) {
-                    item.style.display = 'block';
-                } else {
-                    item.style.display = 'none';
+                let shouldDisplay = false;
+                
+                if (filter === 'Todos') {
+                    shouldDisplay = true;
+                } else if (itemStatuses) {
+                    // Normalizar os status para comparação
+                    const normalizedStatuses = itemStatuses.split(',').map(status => {
+                        return status.trim().toLowerCase().replace('ã', 'a').replace('ç', 'c');
+                    });
+                    
+                    // Verificar se o filtro corresponde a algum status
+                    if (filter === 'Nao Confirmado') {
+                        shouldDisplay = normalizedStatuses.some(status => 
+                            status.includes('nao confirmado') || status.includes('não confirmado') || status.includes('nao confirmado')
+                        );
+                    } else {
+                        const normalizedFilter = filter.toLowerCase().replace('ã', 'a').replace('ç', 'c');
+                        shouldDisplay = normalizedStatuses.some(status => 
+                            status.includes(normalizedFilter)
+                        );
+                    }
                 }
+                
+                item.style.display = shouldDisplay ? 'block' : 'none';
             });
         });
     });

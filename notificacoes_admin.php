@@ -1,19 +1,12 @@
 <?php
-// Inicia a sessão PHP e inclui o cabeçalho e a conexão com o banco de dados
-require_once 'includes/header.php';
+// Inicia a sessão PHP e inclui a conexão com o banco de dados
 require_once 'config/db.php';
-
-// Redireciona para a página de login se o usuário não estiver logado ou não for Administrador
-if($_SESSION["permissao"] != 'Administrador'){
-    echo "<div class='alert alert-danger'>Acesso negado. Você não tem permissão para executar esta ação.</div>";
-    require_once 'includes/footer.php';
-    exit;
-}
-
-$administrador_logado_id = $_SESSION['id'];
 
 // --- Processamento de Ações do Administrador via AJAX ---
 if(isset($_POST['is_ajax']) && $_POST['is_ajax'] == 'true') {
+    // Log dos dados recebidos
+    error_log("Dados recebidos via POST em notificacoes_admin.php: " . print_r($_POST, true));
+    
     header('Content-Type: application/json');
     $response = ['success' => false, 'message' => '', 'new_item_status' => '', 'new_notif_status' => ''];
 
@@ -30,17 +23,39 @@ if(isset($_POST['is_ajax']) && $_POST['is_ajax'] == 'true') {
             exit;
         }
 
+        $administrador_logado_id = $_SESSION['id'];
+        error_log("Valor de \$_SESSION['id']: " . print_r($_SESSION['id'], true)); // Log para debug
+
+        // Verifica se o administrador logado existe na tabela usuarios
+        if ($administrador_logado_id) {
+            $stmt_check_admin = $pdo->prepare("SELECT id FROM usuarios WHERE id = ? AND status = 'aprovado'");
+            $stmt_check_admin->execute([$administrador_logado_id]);
+            if (!$stmt_check_admin->fetch()) {
+                $administrador_logado_id = null; // Invalida o ID se o usuário não for encontrado ou não estiver aprovado
+            }
+        }
+        error_log("Valor de \$administrador_logado_id após validação: " . print_r($administrador_logado_id, true)); // Log para debug
+
         $pdo->beginTransaction();
         try {
-            // Busca informações da notificação de movimentação para garantir que exista
-            $sql_notif_mov_info = "SELECT nm.item_id, nm.movimentacao_id, nm.status_confirmacao FROM notificacoes_movimentacao nm WHERE nm.id = ? AND nm.item_id = ?";
+            // Busca informações da notificação de movimentação e do item para garantir que existam
+            $sql_notif_mov_info = "SELECT nm.item_id, nm.movimentacao_id, nm.status_confirmacao as notif_status, i.status_confirmacao as item_status FROM notificacoes_movimentacao nm JOIN itens i ON nm.item_id = i.id WHERE nm.id = ? AND nm.item_id = ?";
             $stmt_notif_mov_info = $pdo->prepare($sql_notif_mov_info);
             $stmt_notif_mov_info->execute([$notificacao_movimentacao_id, $item_id]);
             $notif_mov_data = $stmt_notif_mov_info->fetch(PDO::FETCH_ASSOC);
 
             if (!$notif_mov_data) {
-                throw new Exception("Notificação de movimentação não encontrada ou item não corresponde.");
+                throw new Exception("Notificação de movimentação ou item não encontrado. notificacao_movimentacao_id: $notificacao_movimentacao_id, item_id: $item_id");
             }
+            
+            // Verifica se o status do ITEM permite resposta
+            // O administrador só deve poder responder se o item estiver 'Nao Confirmado' ou 'Em Disputa'
+            $item_status = $notif_mov_data['item_status'];
+            error_log("Debug - Status do item: $item_status"); // Log para debug
+            if ($item_status !== 'Nao Confirmado' && $item_status !== 'Em Disputa' && $item_status !== 'Pendente') {
+                throw new Exception("Não é possível responder a um item com status '$item_status'. Apenas itens 'Não Confirmado', 'Em Disputa' ou 'Pendente' podem receber respostas.");
+            }
+            
             $movimentacao_id = $notif_mov_data['movimentacao_id'];
             $data_atualizacao = date('Y-m-d H:i:s');
 
@@ -48,20 +63,41 @@ if(isset($_POST['is_ajax']) && $_POST['is_ajax'] == 'true') {
                 if (empty($admin_reply)) {
                     throw new Exception("Por favor, forneça uma resposta para a disputa.");
                 }
+                
+                // Adiciona log de debug
+                error_log("Debug - Responder Item Disputa: notificacao_movimentacao_id=$notificacao_movimentacao_id, item_id=$item_id, administrador_logado_id=$administrador_logado_id, admin_reply=$admin_reply");
+                
+                // Verifica se o administrador logado tem um ID válido
+                if (!$administrador_logado_id) {
+                    throw new Exception("ID do administrador não encontrado na sessão.");
+                }
+
                 // Atualiza o registro em notificacoes_movimentacao com a resposta do admin e muda o status para 'Pendente'
                 $new_item_status = 'Pendente';
                 $sql_update_notif_mov = "UPDATE notificacoes_movimentacao SET status_confirmacao = ?, resposta_admin = ?, data_atualizacao = ? WHERE id = ?";
                 $stmt_update_notif_mov = $pdo->prepare($sql_update_notif_mov);
+                
+                // Adiciona log de debug antes da execução
+                error_log("Debug - Executando UPDATE notificacoes_movimentacao: " . json_encode([$new_item_status, $admin_reply, $data_atualizacao, $notificacao_movimentacao_id]));
+                
                 $stmt_update_notif_mov->execute([$new_item_status, $admin_reply, $data_atualizacao, $notificacao_movimentacao_id]);
 
                 // O status do item na tabela 'itens' deve voltar para 'Pendente' para que o usuário possa reconfirmar
                 $sql_update_item_main = "UPDATE itens SET status_confirmacao = 'Pendente' WHERE id = ?";
                 $stmt_update_item_main = $pdo->prepare($sql_update_item_main);
+                
+                // Adiciona log de debug antes da execução
+                error_log("Debug - Executando UPDATE itens: " . json_encode([$item_id]));
+                
                 $stmt_update_item_main->execute([$item_id]);
 
                 // Insere a resposta do administrador no histórico
                 $sql_insert_history = "INSERT INTO notificacoes_respostas_historico (notificacao_movimentacao_id, remetente_id, tipo_remetente, conteudo_resposta, data_resposta) VALUES (?, ?, ?, ?, ?)";
                 $stmt_insert_history = $pdo->prepare($sql_insert_history);
+                
+                // Adiciona log de debug antes da execução
+                error_log("Debug - Executando INSERT notificacoes_respostas_historico: " . json_encode([$notificacao_movimentacao_id, $administrador_logado_id, 'admin', $admin_reply, $data_atualizacao]));
+                
                 $stmt_insert_history->execute([$notificacao_movimentacao_id, $administrador_logado_id, 'admin', $admin_reply, $data_atualizacao]);
 
                 $response['message'] = "Resposta enviada para o item #{$item_id}. O status foi atualizado para 'Pendente' e o usuário foi notificado para uma nova confirmação.";
@@ -166,7 +202,9 @@ if(isset($_POST['is_ajax']) && $_POST['is_ajax'] == 'true') {
         } catch (Exception $e) {
             $pdo->rollBack();
             $response['message'] = "Erro ao processar ação: " . $e->getMessage();
-            error_log("Erro na ação do administrador: " . $e->getMessage()); // Log do erro para depuração
+            // Log completo do erro, incluindo stack trace
+            error_log("Erro na ação do administrador (ID: $administrador_logado_id, Notif: $notificacao_movimentacao_id, Item: $item_id): " . $e->getMessage() . "
+Stack trace: " . $e->getTraceAsString());
         }
     } else {
         $response['message'] = 'Dados incompletos na requisição.';
@@ -177,6 +215,16 @@ if(isset($_POST['is_ajax']) && $_POST['is_ajax'] == 'true') {
     echo json_encode($response);
     exit; // Important to stop execution after AJAX response
 }
+
+// Se não for uma requisição AJAX, inclui o cabeçalho e mostra o conteúdo da página
+require_once 'includes/header.php';
+
+// Redireciona para a página de login se o usuário não estiver logado ou não for Administrador
+if($_SESSION["permissao"] != 'Administrador'){
+    echo "<div class='alert alert-danger'>Acesso negado. Você não tem permissão para executar esta ação.</div>";
+    require_once 'includes/footer.php';
+    exit;
+} else {
 
 // --- Lógica para exibir uma única notificação ou todas ---
 $notificacao_unica_id = isset($_GET['notif_id']) ? (int)$_GET['notif_id'] : 0;
@@ -576,4 +624,7 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 </script>
 
-<?php require_once 'includes/footer.php'; ?>
+<?php
+    require_once 'includes/footer.php';
+} // Fim do bloco if (!is_ajax)
+?>
