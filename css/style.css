@@ -206,7 +206,6 @@ form input[type='submit']:hover {
     font-size: 52px; /* Aumenta o ícone */
     display: block;
     margin-bottom: 15px;
-    color: var(--cor-icones, var(--cor-primaria)); /* Ícones na cor do tema */
 }
 
 .atalho-item span {
@@ -387,11 +386,6 @@ form input[type='submit']:hover {
     box-shadow: 0 1px 3px var(--sombra);
 }
 
-/* Estilos para ícones */
-i[class*="fa-"] {
-    color: var(--cor-icones, var(--cor-primaria));
-}
-
 /* Espaçamento para ícones de ação */
 td a i {
     margin-right: 8px;
@@ -419,10 +413,6 @@ td a i {
 
 .user-menu-button:hover {
     background-color: rgba(255, 255, 255, 0.1);
-}
-
-.user-menu-button i {
-    color: var(--cor-texto-claro); /* Ícone do botão do menu de usuário */
 }
 
 .user-menu-dropdown {
@@ -962,4 +952,32 @@ td a i {
 .material-card-detail-value {
     font-weight: 600;
     color: #2c3e50;
+}
+
+/* Estilos para o modal de pesquisa de itens em movimentações */
+.item-option {
+    margin-bottom: 10px;
+    padding: 10px;
+    border: 1px solid #e0e0e0;
+    border-radius: 5px;
+    background-color: #f9f9f9;
+}
+
+.item-option:hover {
+    background-color: #f0f0f0;
+}
+
+.item-option input[type="checkbox"] {
+    margin-right: 10px;
+}
+
+.item-option label {
+    cursor: pointer;
+    display: block;
+}
+
+.help-text {
+    font-size: 0.85em;
+    color: #666;
+    margin-top: 5px;
 }
