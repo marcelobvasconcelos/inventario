@@ -33,8 +33,8 @@ $search_by = isset($_GET['search_by']) ? $_GET['search_by'] : '';
 $search_query = isset($_GET['search_query']) ? $_GET['search_query'] : '';
 
 // SQL base para contagem total de itens
-$sql_count_base = "SELECT COUNT(*) FROM itens i JOIN locais l ON i.local_id = l.id JOIN usuarios u ON i.responsavel_id = u.id";
-$sql_base = "SELECT i.id, i.nome, i.patrimonio_novo, i.patrimonio_secundario, l.id as local_id, l.nome AS local, u.nome AS responsavel, i.estado, i.responsavel_id, i.status_confirmacao FROM itens i JOIN locais l ON i.local_id = l.id JOIN usuarios u ON i.responsavel_id = u.id";
+$sql_count_base = "SELECT COUNT(*) FROM itens i JOIN locais l ON i.local_id = l.id JOIN usuarios u ON i.responsavel_id = u.id WHERE i.estado != 'Excluido'";
+$sql_base = "SELECT i.id, i.nome, i.patrimonio_novo, i.patrimonio_secundario, l.id as local_id, l.nome AS local, u.nome AS responsavel, i.estado, i.responsavel_id, i.status_confirmacao FROM itens i JOIN locais l ON i.local_id = l.id JOIN usuarios u ON i.responsavel_id = u.id WHERE i.estado != 'Excluido'";
 
 $where_clause = "";
 $params = [];
@@ -42,7 +42,7 @@ $param_types = "";
 
 // Se for admin, mostra tudo. Se for usuário, mostra apenas os seus itens.
 if ($_SESSION['permissao'] != 'Administrador') {
-    $where_clause = " WHERE i.responsavel_id = ?";
+    $where_clause = " AND i.responsavel_id = ? AND i.estado != 'Excluido'";
     $params[] = $_SESSION['id'];
     $param_types = "i";
 } else { // Lógica de pesquisa para administradores
@@ -50,37 +50,39 @@ if ($_SESSION['permissao'] != 'Administrador') {
         $search_term = '%' . $search_query . '%';
         switch ($search_by) {
             case 'id':
-                $where_clause .= " WHERE i.id LIKE ?";
+                $where_clause .= " AND i.id LIKE ?";
                 $params[] = $search_term;
                 $param_types .= "s";
                 break;
             case 'patrimonio_novo':
-                $where_clause .= " WHERE i.patrimonio_novo LIKE ?";
+                $where_clause .= " AND i.patrimonio_novo LIKE ?";
                 $params[] = $search_term;
                 $param_types .= "s";
                 break;
             case 'patrimonio_secundario':
-                $where_clause .= " WHERE i.patrimonio_secundario LIKE ?";
+                $where_clause .= " AND i.patrimonio_secundario LIKE ?";
                 $params[] = $search_term;
                 $param_types .= "s";
                 break;
             case 'local':
-                $where_clause .= " WHERE l.nome LIKE ?";
+                $where_clause .= " AND l.nome LIKE ?";
                 $params[] = $search_term;
                 $param_types .= "s";
                 break;
             case 'responsavel':
-                $where_clause .= " WHERE u.nome LIKE ?";
+                $where_clause .= " AND u.nome LIKE ?";
                 $params[] = $search_term;
                 $param_types .= "s";
                 break;
             default:
-                $where_clause .= " WHERE i.nome LIKE ?";
+                $where_clause .= " AND i.nome LIKE ?";
                 $params[] = $search_term;
                 $param_types .= "s";
                 break;
         }
     }
+    // Sempre excluir itens marcados como 'Excluido'
+    $where_clause .= " AND i.estado != 'Excluido'";
 }
 
 // Consulta para contagem total
@@ -164,7 +166,7 @@ if($stmt = mysqli_prepare($link, $sql)){
 <?php if($_SESSION['permissao'] == 'Administrador'): ?>
 <div class="pdf-form-container card mt-4">
     <div class="card-body">
-        <h5 class="card-title">Gerar Relatório PDF</h5>
+        <h5 class="card-title">Gerar Relatório</h5>
         <form action="gerar_pdf_itens.php" method="post" target="_blank">
             <div class="form-group">
                 <label for="cabecalho_pdf">Cabeçalho do Relatório (opcional):</label>
@@ -176,6 +178,15 @@ if($stmt = mysqli_prepare($link, $sql)){
             <input type="hidden" name="search_query" value="<?php echo htmlspecialchars($search_query); ?>">
             
             <button type="submit" class="btn btn-primary mt-2">Gerar PDF</button>
+        </form>
+        
+        <!-- Formulário para exportar CSV -->
+        <form action="exportar_itens_csv.php" method="post" target="_blank" class="mt-3">
+            <!-- Campos ocultos para passar os filtros de pesquisa -->
+            <input type="hidden" name="search_by" value="<?php echo htmlspecialchars($search_by); ?>">
+            <input type="hidden" name="search_query" value="<?php echo htmlspecialchars($search_query); ?>">
+            
+            <button type="submit" class="btn btn-secondary">Exportar para CSV</button>
         </form>
     </div>
 </div>
