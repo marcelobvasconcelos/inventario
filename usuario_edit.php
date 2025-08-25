@@ -41,32 +41,14 @@ if($_SERVER["REQUEST_METHOD"] == "POST"){
     
     $permissao_id = $_POST["permissao_id"];
 
-    // Validação da nova senha (se preenchida)
-    if(!empty($_POST['nova_senha'])){
-        if(strlen($_POST['nova_senha']) < 6){
-            $senha_err = "A senha deve ter no mínimo 6 caracteres.";
-        } elseif($_POST['nova_senha'] != $_POST['confirmar_nova_senha']){
-            $senha_err = "As senhas não coincidem.";
-        }
-    }
-
     // Se não houver erros, atualize o banco de dados
-    if(empty($nome_err) && empty($email_err) && empty($senha_err)){
+    if(empty($nome_err) && empty($email_err)){
         // Prepara a query de atualização
-        if(!empty($_POST['nova_senha'])){
-            $sql = "UPDATE usuarios SET nome = ?, email = ?, permissao_id = ?, senha = ? WHERE id = ?";
-            $hashed_password = password_hash($_POST['nova_senha'], PASSWORD_DEFAULT);
-        } else {
-            $sql = "UPDATE usuarios SET nome = ?, email = ?, permissao_id = ? WHERE id = ?";
-        }
+        $sql = "UPDATE usuarios SET nome = ?, email = ?, permissao_id = ? WHERE id = ?";
 
         if($stmt = mysqli_prepare($link, $sql)){
             // Binda os parâmetros
-            if(!empty($_POST['nova_senha'])){
-                mysqli_stmt_bind_param($stmt, "ssisi", $nome, $email, $permissao_id, $hashed_password, $id);
-            } else {
-                mysqli_stmt_bind_param($stmt, "ssii", $nome, $email, $permissao_id, $id);
-            }
+            mysqli_stmt_bind_param($stmt, "ssii", $nome, $email, $permissao_id, $id);
 
             if(mysqli_stmt_execute($stmt)){
                 header("location: usuarios.php");
@@ -104,7 +86,7 @@ mysqli_close($link);
 
 <main>
     <h2>Editar Usuário</h2>
-    <p>Preencha os campos para editar o usuário. Deixe os campos de senha em branco para não alterá-la.</p>
+    <p>Preencha os campos para editar o usuário.</p>
 
     <form action="<?php echo htmlspecialchars($_SERVER['PHP_SELF'] . '?id=' . $id); ?>" method="post">
         <div>
@@ -128,16 +110,6 @@ mysqli_close($link);
                     <option value="<?php echo $perfil['id']; ?>" <?php echo ($perfil['id'] == $permissao_id) ? 'selected' : ''; ?>><?php echo $perfil['nome']; ?></option>
                 <?php endwhile; ?>
             </select>
-        </div>
-        <hr>
-        <div>
-            <label>Nova Senha</label>
-            <input type="password" name="nova_senha" class="form-control">
-            <span class="help-block"><?php echo $senha_err; ?></span>
-        </div>
-        <div>
-            <label>Confirmar Nova Senha</label>
-            <input type="password" name="confirmar_nova_senha" class="form-control">
         </div>
         <div>
             <input type="submit" class="btn btn-primary" value="Salvar Alterações">

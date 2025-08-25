@@ -14,6 +14,19 @@ $usuario_id = $_SESSION['id'];
 $nova_senha = $confirm_senha = "";
 $senha_err = $confirm_senha_err = "";
 
+// Verificar se o usuário está usando uma senha temporária
+$senha_temporaria = false;
+$sql_senha_temp = "SELECT senha_temporaria FROM usuarios WHERE id = ?";
+if($stmt_senha_temp = mysqli_prepare($link, $sql_senha_temp)){
+    mysqli_stmt_bind_param($stmt_senha_temp, "i", $usuario_id);
+    mysqli_stmt_execute($stmt_senha_temp);
+    mysqli_stmt_bind_result($stmt_senha_temp, $senha_temporaria_result);
+    mysqli_stmt_fetch($stmt_senha_temp);
+    mysqli_stmt_close($stmt_senha_temp);
+    
+    $senha_temporaria = ($senha_temporaria_result == 1);
+}
+
 // Buscar dados do usuário para exibição
 $sql_user = "SELECT nome, email FROM usuarios WHERE id = ?";
 if($stmt_user = mysqli_prepare($link, $sql_user)){
@@ -49,7 +62,11 @@ if($_SERVER["REQUEST_METHOD"] == "POST"){
         
     // Se não houver erros, atualiza a senha
     if(empty($senha_err) && empty($confirm_senha_err)){
-        $sql_update = "UPDATE usuarios SET senha = ? WHERE id = ?";
+        // Iniciar transação
+        mysqli_autocommit($link, FALSE);
+        
+        // Atualizar a senha do usuário e remover o status de senha temporária
+        $sql_update = "UPDATE usuarios SET senha = ?, senha_temporaria = 0 WHERE id = ?";
         
         if($stmt_update = mysqli_prepare($link, $sql_update)){
             mysqli_stmt_bind_param($stmt_update, "si", $param_password, $usuario_id);
@@ -57,10 +74,27 @@ if($_SERVER["REQUEST_METHOD"] == "POST"){
             $param_password = password_hash($nova_senha, PASSWORD_DEFAULT);
             
             if(mysqli_stmt_execute($stmt_update)){
-                session_destroy();
-                header("location: login.php?status=senha_alterada");
+                // Atualizar status das solicitações de senha para processada
+                $sql_update_solicitacao = "UPDATE solicitacoes_senha SET status = 'processada' WHERE usuario_id = ? AND status = 'pendente'";
+                if($stmt_update_solicitacao = mysqli_prepare($link, $sql_update_solicitacao)){
+                    mysqli_stmt_bind_param($stmt_update_solicitacao, "i", $usuario_id);
+                    mysqli_stmt_execute($stmt_update_solicitacao);
+                    mysqli_stmt_close($stmt_update_solicitacao);
+                }
+                
+                // Commit da transação
+                mysqli_commit($link);
+                
+                // Se o usuário estava usando senha temporária, redirecionar para a página inicial
+                if($senha_temporaria){
+                    header("location: index.php?status=senha_atualizada");
+                } else{
+                    header("location: usuario_perfil.php?status=senha_alterada");
+                }
                 exit();
             } else{
+                // Rollback em caso de erro
+                mysqli_rollback($link);
                 echo "Oops! Algo deu errado. Por favor, tente novamente mais tarde.";
             }
 
@@ -85,6 +119,12 @@ mysqli_close($link);
 
 <div class="profile-container">
     <h2>Meu Perfil</h2>
+    
+    <?php if($senha_temporaria): ?>
+        <div class="alert alert-warning">
+            <strong>Atenção!</strong> Você está usando uma senha temporária. Por favor, altere sua senha abaixo.
+        </div>
+    <?php endif; ?>
 
     <div class="profile-section">
         <h3>Dados do Usuário</h3>

@@ -7,10 +7,30 @@ if($_SESSION["permissao"] != 'Administrador'){
     exit;
 }
 
-// Configurações de paginação
-$itens_por_pagina = 20;
-$pagina_atual = isset($_GET['pagina']) ? (int)$_GET['pagina'] : 1;
-$offset = ($pagina_atual - 1) * $itens_por_pagina;
+// Variável para armazenar a senha temporária gerada
+$senha_temporaria_gerada = "";
+
+// Processar ação de gerar senha temporária
+if(isset($_POST['gerar_senha_temporaria']) && isset($_POST['usuario_id'])){
+    $usuario_id = $_POST['usuario_id'];
+    
+    // Gerar uma senha temporária aleatória
+    $senha_temporaria = substr(str_shuffle('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'), 0, 8);
+    $senha_hash = password_hash($senha_temporaria, PASSWORD_DEFAULT);
+    
+    // Atualizar a senha do usuário e marcar como senha temporária
+    $sql_update = "UPDATE usuarios SET senha = ?, senha_temporaria = 1 WHERE id = ?";
+    if($stmt_update = mysqli_prepare($link, $sql_update)){
+        mysqli_stmt_bind_param($stmt_update, "si", $senha_hash, $usuario_id);
+        if(mysqli_stmt_execute($stmt_update)){
+            // Armazenar a senha temporária para exibir
+            $senha_temporaria_gerada = $senha_temporaria;
+        } else {
+            $mensagem = "Erro ao gerar senha temporária.";
+        }
+        mysqli_stmt_close($stmt_update);
+    }
+}
 
 // Lógica para aprovar/rejeitar usuários
 if(isset($_GET['acao']) && isset($_GET['id'])){
@@ -34,7 +54,7 @@ if(isset($_GET['acao']) && isset($_GET['id'])){
                 $refs[$key] = &$params_update[$key];
             call_user_func_array('mysqli_stmt_bind_param', array_merge([$stmt], $refs));
             if(mysqli_stmt_execute($stmt)){
-                header("location: usuarios.php?pagina=" . $pagina_atual); // Redireciona para limpar a URL e manter a página
+                header("location: usuarios.php"); // Redireciona para limpar a URL
                 exit();
             } else {
                 echo "Erro ao atualizar o status do usuário.";
@@ -44,6 +64,11 @@ if(isset($_GET['acao']) && isset($_GET['id'])){
     }
 }
 
+// Configurações de paginação
+$itens_por_pagina = 20;
+$pagina_atual = isset($_GET['pagina']) ? (int)$_GET['pagina'] : 1;
+$offset = ($pagina_atual - 1) * $itens_por_pagina;
+
 // Consulta para contagem total de usuários
 $sql_count = "SELECT COUNT(*) FROM usuarios u JOIN perfis p ON u.permissao_id = p.id";
 $result_count = mysqli_query($link, $sql_count);
@@ -52,8 +77,9 @@ mysqli_free_result($result_count);
 
 $total_paginas = ceil($total_usuarios / $itens_por_pagina);
 
-// Consulta para os usuários da página atual
-$sql = "SELECT u.id, u.nome, u.email, p.nome as perfil_nome, u.status 
+// Consulta para os usuários da página atual, incluindo informações sobre solicitações de senha
+$sql = "SELECT u.id, u.nome, u.email, p.nome as perfil_nome, u.status,
+               (SELECT COUNT(*) FROM solicitacoes_senha WHERE usuario_id = u.id AND status = 'pendente') as solicitacoes_pendentes
         FROM usuarios u
         JOIN perfis p ON u.permissao_id = p.id
         ORDER BY u.nome ASC LIMIT ? OFFSET ?";
@@ -74,6 +100,54 @@ if($stmt = mysqli_prepare($link, $sql)){
 <h2>Gerenciar Usuários</h2>
 <a href="usuario_add.php" class="btn-custom">Adicionar Novo Usuário</a>
 
+<style>
+.alert-success {
+    background-color: #d4edda;
+    border-color: #c3e6cb;
+    color: #155724;
+    padding: 15px;
+    margin-bottom: 20px;
+    border: 1px solid transparent;
+    border-radius: .25rem;
+}
+
+.alert-success strong {
+    font-size: 1.2em;
+}
+
+.alert-success span {
+    display: block;
+    margin: 10px 0;
+    font-size: 1.5em;
+    font-weight: bold;
+    color: #d9534f;
+    font-family: 'Courier New', monospace;
+    background-color: #f8f9fa;
+    padding: 10px;
+    border-radius: 4px;
+    border: 1px dashed #ccc;
+}
+
+.btn-sm {
+    padding: 5px 10px;
+    font-size: 12px;
+    line-height: 1.5;
+    border-radius: 3px;
+}
+
+.btn-aprovar, .btn-rejeitar, .btn-editar, .btn-excluir, .btn-pendente, .btn-warning {
+    margin: 2px;
+}
+</style>
+
+<?php if(!empty($senha_temporaria_gerada)): ?>
+    <div class="alert alert-success">
+        <strong>Senha temporária gerada com sucesso!</strong><br>
+        <span><?php echo $senha_temporaria_gerada; ?></span><br>
+        <small>Copie esta senha e envie para o usuário. Ela será válida apenas para o primeiro acesso.</small>
+    </div>
+<?php endif; ?>
+
 <table class="table-striped table-hover">
     <thead>
         <tr>
@@ -82,6 +156,7 @@ if($stmt = mysqli_prepare($link, $sql)){
             <th data-column="email">Email <span class="sort-arrow"></span></th>
             <th data-column="perfil_nome">Permissão <span class="sort-arrow"></span></th>
             <th data-column="status">Status <span class="sort-arrow"></span></th>
+            <th>Solicitações de Senha</th>
             <th>Ações</th>
         </tr>
     </thead>
@@ -95,20 +170,47 @@ if($stmt = mysqli_prepare($link, $sql)){
                 <td><?php echo htmlspecialchars($row['perfil_nome']); ?></td>
                 <td><?php echo ucfirst(htmlspecialchars($row['status'])); ?></td>
                 <td>
-                    <?php if($row['status'] == 'pendente'): ?>
-                        <a href="usuarios.php?acao=aprovar&id=<?php echo $row['id']; ?>&pagina=<?php echo $pagina_atual; ?>" class="btn btn-aprovar">Aprovar</a>
-                        <a href="usuarios.php?acao=rejeitar&id=<?php echo $row['id']; ?>&pagina=<?php echo $pagina_atual; ?>" class="btn btn-rejeitar">Rejeitar</a>
+                    <?php if($row['solicitacoes_pendentes'] > 0): ?>
+                        <span class="badge badge-warning"><?php echo $row['solicitacoes_pendentes']; ?> pendente(s)</span>
                     <?php else: ?>
-                        <a href="usuario_edit.php?id=<?php echo $row['id']; ?>" class="btn btn-editar">Editar</a>
-                        <a href="usuario_delete.php?id=<?php echo $row['id']; ?>" class="btn btn-excluir" onclick="return confirm('Tem certeza que deseja excluir este usuário?');">Excluir</a>
-                        <a href="usuarios.php?acao=pendente&id=<?php echo $row['id']; ?>&pagina=<?php echo $pagina_atual; ?>" class="btn btn-pendente">Pendente</a>
+                        <span class="badge badge-success">Nenhuma</span>
+                    <?php endif; ?>
+                </td>
+                <td>
+                    <?php if($row['status'] == 'pendente'): ?>
+                        <a href="usuarios.php?acao=aprovar&id=<?php echo $row['id']; ?>" class="btn btn-aprovar btn-sm" title="Aprovar">
+                            <i class="fas fa-check"></i>
+                        </a>
+                        <a href="usuarios.php?acao=rejeitar&id=<?php echo $row['id']; ?>" class="btn btn-rejeitar btn-sm" title="Rejeitar">
+                            <i class="fas fa-times"></i>
+                        </a>
+                    <?php else: ?>
+                        <a href="usuario_edit.php?id=<?php echo $row['id']; ?>" class="btn btn-editar btn-sm" title="Editar">
+                            <i class="fas fa-edit"></i>
+                        </a>
+                        <a href="usuario_delete.php?id=<?php echo $row['id']; ?>" class="btn btn-excluir btn-sm" title="Excluir" onclick="return confirm('Tem certeza que deseja excluir este usuário?');">
+                            <i class="fas fa-trash"></i>
+                        </a>
+                        <a href="usuarios.php?acao=pendente&id=<?php echo $row['id']; ?>" class="btn btn-pendente btn-sm" title="Marcar como Pendente">
+                            <i class="fas fa-clock"></i>
+                        </a>
+                        
+                        <!-- Botão para gerar senha temporária -->
+                        <form method="post" style="display: inline;">
+                            <input type="hidden" name="usuario_id" value="<?php echo $row['id']; ?>">
+                            <button type="submit" name="gerar_senha_temporaria" class="btn btn-warning btn-sm" title="Gerar Senha Temporária"
+                                    <?php echo ($row['solicitacoes_pendentes'] > 0) ? '' : 'disabled'; ?>
+                                    onclick="return confirm('Tem certeza que deseja gerar uma senha temporária para este usuário?');">
+                                <i class="fas fa-key"></i>
+                            </button>
+                        </form>
                     <?php endif; ?>
                 </td>
             </tr>
             <?php endwhile; ?>
         <?php else: ?>
             <tr>
-                <td colspan="6">Nenhum usuário encontrado.</td>
+                <td colspan="7">Nenhum usuário encontrado.</td>
             </tr>
         <?php endif; ?>
     </tbody>
