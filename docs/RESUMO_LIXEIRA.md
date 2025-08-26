@@ -11,12 +11,15 @@
 - Modificado item_delete.php para mover itens excluídos para a lixeira
 - Modificado excluir_itens_em_massa.php para mover itens excluídos para a lixeira
 - Modificado usuario_delete.php para permitir exclusão de usuários com itens na lixeira
-- Criada API restaurar_item.php para restaurar itens da lixeira
-- **Adicionada criação de notificação quando um item é restaurado da lixeira**
+- Criada API restaurar_item.php para restaurar itens individuais da lixeira
+- **Criada API restaurar_itens_em_massa.php para restaurar vários itens da lixeira**
+- Adicionada criação de notificação quando um item é restaurado da lixeira
 
 ## Frontend (HTML/JavaScript)
 - Adicionado botão discreto (apenas ícone) para acessar itens excluídos na página itens.php
 - Criada página itens_excluidos.php para visualizar e restaurar itens excluídos
+- **Adicionada funcionalidade de seleção múltipla com checkboxes**
+- **Adicionada funcionalidade de restauração em massa**
 - Modificado usuarios.php para ocultar o usuário "Lixeira" da listagem
 - Reorganizada a interface para melhor usabilidade
 
@@ -30,10 +33,12 @@
 - Removidos scripts antigos para evitar confusão
 - Consolidado em um único script de atualização do banco de dados
 - Criado script de teste para verificar a funcionalidade de restauração com notificação
+- **Criado script de teste para verificar a funcionalidade de restauração em massa**
 
 ## Testes
 - Verificado funcionamento da exclusão de itens
 - Verificado funcionamento da restauração de itens
 - Verificado ocultação do usuário "Lixeira" na listagem
 - Verificado movimentação de itens excluídos existentes para a lixeira
-- **Verificado envio de notificação quando um item é restaurado da lixeira**
+- Verificado envio de notificação quando um item é restaurado da lixeira
+- **Verificado funcionamento da restauração em massa de itens**

@@ -62,9 +62,16 @@ $result = $stmt->fetchAll(PDO::FETCH_ASSOC);
 </div>
 
 <?php if (count($result) > 0): ?>
+    <div class="bulk-actions" id="bulkActions" style="display: none; margin-bottom: 20px;">
+        <button id="restaurarSelecionadosBtn" class="btn btn-primary">
+            <i class="fas fa-undo"></i> Restaurar Selecionados
+        </button>
+    </div>
+    
     <table class="table-striped table-hover">
         <thead>
             <tr>
+                <th><input type="checkbox" id="selectAll"></th>
                 <th>ID</th>
                 <th>Nome</th>
                 <th>Patrimônio</th>
@@ -77,6 +84,7 @@ $result = $stmt->fetchAll(PDO::FETCH_ASSOC);
         <tbody>
             <?php foreach($result as $row): ?>
             <tr>
+                <td><input type="checkbox" class="item-checkbox" data-item-id="<?php echo $row['id']; ?>"></td>
                 <td><?php echo $row['id']; ?></td>
                 <td><?php echo $row['nome']; ?></td>
                 <td><?php echo $row['patrimonio_novo']; ?></td>
@@ -111,7 +119,7 @@ $result = $stmt->fetchAll(PDO::FETCH_ASSOC);
     </div>
     <?php endif; ?>
 
-    <!-- Modal de Restauração -->
+    <!-- Modal de Restauração Individual -->
     <div id="restaurarModal" class="modal">
         <div class="modal-content">
             <span class="close-button">&times;</span>
@@ -138,6 +146,34 @@ $result = $stmt->fetchAll(PDO::FETCH_ASSOC);
             </form>
         </div>
     </div>
+    
+    <!-- Modal de Restauração em Massa -->
+    <div id="restaurarMassaModal" class="modal">
+        <div class="modal-content">
+            <span class="close-button">&times;</span>
+            <h3>Restaurar Itens Selecionados</h3>
+            <p>Selecione o novo local e responsável para os itens selecionados:</p>
+            <form id="restaurarMassaForm">
+                <div class="form-group autocomplete-container">
+                    <label for="searchLocalMassa">Novo Local</label>
+                    <input type="text" id="searchLocalMassa" name="search_local" class="form-control" placeholder="Digite para pesquisar..." required>
+                    <input type="hidden" id="novoLocalIdMassa" name="novo_local_id">
+                    <div id="localSuggestionsMassa" class="suggestions-list"></div>
+                </div>
+                
+                <div class="form-group autocomplete-container">
+                    <label for="searchResponsavelMassa">Novo Responsável</label>
+                    <input type="text" id="searchResponsavelMassa" name="search_responsavel" class="form-control" placeholder="Digite para pesquisar..." required>
+                    <input type="hidden" id="novoResponsavelIdMassa" name="novo_responsavel_id">
+                    <div id="responsavelSuggestionsMassa" class="suggestions-list"></div>
+                </div>
+                
+                <div id="itensSelecionadosList" style="margin-top: 15px;"></div>
+                
+                <button type="submit" class="btn btn-primary">Confirmar Restauração em Massa</button>
+            </form>
+        </div>
+    </div>
 
 <?php else: ?>
     <div class="alert alert-info">Nenhum item excluído encontrado.</div>
@@ -145,10 +181,16 @@ $result = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Modal de restauração
+    // Modal de restauração individual
     const modal = document.getElementById('restaurarModal');
     const closeBtn = modal.querySelector('.close-button');
     const restaurarForm = document.getElementById('restaurarForm');
+    
+    // Modal de restauração em massa
+    const modalMassa = document.getElementById('restaurarMassaModal');
+    const closeBtnMassa = modalMassa.querySelector('.close-button');
+    const restaurarMassaForm = document.getElementById('restaurarMassaForm');
+    const itensSelecionadosList = document.getElementById('itensSelecionadosList');
     
     const searchLocalInput = document.getElementById('searchLocal');
     const novoLocalIdInput = document.getElementById('novoLocalId');
@@ -157,6 +199,21 @@ document.addEventListener('DOMContentLoaded', function() {
     const searchResponsavelInput = document.getElementById('searchResponsavel');
     const novoResponsavelIdInput = document.getElementById('novoResponsavelId');
     const responsavelSuggestions = document.getElementById('responsavelSuggestions');
+    
+    // Elementos para restauração em massa
+    const searchLocalMassaInput = document.getElementById('searchLocalMassa');
+    const novoLocalIdMassaInput = document.getElementById('novoLocalIdMassa');
+    const localSuggestionsMassa = document.getElementById('localSuggestionsMassa');
+    
+    const searchResponsavelMassaInput = document.getElementById('searchResponsavelMassa');
+    const novoResponsavelIdMassaInput = document.getElementById('novoResponsavelIdMassa');
+    const responsavelSuggestionsMassa = document.getElementById('responsavelSuggestionsMassa');
+    
+    // Botões de ação
+    const selectAllCheckbox = document.getElementById('selectAll');
+    const itemCheckboxes = document.querySelectorAll('.item-checkbox');
+    const bulkActions = document.getElementById('bulkActions');
+    const restaurarSelecionadosBtn = document.getElementById('restaurarSelecionadosBtn');
     
     // Função genérica para busca com autocomplete
     function setupAutocomplete(inputEl, suggestionsEl, hiddenIdEl, searchUrl) {
@@ -208,8 +265,29 @@ document.addEventListener('DOMContentLoaded', function() {
 
     setupAutocomplete(searchLocalInput, localSuggestions, novoLocalIdInput, 'api/search_locais.php');
     setupAutocomplete(searchResponsavelInput, responsavelSuggestions, novoResponsavelIdInput, 'api/search_usuarios.php');
+    setupAutocomplete(searchLocalMassaInput, localSuggestionsMassa, novoLocalIdMassaInput, 'api/search_locais.php');
+    setupAutocomplete(searchResponsavelMassaInput, responsavelSuggestionsMassa, novoResponsavelIdMassaInput, 'api/search_usuarios.php');
 
-    // Abrir modal para restaurar item
+    // Função para atualizar a visibilidade dos botões de ação em massa
+    function toggleBulkActions() {
+        const anyChecked = Array.from(itemCheckboxes).some(cb => cb.checked);
+        bulkActions.style.display = anyChecked ? 'block' : 'none';
+    }
+
+    // Selecionar todos os checkboxes
+    if (selectAllCheckbox) {
+        selectAllCheckbox.addEventListener('change', function() {
+            itemCheckboxes.forEach(cb => cb.checked = this.checked);
+            toggleBulkActions();
+        });
+    }
+
+    // Atualizar botões de ação quando um checkbox é clicado
+    itemCheckboxes.forEach(cb => {
+        cb.addEventListener('change', toggleBulkActions);
+    });
+
+    // Abrir modal para restaurar item individual
     document.querySelectorAll('.restaurar-item').forEach(button => {
         button.addEventListener('click', function() {
             const itemId = this.getAttribute('data-item-id');
@@ -218,22 +296,60 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    // Fechar modal
+    // Abrir modal para restaurar itens selecionados
+    if (restaurarSelecionadosBtn) {
+        restaurarSelecionadosBtn.addEventListener('click', function() {
+            const selectedItems = Array.from(document.querySelectorAll('.item-checkbox')).filter(cb => cb.checked);
+            
+            if (selectedItems.length === 0) {
+                alert('Por favor, selecione pelo menos um item para restaurar.');
+                return;
+            }
+            
+            // Atualizar a lista de itens selecionados no modal
+            itensSelecionadosList.innerHTML = '<h4>Itens selecionados:</h4><ul>';
+            selectedItems.forEach(item => {
+                const itemId = item.getAttribute('data-item-id');
+                const row = item.closest('tr');
+                const itemName = row.cells[2].textContent; // Nome do item
+                const itemPatrimonio = row.cells[3].textContent; // Patrimônio
+                itensSelecionadosList.innerHTML += `<li>${itemName} (Patrimônio: ${itemPatrimonio})</li>`;
+            });
+            itensSelecionadosList.innerHTML += '</ul>';
+            
+            modalMassa.style.display = 'flex';
+        });
+    }
+
+    // Fechar modals
     const closeModal = () => {
         modal.style.display = 'none';
         restaurarForm.reset();
         localSuggestions.innerHTML = '';
         responsavelSuggestions.innerHTML = '';
     };
+    
+    const closeModalMassa = () => {
+        modalMassa.style.display = 'none';
+        restaurarMassaForm.reset();
+        localSuggestionsMassa.innerHTML = '';
+        responsavelSuggestionsMassa.innerHTML = '';
+        itensSelecionadosList.innerHTML = '';
+    };
 
     closeBtn.addEventListener('click', closeModal);
+    closeBtnMassa.addEventListener('click', closeModalMassa);
+    
     window.addEventListener('click', (event) => {
         if (event.target == modal) {
             closeModal();
         }
+        if (event.target == modalMassa) {
+            closeModalMassa();
+        }
     });
 
-    // Submeter formulário de restauração
+    // Submeter formulário de restauração individual
     restaurarForm.addEventListener('submit', function(e) {
         e.preventDefault();
         
@@ -268,6 +384,58 @@ document.addEventListener('DOMContentLoaded', function() {
         .catch(error => {
             console.error('Erro:', error);
             alert('Ocorreu um erro ao tentar restaurar o item.');
+        });
+    });
+    
+    // Submeter formulário de restauração em massa
+    restaurarMassaForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const selectedItems = Array.from(document.querySelectorAll('.item-checkbox')).filter(cb => cb.checked);
+        
+        if (selectedItems.length === 0) {
+            alert('Nenhum item selecionado.');
+            return;
+        }
+        
+        const novoLocalId = novoLocalIdMassaInput.value;
+        const novoResponsavelId = novoResponsavelIdMassaInput.value;
+        
+        if (!novoLocalId || !novoResponsavelId) {
+            alert('Por favor, selecione um novo local e um novo responsável.');
+            return;
+        }
+        
+        // Confirmar a restauração em massa
+        if (!confirm(`Tem certeza que deseja restaurar ${selectedItems.length} item(s) para o mesmo local e responsável?`)) {
+            return;
+        }
+        
+        // Obter os IDs dos itens selecionados
+        const itemIds = selectedItems.map(item => parseInt(item.getAttribute('data-item-id')));
+        
+        const data = {
+            item_ids: itemIds,
+            novo_local_id: parseInt(novoLocalId),
+            novo_responsavel_id: parseInt(novoResponsavelId)
+        };
+        
+        fetch('api/restaurar_itens_em_massa.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        })
+        .then(response => response.json())
+        .then(result => {
+            alert(result.message);
+            if (result.success) {
+                closeModalMassa();
+                location.reload();
+            }
+        })
+        .catch(error => {
+            console.error('Erro:', error);
+            alert('Ocorreu um erro ao tentar restaurar os itens.');
         });
     });
 });
