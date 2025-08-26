@@ -4,6 +4,7 @@
 - Adicionada opção 'Excluido' ao enum 'estado' na tabela 'itens'
 - Criado usuário "Lixeira" com perfil 'Visualizador'
 - Movidos todos os itens excluídos existentes para o usuário "Lixeira"
+- Consolidado em um único arquivo de atualização: `atualizacao_bd_producao.sql`
 
 ## Backend (PHP)
 - Modificado item_delete.php para mover itens excluídos para a lixeira
@@ -12,19 +13,20 @@
 - Criada API restaurar_item.php para restaurar itens da lixeira
 
 ## Frontend (HTML/JavaScript)
-- Adicionado botão "Ver Itens Excluídos" na página itens.php
+- Adicionado botão discreto (apenas ícone) para acessar itens excluídos na página itens.php
 - Criada página itens_excluidos.php para visualizar e restaurar itens excluídos
 - Modificado usuarios.php para ocultar o usuário "Lixeira" da listagem
+- Reorganizada a interface para melhor usabilidade
 
 ## Documentação
 - Atualizado README.md com informações sobre a lixeira
 - Atualizado docs/USER_MANUAL.md com informações sobre a lixeira
-- Criado docs/ATUALIZACAO_LIXEIRA.md com detalhes das atualizações
+- Atualizado docs/ATUALIZACAO_LIXEIRA.md com detalhes das atualizações
+- Mantido um único arquivo de atualização do banco de dados para produção
 
 ## Scripts de Utilidade
-- Criado script para mover itens excluídos para a lixeira
-- Criado script para verificar itens na lixeira
-- Criado script de atualização para produção
+- Removidos scripts antigos para evitar confusão
+- Consolidado em um único script de atualização do banco de dados
 
 ## Testes
 - Verificado funcionamento da exclusão de itens

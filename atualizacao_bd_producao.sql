@@ -1,4 +1,4 @@
--- Arquivo de atualização para produção - Funcionalidade de Lixeira
+-- Arquivo de atualização do banco de dados para produção - Sistema de Inventário
 
 -- 1. Atualizar a estrutura da tabela itens para incluir o estado 'Excluido' (se ainda não existir)
 ALTER TABLE itens MODIFY estado ENUM('Em uso','Ocioso','Recuperável','Inservível','Excluido') NOT NULL;
@@ -15,3 +15,8 @@ UPDATE itens
 SET responsavel_id = (SELECT id FROM usuarios WHERE nome = 'Lixeira')
 WHERE estado = 'Excluido' 
 AND responsavel_id != (SELECT id FROM usuarios WHERE nome = 'Lixeira');
+
+-- 4. Adicionar qualquer outra atualização de estrutura de tabelas, se necessário
+-- (Adicione aqui outras alterações de estrutura de banco de dados conforme necessário)
+
+-- Fim do script de atualização

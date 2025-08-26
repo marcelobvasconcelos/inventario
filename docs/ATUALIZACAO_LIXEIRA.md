@@ -8,21 +8,10 @@ Esta atualização implementa uma funcionalidade de "Lixeira" para o sistema de 
 
 ### 1. Banco de Dados
 
-- **atualizar_bd_lixeira.sql**: Script SQL para atualizar a estrutura do banco de dados
+- **atualizacao_bd_producao.sql**: Script único de atualização para produção
   - Adiciona a opção 'Excluido' ao enum 'estado' na tabela 'itens' (se ainda não existir)
   - Cria o usuário "Lixeira" para armazenar itens excluídos
-
-- **atualizar_bd_usuario_lixeira.php**: Script PHP para criar o usuário "Lixeira" no banco de dados
-  - Verifica se o perfil 'Visualizador' existe
-  - Cria o usuário "Lixeira" com perfil 'Visualizador' se ele não existir
-
-- **atualizacao_bd_lixeira_producao.sql**: Script de atualização para produção
-  - Inclui todas as mudanças necessárias para implementar a funcionalidade de lixeira em ambiente de produção
-  - Inclui comando para mover itens excluídos existentes para o usuário "Lixeira"
-
-- **mover_itens_excluidos_para_lixeira.php**: Script PHP para mover itens excluídos existentes para o usuário "Lixeira"
-  - Verifica a existência do usuário "Lixeira"
-  - Move todos os itens com estado 'Excluido' para o usuário "Lixeira"
+  - Move todos os itens excluídos existentes para o usuário "Lixeira"
 
 ### 2. Backend (PHP)
 
@@ -48,7 +37,8 @@ Esta atualização implementa uma funcionalidade de "Lixeira" para o sistema de 
 ### 3. Frontend (HTML/JavaScript)
 
 - **itens.php**: Adicionado botão para acessar itens excluídos
-  - Adicionado botão "Ver Itens Excluídos" para administradores
+  - Adicionado botão discreto com apenas ícone para acessar itens excluídos
+  - Reorganizada a interface para melhor usabilidade
 
 - **itens_excluidos.php**: Nova página para visualizar itens excluídos
   - Lista itens com estado 'Excluido' atribuídos ao usuário "Lixeira"
@@ -74,28 +64,13 @@ Esta atualização implementa uma funcionalidade de "Lixeira" para o sistema de 
 - **testar_restauracao_lixeira.php**: Testa a funcionalidade de restauração de itens da lixeira
 - **testar_ocultar_lixeira.php**: Testa se o usuário "Lixeira" está oculto da listagem de usuários
 - **verificar_perfis.php**: Verifica os perfis existentes e a existência do usuário "Lixeira"
-- **mover_itens_excluidos_para_lixeira.php**: Testa a movimentação de itens excluídos existentes para a lixeira
+- **verificar_itens_lixeira.php**: Verifica os itens na lixeira
 
 ## Instruções para Implantação
 
-1. Execute o script `atualizar_bd_usuario_lixeira.php` para criar o usuário "Lixeira" no banco de dados:
+1. Execute o script `atualizacao_bd_producao.sql` no banco de dados de produção:
    ```
-   php atualizar_bd_usuario_lixeira.php
-   ```
-
-2. Ou execute o script SQL `atualizar_bd_lixeira.sql` diretamente no banco de dados:
-   ```
-   mysql -u [usuario] -p [banco_de_dados] < atualizar_bd_lixeira.sql
-   ```
-
-3. Para mover itens excluídos existentes para a lixeira, execute:
-   ```
-   php mover_itens_excluidos_para_lixeira.php
-   ```
-
-4. Para implantação em produção, use o script `atualizacao_bd_lixeira_producao.sql`:
-   ```
-   mysql -u [usuario] -p [banco_de_dados] < atualizacao_bd_lixeira_producao.sql
+   mysql -u [usuario] -p [banco_de_dados] < atualizacao_bd_producao.sql
    ```
 
 ## Funcionalidades
@@ -105,7 +80,7 @@ Esta atualização implementa uma funcionalidade de "Lixeira" para o sistema de 
 3. **Restauração de Itens**: Administradores podem restaurar itens da lixeira, selecionando um novo local e responsável
 4. **Exclusão de Usuários**: Usuários que tenham tido itens podem ser excluídos se todos os seus itens estiverem na lixeira
 5. **Ocultar Lixeira**: O usuário "Lixeira" é oculto da listagem de usuários normal
-6. **Migração de Itens Excluídos**: Itens excluídos existentes podem ser movidos para a lixeira com um único comando
+6. **Migração de Itens Excluídos**: Itens excluídos existentes são movidos para a lixeira automaticamente
 
 ## Considerações Finais
 
