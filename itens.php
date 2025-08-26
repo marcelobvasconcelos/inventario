@@ -135,6 +135,7 @@ if($stmt = mysqli_prepare($link, $sql)){
         <?php endif; ?>
         <?php if($_SESSION['permissao'] == 'Administrador'): ?>
             <button id="movimentarBtn" class="btn-custom" style="display: none;"><i class="fas fa-exchange-alt"></i> Movimentar Selecionados</button>
+            <button id="excluirBtn" class="btn-custom btn-danger" style="display: none;"><i class="fas fa-trash"></i> Excluir Selecionados</button>
         <?php endif; ?>
     </div>
 
@@ -188,6 +189,11 @@ if($stmt = mysqli_prepare($link, $sql)){
             
             <button type="submit" class="btn btn-secondary">Exportar para CSV</button>
         </form>
+        
+        <!-- Botão para importar itens -->
+        <div class="mt-3">
+            <a href="importar_novos_itens_csv.php" class="btn btn-primary">Importar Itens via CSV</a>
+        </div>
     </div>
 </div>
 <?php endif; ?>
@@ -429,24 +435,63 @@ document.addEventListener('DOMContentLoaded', function() {
             alert('Ocorreu um erro ao tentar movimentar os itens.');
         });
     });
-     // --- Lógica de Seleção e Botão de Movimentar (existente) ---
+     // --- Lógica de Seleção e Botão de Movimentar/Excluir (existente) ---
     const selectAllCheckbox = document.getElementById('selectAll');
     const itemCheckboxes = document.querySelectorAll('.item-checkbox');
+    const excluirBtn = document.getElementById('excluirBtn');
 
-    function toggleMovimentarBtn() {
+    function toggleActionButtons() {
         const anyChecked = Array.from(itemCheckboxes).some(cb => cb.checked);
         movimentarBtn.style.display = anyChecked ? 'inline-block' : 'none';
+        excluirBtn.style.display = anyChecked ? 'inline-block' : 'none';
     }
 
     if (selectAllCheckbox) {
         selectAllCheckbox.addEventListener('change', function() {
             itemCheckboxes.forEach(cb => cb.checked = this.checked);
-            toggleMovimentarBtn();
+            toggleActionButtons();
         });
     }
 
     itemCheckboxes.forEach(cb => {
-        cb.addEventListener('change', toggleMovimentarBtn);
+        cb.addEventListener('change', toggleActionButtons);
+    });
+
+    // --- Lógica de Exclusão em Massa ---
+    excluirBtn.addEventListener('click', function() {
+        const selectedItems = Array.from(document.querySelectorAll('.item-checkbox')).filter(cb => cb.checked);
+        
+        if(selectedItems.length === 0) {
+            alert('Por favor, selecione pelo menos um item para excluir.');
+            return;
+        }
+
+        // Confirmar a exclusão
+        if(!confirm(`Tem certeza que deseja excluir ${selectedItems.length} item(s)? Esta ação não pode ser desfeita.`)) {
+            return;
+        }
+
+        // Obter os IDs dos itens selecionados
+        const selectedItemIds = selectedItems.map(item => item.getAttribute('data-item-id'));
+
+        // Enviar solicitação para excluir os itens
+        fetch('excluir_itens_em_massa.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ item_ids: selectedItemIds })
+        })
+        .then(response => response.json())
+        .then(result => {
+            alert(result.message);
+            if (result.success) {
+                // Recarregar a página para atualizar a lista
+                location.reload();
+            }
+        })
+        .catch(error => {
+            console.error('Erro:', error);
+            alert('Ocorreu um erro ao tentar excluir os itens.');
+        });
     });
 });
 </script>
@@ -455,8 +500,3 @@ document.addEventListener('DOMContentLoaded', function() {
 mysqli_close($link);
 require_once 'includes/footer.php';
 ?>
-// Incluir o cabeçalho no topo da página
-<?php require_once 'includes/header.php'; ?>
-
-// Incluir o rodapé no final da página
-<?php require_once 'includes/footer.php'; ?>
