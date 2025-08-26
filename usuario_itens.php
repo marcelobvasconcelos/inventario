@@ -34,7 +34,7 @@ if($stmt_user = mysqli_prepare($link, $user_sql)){
 $sql = "SELECT i.id, i.nome, i.patrimonio_novo, l.id as local_id, l.nome as local_nome, i.estado, i.status_confirmacao 
         FROM itens i 
         JOIN locais l ON i.local_id = l.id 
-        WHERE i.responsavel_id = ? 
+        WHERE i.responsavel_id = ? AND i.estado != 'Excluido'
         ORDER BY i.nome ASC";
 
 $itens = [];

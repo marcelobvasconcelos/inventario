@@ -14,22 +14,22 @@ $id = $_GET['id'];
 mysqli_begin_transaction($link);
 
 try {
-    // Primeiro, excluir as movimentações relacionadas a este item
-    $sql_movimentacoes = "DELETE FROM movimentacoes WHERE item_id = ?";
-    if($stmt_mov = mysqli_prepare($link, $sql_movimentacoes)){
-        mysqli_stmt_bind_param($stmt_mov, "i", $id);
-        if(!mysqli_stmt_execute($stmt_mov)){
-            throw new Exception(mysqli_error($link));
-        }
-        mysqli_stmt_close($stmt_mov);
-    } else {
-        throw new Exception(mysqli_error($link));
+    // Obter o ID do usuário "Lixeira"
+    $sql_lixeira = "SELECT id FROM usuarios WHERE nome = 'Lixeira'";
+    $result_lixeira = mysqli_query($link, $sql_lixeira);
+    
+    if (!$result_lixeira || mysqli_num_rows($result_lixeira) == 0) {
+        throw new Exception("Usuário 'Lixeira' não encontrado. Execute o script de atualização do banco de dados.");
     }
-
-    // Em seguida, excluir o item
-    $sql_item = "DELETE FROM itens WHERE id = ?";
+    
+    $lixeira_id = mysqli_fetch_assoc($result_lixeira)['id'];
+    
+    // Em vez de excluir as movimentações, vamos mantê-las para manter o histórico
+    
+    // Atualizar o estado do item para 'Excluido' e atribuir ao usuário "Lixeira"
+    $sql_item = "UPDATE itens SET estado = 'Excluido', responsavel_id = ? WHERE id = ?";
     if($stmt_item = mysqli_prepare($link, $sql_item)){
-        mysqli_stmt_bind_param($stmt_item, "i", $id);
+        mysqli_stmt_bind_param($stmt_item, "ii", $lixeira_id, $id);
         if(mysqli_stmt_execute($stmt_item)){
             mysqli_commit($link);
             header("location: itens.php");

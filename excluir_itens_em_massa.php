@@ -23,6 +23,23 @@ $item_ids = $data['item_ids'];
 // Filtrar os IDs para garantir que sejam inteiros
 $item_ids = array_map('intval', $item_ids);
 
+// Obter o ID do usuário "Lixeira"
+try {
+    $stmt_lixeira = $pdo->prepare("SELECT id FROM usuarios WHERE nome = 'Lixeira'");
+    $stmt_lixeira->execute();
+    $lixeira = $stmt_lixeira->fetch(PDO::FETCH_ASSOC);
+    
+    if (!$lixeira) {
+        echo json_encode(['success' => false, 'message' => 'Usuário "Lixeira" não encontrado. Execute o script de atualização do banco de dados.']);
+        exit;
+    }
+    
+    $lixeira_id = $lixeira['id'];
+} catch (Exception $e) {
+    echo json_encode(['success' => false, 'message' => 'Erro ao localizar usuário "Lixeira": ' . $e->getMessage()]);
+    exit;
+}
+
 // Verificar se há itens com status "Pendente" que não podem ser excluídos
 try {
     // Preparar consulta para verificar status dos itens
@@ -63,10 +80,13 @@ try {
         // Iniciar transação
         $pdo->beginTransaction();
         
-        // Preparar a consulta para atualizar o estado dos itens para 'Excluido'
+        // Preparar a consulta para atualizar o estado dos itens para 'Excluido' e atribuir ao usuário "Lixeira"
         $placeholders_excluir = str_repeat('?,', count($itens_para_excluir) - 1) . '?';
-        $sql = "UPDATE itens SET estado = 'Excluido' WHERE id IN ($placeholders_excluir)";
+        $sql = "UPDATE itens SET estado = 'Excluido', responsavel_id = ? WHERE id IN ($placeholders_excluir)";
         $stmt = $pdo->prepare($sql);
+        
+        // Adicionar o ID da lixeira no início do array de parâmetros
+        array_unshift($itens_para_excluir, $lixeira_id);
         
         // Executar a consulta com os IDs dos itens que podem ser excluídos
         $stmt->execute($itens_para_excluir);
@@ -86,9 +106,12 @@ try {
         // Iniciar transação
         $pdo->beginTransaction();
         
-        // Preparar a consulta para atualizar o estado dos itens para 'Excluido'
-        $sql = "UPDATE itens SET estado = 'Excluido' WHERE id IN ($placeholders)";
+        // Preparar a consulta para atualizar o estado dos itens para 'Excluido' e atribuir ao usuário "Lixeira"
+        $sql = "UPDATE itens SET estado = 'Excluido', responsavel_id = ? WHERE id IN ($placeholders)";
         $stmt = $pdo->prepare($sql);
+        
+        // Adicionar o ID da lixeira no início do array de parâmetros
+        array_unshift($item_ids, $lixeira_id);
         
         // Executar a consulta com os IDs dos itens
         $stmt->execute($item_ids);
@@ -98,7 +121,7 @@ try {
         
         echo json_encode([
             'success' => true, 
-            'message' => count($item_ids) . ' item(s) excluído(s) com sucesso.'
+            'message' => count($item_ids) - 1 . ' item(s) excluído(s) com sucesso.'
         ]);
         exit;
     }

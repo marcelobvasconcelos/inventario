@@ -77,6 +77,7 @@ Como Administrador, você tem controle total sobre o sistema e pode:
 ### 8.1. Gerenciamento Completo de Itens
 *   **Adicionar, Editar e Excluir Itens:** Você pode realizar todas as operações em qualquer item do inventário.
 *   **Pesquisar Itens:** Utilize a barra de pesquisa para encontrar itens por qualquer critério.
+*   **Itens Excluídos (Lixeira):** Itens excluídos não são removidos permanentemente do sistema. Eles são movidos para um usuário especial chamado "Lixeira" e podem ser restaurados a qualquer momento. Para acessar os itens excluídos, clique no botão "Ver Itens Excluídos" na página de itens.
 
 ### 8.2. Gerenciamento de Locais
 *   **Adicionar, Editar e Excluir Locais:** Controle total sobre os locais de armazenamento.
@@ -91,6 +92,7 @@ Como Administrador, você tem controle total sobre o sistema e pode:
 *   **Adicionar, Editar e Excluir Usuários:** Crie, modifique e remova contas de usuário.
 *   **Gerenciar Permissões:** Defina o perfil de cada usuário (Administrador, Gestor, Visualizador).
 *   **Aprovar Contas:** Aprove ou rejeite o registro de novas contas de usuário.
+*   **Exclusão de Usuários com Itens:** Agora é possível excluir usuários que tenham tido itens sob sua responsabilidade, desde que esses itens tenham sido excluídos (movidos para a "Lixeira").
 
 
 ## [VISUALIZADOR] 9. Ícones Utilizados

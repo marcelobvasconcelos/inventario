@@ -70,7 +70,7 @@ $pagina_atual = isset($_GET['pagina']) ? (int)$_GET['pagina'] : 1;
 $offset = ($pagina_atual - 1) * $itens_por_pagina;
 
 // Consulta para contagem total de usuários
-$sql_count = "SELECT COUNT(*) FROM usuarios u JOIN perfis p ON u.permissao_id = p.id";
+$sql_count = "SELECT COUNT(*) FROM usuarios u JOIN perfis p ON u.permissao_id = p.id WHERE u.nome != 'Lixeira'";
 $result_count = mysqli_query($link, $sql_count);
 $total_usuarios = mysqli_fetch_row($result_count)[0];
 mysqli_free_result($result_count);
@@ -82,6 +82,7 @@ $sql = "SELECT u.id, u.nome, u.email, p.nome as perfil_nome, u.status,
                (SELECT COUNT(*) FROM solicitacoes_senha WHERE usuario_id = u.id AND status = 'pendente') as solicitacoes_pendentes
         FROM usuarios u
         JOIN perfis p ON u.permissao_id = p.id
+        WHERE u.nome != 'Lixeira'
         ORDER BY u.nome ASC LIMIT ? OFFSET ?";
 
 if($stmt = mysqli_prepare($link, $sql)){

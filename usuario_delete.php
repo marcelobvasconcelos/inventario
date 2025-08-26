@@ -31,15 +31,30 @@ if($id == $_SESSION['id']){
     display_error("Você não pode excluir seu próprio usuário.");
 }
 
-// Verifica se o usuário é responsável por algum item
-$check_itens_sql = "SELECT id FROM itens WHERE responsavel_id = ?";
+// Obter o ID do usuário "Lixeira"
+try {
+    $stmt_lixeira = $pdo->prepare("SELECT id FROM usuarios WHERE nome = 'Lixeira'");
+    $stmt_lixeira->execute();
+    $lixeira = $stmt_lixeira->fetch(PDO::FETCH_ASSOC);
+    
+    if (!$lixeira) {
+        display_error("Usuário 'Lixeira' não encontrado. Execute o script de atualização do banco de dados.");
+    }
+    
+    $lixeira_id = $lixeira['id'];
+} catch (Exception $e) {
+    display_error("Erro ao localizar usuário 'Lixeira': " . $e->getMessage());
+}
+
+// Verifica se o usuário é responsável por algum item que NÃO esteja na lixeira
+$check_itens_sql = "SELECT id FROM itens WHERE responsavel_id = ? AND responsavel_id != ?";
 if($stmt_check_itens = mysqli_prepare($link, $check_itens_sql)){
-    mysqli_stmt_bind_param($stmt_check_itens, "i", $id);
+    mysqli_stmt_bind_param($stmt_check_itens, "ii", $id, $lixeira_id);
     mysqli_stmt_execute($stmt_check_itens);
     mysqli_stmt_store_result($stmt_check_itens);
     if(mysqli_stmt_num_rows($stmt_check_itens) > 0){
         mysqli_stmt_close($stmt_check_itens);
-        display_error("Não é possível excluir este usuário, pois ele é responsável por um ou mais itens. Reatribua os itens a outro usuário antes de excluir.");
+        display_error("Não é possível excluir este usuário, pois ele é responsável por um ou mais itens que não estão na lixeira. Reatribua os itens a outro usuário ou exclua-os antes de excluir o usuário.");
     }
     mysqli_stmt_close($stmt_check_itens);
 } else {

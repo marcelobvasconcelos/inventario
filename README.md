@@ -73,6 +73,7 @@ inventario/
 ├── item_edit.php         # Editar item
 ├── item_details.php      # Detalhes do item
 ├── itens.php             # Listagem de itens
+├── itens_excluidos.php   # Listagem de itens excluídos (lixeira)
 ├── locais.php            # Listagem de locais
 ├── local_add.php         # Adicionar novo local
 ├── local_delete.php      # Excluir local
@@ -101,6 +102,7 @@ Após a configuração, acesse o sistema pelo seu navegador (ex: `http://localho
     *   **Administrador:** Acesso total.
     *   **Gestor:** Acesso para adicionar/editar itens, visualizar locais e movimentações.
     *   **Visualizador:** Apenas visualização de itens, locais e movimentações (filtrado por responsabilidade).
+*   **Lixeira:** Itens excluídos não são removidos permanentemente do sistema. Eles são movidos para um usuário especial chamado "Lixeira" e podem ser restaurados a qualquer momento. Apenas administradores podem acessar e restaurar itens da lixeira.
 
 Para mais detalhes sobre o uso das funcionalidades, consulte o [Manual do Usuário](docs/USER_MANUAL.md).
 

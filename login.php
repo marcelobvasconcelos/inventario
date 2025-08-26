@@ -47,7 +47,23 @@ if($_SERVER["REQUEST_METHOD"] == "POST"){
                                 $_SESSION["nome"] = $nome;
                                 $_SESSION["permissao"] = $permissao;
                                 
-                                header("location: index.php");
+                                // Verificar se o usuário está usando uma senha temporária
+                                $sql_senha_temp = "SELECT senha_temporaria FROM usuarios WHERE id = ?";
+                                if($stmt_senha_temp = mysqli_prepare($link, $sql_senha_temp)){
+                                    mysqli_stmt_bind_param($stmt_senha_temp, "i", $id);
+                                    mysqli_stmt_execute($stmt_senha_temp);
+                                    mysqli_stmt_bind_result($stmt_senha_temp, $senha_temporaria);
+                                    mysqli_stmt_fetch($stmt_senha_temp);
+                                    mysqli_stmt_close($stmt_senha_temp);
+                                    
+                                    if($senha_temporaria == 1){
+                                        // Redirecionar para a página de edição de perfil
+                                        header("location: usuario_perfil.php?senha_temporaria=1");
+                                    } else{
+                                        // Redirecionar para a página inicial
+                                        header("location: index.php");
+                                    }
+                                }
                             } elseif($status == 'pendente'){
                                 $login_err = "Sua conta está pendente de aprovação.";
                             } else {
@@ -104,6 +120,7 @@ if($_SERVER["REQUEST_METHOD"] == "POST"){
             <div class="form-group">
                 <input type="submit" class="btn btn-primary" value="Login">
             </div>
+            <p><a href="esqueceu_senha.php">Esqueceu sua senha?</a></p>
             <p>Não tem uma conta? <a href="registro.php">Registre-se agora</a>.</p>
         </form>
     </div>

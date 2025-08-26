@@ -11,7 +11,7 @@ if(!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true){
 }
 
 // Inclui a conexão com o banco de dados para buscar notificações
-require_once __DIR__ . '/../config/db.php';
+require_once __DIR__ . '/config/db.php';
 
 // Busca o número de notificações pendentes para o usuário logado
 // Conta diretamente os itens que pertencem ao usuário e estão pendentes
@@ -31,12 +31,10 @@ if (isset($_SESSION['id'])) {
             $tema_usuario = $tema_result;
         }
         
-        // Atualiza a sessão com o tema mais recente
+        // Armazena o tema na sessão
         $_SESSION['tema_preferido'] = $tema_usuario;
     } catch (Exception $e) {
-        // Em caso de erro, usa o tema padrão
         $tema_usuario = 'padrao';
-        $_SESSION['tema_preferido'] = $tema_usuario;
     }
     
     // Busca notificações pendentes
@@ -58,7 +56,7 @@ if (isset($_SESSION['id'])) {
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <title>Sistema de Inventário</title>
+    <title>Teste de Tema Alto Contraste</title>
     <?php
     // Gerar o caminho correto para o CSS, independentemente de onde a página esteja
     $css_path = '';
@@ -84,17 +82,53 @@ if (isset($_SESSION['id'])) {
         .icone-tema {
             color: var(--cor-icones, var(--cor-primaria));
         }
+        
+        /* Estilos para teste de cores */
+        .teste-cor {
+            width: 100px;
+            height: 100px;
+            margin: 10px;
+            display: inline-block;
+            border: 2px solid black;
+        }
+        .cor-primaria { background-color: var(--cor-primaria, #000); }
+        .cor-secundaria { background-color: var(--cor-secundaria, #000); }
+        .cor-destaque { background-color: var(--cor-destaque, #000); }
+        .cor-perigo { background-color: var(--cor-perigo, #000); }
+        .cor-fundo { background-color: var(--cor-fundo, #000); }
+        .cor-texto { background-color: var(--cor-texto, #000); }
+        .cor-texto-claro { background-color: var(--cor-texto-claro, #000); }
+        .cor-borda { background-color: var(--cor-borda, #000); }
+        .sombra { background-color: var(--sombra, #000); }
+        .sombra-forte { background-color: var(--sombra-forte, #000); }
     </style>
 </head>
 <body<?php echo $is_almoxarifado ? ' class="almoxarifado"' : ''; ?>>
     <header class="main-header">
-        <h1>Sistema de Inventário</h1>
+        <h1>Teste de Tema Alto Contraste</h1>
         <nav>
             <a href="/inventario/index.php">Início</a>
             <a href="/inventario/itens.php">Itens</a>
             <a href="/inventario/locais.php">Locais</a>
             <a href="/inventario/movimentacoes.php">Movimentações</a>
+            <div class="user-menu-dropdown">
+                <a href="/inventario/almoxarifado/index.php" style="color: #007bff;">Almoxarifado</a>
+                <div class="user-menu-content">
+                    <a href="/inventario/almoxarifado/itens.php">Itens do Almoxarifado</a>
+                    <a href="/inventario/almoxarifado/notificacoes.php">Notificações do Almoxarifado</a>
+                    <?php if($_SESSION["permissao"] == 'Administrador'): ?>
+                        <a href="/inventario/almoxarifado/notificacoes_admin.php">Gerenciar Notificações do Almoxarifado</a>
+                    <?php endif; ?>
+                </div>
+            </div>
+
+            <a href="/inventario/notificacoes_usuario.php">Notificações</a>
             <?php if($_SESSION["permissao"] == 'Administrador'): ?>
+                <a href="/inventario/rascunhos_itens.php">Rascunhos
+                    <?php if($draft_count > 0): ?>
+                        <span class="notification-badge"><?php echo $draft_count; ?></span>
+                    <?php endif; ?>
+                </a>
                 <a href="/inventario/usuarios.php">Usuários</a>
                 <a href="/inventario/patrimonio_add.php">Patrimônio</a>
                 <a href="/inventario/notificacoes_admin.php">Gerenciar Notificações</a>
@@ -155,6 +189,52 @@ if (isset($_SESSION['id'])) {
     </div>
     
     <main>
+        <h2>Teste de Aplicação do Tema Alto Contraste</h2>
+        
+        <div>
+            <h3>Cores do tema atual (<?php echo htmlspecialchars($tema_usuario); ?>):</h3>
+            <div class="teste-cor cor-primaria"></div>
+            <div class="teste-cor cor-secundaria"></div>
+            <div class="teste-cor cor-destaque"></div>
+            <div class="teste-cor cor-perigo"></div>
+            <div class="teste-cor cor-fundo"></div>
+            <div class="teste-cor cor-texto"></div>
+            <div class="teste-cor cor-texto-claro"></div>
+            <div class="teste-cor cor-borda"></div>
+            <div class="teste-cor sombra"></div>
+            <div class="teste-cor sombra-forte"></div>
+        </div>
+        
+        <div style="margin-top: 20px;">
+            <h3>Elementos do sistema:</h3>
+            <button class="btn btn-primary">Botão Primário</button>
+            <button class="btn btn-success">Botão Secundário</button>
+            <button class="btn btn-danger">Botão de Perigo</button>
+            <button class="btn btn-warning">Botão de Aviso</button>
+            <button class="btn btn-info">Botão de Informação</button>
+            <button class="btn btn-custom">Botão Customizado</button>
+        </div>
+        
+        <div style="margin-top: 20px;">
+            <h3>Badges de status:</h3>
+            <span class="badge badge-warning">Pendente</span>
+            <span class="badge badge-success">Confirmado</span>
+            <span class="badge badge-danger">Não Confirmado</span>
+            <span class="badge badge-info">Movimento Desfeito</span>
+        </div>
+        
+        <div style="margin-top: 20px;">
+            <h3>Header do sistema:</h3>
+            <p>O header acima deve mudar de cor de acordo com o tema selecionado.</p>
+        </div>
+    </main>
+    
+    <footer>
+        <p>&copy; <?php echo date("Y"); ?> Sistema de Inventário</p>
+        <p>Sistema desenvolvido pela <a href="https://uast.ufrpe.br/sti" target="_blank" style="color: white;"><strong>Seção de Tecnologia da Informação (STI-UAST)</strong></a></p>
+    </footer>
     
     <!-- Inclui o JavaScript para os temas -->
     <script src="<?php echo $js_path; ?>js/temas.js"></script>
+</body>
+</html>

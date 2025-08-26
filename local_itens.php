@@ -26,7 +26,7 @@ $sql_itens = "SELECT
               FROM itens i
               LEFT JOIN locais l ON i.local_id = l.id
               LEFT JOIN usuarios u ON i.responsavel_id = u.id
-              WHERE i.local_id = ?";
+              WHERE i.local_id = ? AND i.estado != 'Excluido'";
 
 // Prepara e executa a consulta SQL para obter os itens
 if($stmt_itens = mysqli_prepare($link, $sql_itens)){

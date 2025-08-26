@@ -136,6 +136,7 @@ if($stmt = mysqli_prepare($link, $sql)){
         <?php if($_SESSION['permissao'] == 'Administrador'): ?>
             <button id="movimentarBtn" class="btn-custom" style="display: none;"><i class="fas fa-exchange-alt"></i> Movimentar Selecionados</button>
             <button id="excluirBtn" class="btn-custom btn-danger" style="display: none;"><i class="fas fa-trash"></i> Excluir Selecionados</button>
+            <a href="itens_excluidos.php" class="btn-custom"><i class="fas fa-trash-alt"></i> Ver Itens Excluídos</a>
         <?php endif; ?>
     </div>
 

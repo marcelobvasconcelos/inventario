@@ -89,6 +89,11 @@ if($stmt = mysqli_prepare($link, $sql)){
     <button id="pesquisarItensBtn" class="btn-custom">
         <i class="fas fa-search"></i> Pesquisar Itens para Movimentação
     </button>
+    
+    <!-- Botão para abrir o modal de importação de itens via CSV -->
+    <button id="importarItensBtn" class="btn-custom">
+        <i class="fas fa-file-csv"></i> Importar Itens via CSV
+    </button>
 <?php endif; ?>
 
 <!-- Modal de Pesquisa de Itens -->
@@ -191,6 +196,54 @@ if($stmt = mysqli_prepare($link, $sql)){
         <?php endif; ?>
     <?php endif; ?>
 </div>
+
+<!-- Modal de Importação de Itens via CSV -->
+<?php if($_SESSION['permissao'] == 'Administrador'): ?>
+<div id="importarItensModal" class="modal">
+    <div class="modal-content">
+        <span class="close-button">&times;</span>
+        <h3>Importar Itens via CSV</h3>
+        <p>Selecione um arquivo CSV com os IDs dos itens a serem movimentados.</p>
+        
+        <!-- Formulário de Importação -->
+        <form id="importarForm" enctype="multipart/form-data">
+            <div class="form-group">
+                <label for="csvFile">Arquivo CSV:</label>
+                <input type="file" id="csvFile" name="csv_file" accept=".csv" class="form-control" required>
+                <div class="help-text">O arquivo deve conter uma coluna com os IDs dos itens a serem movimentados.</div>
+            </div>
+            <button type="submit" class="btn btn-primary">Carregar Itens</button>
+        </form>
+        
+        <!-- Lista de Itens Encontrados -->
+        <div id="importarItensEncontradosContainer" style="margin-top: 20px; display: none;">
+            <h4>Itens Encontrados:</h4>
+            <div id="importarItensList"></div>
+        </div>
+        
+        <!-- Seção de Movimentação (aparece após selecionar itens) -->
+        <div id="importarMovimentacaoSection" style="margin-top: 20px; display: none;">
+            <hr>
+            <h4>Movimentar Itens Selecionados:</h4>
+            <form id="importarMovimentarForm">
+                <div class="form-group autocomplete-container">
+                    <label for="importarSearchLocal">Para onde o equipamento vai? (Novo Local)</label>
+                    <input type="text" id="importarSearchLocal" name="search_local" class="form-control" placeholder="Digite para pesquisar..." required>
+                    <input type="hidden" id="importarNovoLocalId" name="novo_local_id">
+                    <div id="importarLocalSuggestions" class="suggestions-list"></div>
+                </div>
+                <div class="form-group autocomplete-container">
+                    <label for="importarSearchResponsavel">Para Quem? (Novo Responsável)</label>
+                    <input type="text" id="importarSearchResponsavel" name="search_responsavel" class="form-control" placeholder="Digite para pesquisar..." required>
+                    <input type="hidden" id="importarNovoResponsavelId" name="novo_responsavel_id">
+                    <div id="importarResponsavelSuggestions" class="suggestions-list"></div>
+                </div>
+                <button type="submit" class="btn btn-primary">Confirmar Movimentação</button>
+            </form>
+        </div>
+    </div>
+</div>
+<?php endif; ?>
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
@@ -447,6 +500,35 @@ document.addEventListener('DOMContentLoaded', function() {
             alert('Ocorreu um erro ao tentar movimentar os itens.');
         });
     });
+    <?php endif; ?>
+    
+    <?php if($_SESSION['permissao'] == 'Administrador'): ?>
+    // --- Lógica do Modal de Importação de Itens via CSV ---
+    const importarItensBtn = document.getElementById('importarItensBtn');
+    const modalImportar = document.getElementById('importarItensModal');
+    
+    // --- Abrir/Fechar Modal de Importação ---
+    if (importarItensBtn && modalImportar) {
+        importarItensBtn.addEventListener('click', function() {
+            modalImportar.style.display = 'flex';
+        });
+
+        const closeBtnImportar = modalImportar.querySelector('.close-button');
+        const closeModalImportar = () => {
+            modalImportar.style.display = 'none';
+            document.getElementById('importarForm').reset();
+            document.getElementById('csvFile').value = '';
+            document.getElementById('importarItensList').innerHTML = '';
+            document.getElementById('importarMovimentacaoSection').style.display = 'none';
+        };
+
+        closeBtnImportar.addEventListener('click', closeModalImportar);
+        window.addEventListener('click', (event) => {
+            if (event.target == modalImportar) {
+                closeModalImportar();
+            }
+        });
+    }
     <?php endif; ?>
 });
 </script>
