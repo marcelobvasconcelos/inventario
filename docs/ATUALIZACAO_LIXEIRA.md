@@ -28,6 +28,11 @@ Esta atualização implementa uma funcionalidade de "Lixeira" para o sistema de 
   - Verifica se o usuário é responsável por algum item que NÃO esteja na lixeira
   - Permite a exclusão se todos os itens do usuário estiverem na lixeira
 
+- **usuario_add.php**: Modificado para gerar senha temporária automaticamente
+  - Gera uma senha temporária aleatória ao criar novo usuário
+  - Marca a senha como temporária no banco de dados
+  - Exibe a senha temporária para o administrador
+
 - **api/restaurar_item.php**: API para restaurar itens individuais da lixeira
   - Verifica permissões de administrador
   - Valida dados de entrada

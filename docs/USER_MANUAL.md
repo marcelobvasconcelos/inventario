@@ -93,6 +93,7 @@ Como Administrador, você tem controle total sobre o sistema e pode:
 *   **Gerenciar Permissões:** Defina o perfil de cada usuário (Administrador, Gestor, Visualizador).
 *   **Aprovar Contas:** Aprove ou rejeite o registro de novas contas de usuário.
 *   **Exclusão de Usuários com Itens:** Agora é possível excluir usuários que tenham tido itens sob sua responsabilidade, desde que esses itens tenham sido excluídos (movidos para a "Lixeira").
+*   **Geração de Senha Temporária:** Ao criar um novo usuário, o sistema gera automaticamente uma senha temporária que o usuário deve alterar no primeiro acesso.
 
 
 ## [VISUALIZADOR] 9. Ícones Utilizados

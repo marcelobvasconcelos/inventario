@@ -11,8 +11,9 @@
 - Modificado item_delete.php para mover itens excluídos para a lixeira
 - Modificado excluir_itens_em_massa.php para mover itens excluídos para a lixeira
 - Modificado usuario_delete.php para permitir exclusão de usuários com itens na lixeira
+- **Modificado usuario_add.php para gerar senha temporária automaticamente**
 - Criada API restaurar_item.php para restaurar itens individuais da lixeira
-- **Criada API restaurar_itens_em_massa.php para restaurar vários itens da lixeira**
+- Criada API restaurar_itens_em_massa.php para restaurar vários itens da lixeira
 - Adicionada criação de notificação quando um item é restaurado da lixeira
 
 ## Frontend (HTML/JavaScript)
