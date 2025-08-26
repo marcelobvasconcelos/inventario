@@ -12,6 +12,7 @@ Esta atualização implementa uma funcionalidade de "Lixeira" para o sistema de 
   - Adiciona a opção 'Excluido' ao enum 'estado' na tabela 'itens' (se ainda não existir)
   - Cria o usuário "Lixeira" para armazenar itens excluídos
   - Move todos os itens excluídos existentes para o usuário "Lixeira"
+  - Verifica e cria a tabela `notificacoes_movimentacao` se não existir
 
 ### 2. Backend (PHP)
 
@@ -33,6 +34,7 @@ Esta atualização implementa uma funcionalidade de "Lixeira" para o sistema de 
   - Verifica se o item está realmente na lixeira e excluído
   - Restaura o item (muda estado e atribui novo responsável e local)
   - Registra a movimentação
+  - **Cria notificação para o novo responsável** (nova funcionalidade)
 
 ### 3. Frontend (HTML/JavaScript)
 
@@ -65,6 +67,7 @@ Esta atualização implementa uma funcionalidade de "Lixeira" para o sistema de 
 - **testar_ocultar_lixeira.php**: Testa se o usuário "Lixeira" está oculto da listagem de usuários
 - **verificar_perfis.php**: Verifica os perfis existentes e a existência do usuário "Lixeira"
 - **verificar_itens_lixeira.php**: Verifica os itens na lixeira
+- **testar_restauracao_com_notificacao.php**: Testa a restauração de itens com criação de notificação
 
 ## Instruções para Implantação
 
@@ -78,10 +81,11 @@ Esta atualização implementa uma funcionalidade de "Lixeira" para o sistema de 
 1. **Exclusão de Itens**: Itens excluídos são movidos para o usuário "Lixeira" em vez de serem removidos permanentemente
 2. **Visualização de Itens Excluídos**: Administradores podem acessar a página "Itens Excluídos" para ver todos os itens na lixeira
 3. **Restauração de Itens**: Administradores podem restaurar itens da lixeira, selecionando um novo local e responsável
-4. **Exclusão de Usuários**: Usuários que tenham tido itens podem ser excluídos se todos os seus itens estiverem na lixeira
-5. **Ocultar Lixeira**: O usuário "Lixeira" é oculto da listagem de usuários normal
-6. **Migração de Itens Excluídos**: Itens excluídos existentes são movidos para a lixeira automaticamente
+4. **Notificação na Restauração**: Quando um item é restaurado, uma notificação é enviada ao novo responsável
+5. **Exclusão de Usuários**: Usuários que tenham tido itens podem ser excluídos se todos os seus itens estiverem na lixeira
+6. **Ocultar Lixeira**: O usuário "Lixeira" é oculto da listagem de usuários normal
+7. **Migração de Itens Excluídos**: Itens excluídos existentes são movidos para a lixeira automaticamente
 
 ## Considerações Finais
 
-Esta atualização melhora significativamente a gestão de itens excluídos no sistema, permitindo que os administradores possam recuperar itens excluídos acidentalmente e também facilita a exclusão de usuários que já não são necessários no sistema.
+Esta atualização melhora significativamente a gestão de itens excluídos no sistema, permitindo que os administradores possam recuperar itens excluídos acidentalmente e também facilita a exclusão de usuários que já não são necessários no sistema. A funcionalidade de notificação garante que os novos responsáveis sejam informados quando um item é restaurado da lixeira.

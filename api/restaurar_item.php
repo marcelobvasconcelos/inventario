@@ -74,6 +74,14 @@ try {
                                SELECT ?, local_id, ?, ?, responsavel_id, ? FROM itens WHERE id = ?");
     $stmt_mov->execute([$item_id, $novo_local_id, $_SESSION['id'], $novo_responsavel_id, $item_id]);
     
+    // Obter o ID da movimentação recém-inserida
+    $movimentacao_id = $pdo->lastInsertId();
+    
+    // Criar notificação para o novo responsável
+    $stmt_notif = $pdo->prepare("INSERT INTO notificacoes_movimentacao (movimentacao_id, item_id, usuario_notificado_id, status_confirmacao) 
+                                 VALUES (?, ?, ?, 'Pendente')");
+    $stmt_notif->execute([$movimentacao_id, $item_id, $novo_responsavel_id]);
+    
     // Confirmar transação
     $pdo->commit();
     

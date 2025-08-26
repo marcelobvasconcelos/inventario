@@ -5,12 +5,14 @@
 - Criado usuário "Lixeira" com perfil 'Visualizador'
 - Movidos todos os itens excluídos existentes para o usuário "Lixeira"
 - Consolidado em um único arquivo de atualização: `atualizacao_bd_producao.sql`
+- Verificação da tabela `notificacoes_movimentacao`
 
 ## Backend (PHP)
 - Modificado item_delete.php para mover itens excluídos para a lixeira
 - Modificado excluir_itens_em_massa.php para mover itens excluídos para a lixeira
 - Modificado usuario_delete.php para permitir exclusão de usuários com itens na lixeira
 - Criada API restaurar_item.php para restaurar itens da lixeira
+- **Adicionada criação de notificação quando um item é restaurado da lixeira**
 
 ## Frontend (HTML/JavaScript)
 - Adicionado botão discreto (apenas ícone) para acessar itens excluídos na página itens.php
@@ -27,9 +29,11 @@
 ## Scripts de Utilidade
 - Removidos scripts antigos para evitar confusão
 - Consolidado em um único script de atualização do banco de dados
+- Criado script de teste para verificar a funcionalidade de restauração com notificação
 
 ## Testes
 - Verificado funcionamento da exclusão de itens
 - Verificado funcionamento da restauração de itens
 - Verificado ocultação do usuário "Lixeira" na listagem
 - Verificado movimentação de itens excluídos existentes para a lixeira
+- **Verificado envio de notificação quando um item é restaurado da lixeira**
