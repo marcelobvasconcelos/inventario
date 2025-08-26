@@ -67,7 +67,8 @@ inventario/
 ├── docs/                 # Documentação do sistema (manual do usuário, etc.)
 ├── includes/             # Partes reutilizáveis do HTML (cabeçalho, rodapé)
 ├── database.sql          # Esquema e dados iniciais do banco de dados
-├── index.php             # Página inicial do sistema
+├── index.php             # Página inicial do sistema (redireciona para dashboard)
+├── dashboard.php         # Dashboard com visão geral do sistema
 ├── item_add.php          # Adicionar novo item
 ├── item_delete.php       # Excluir item
 ├── item_edit.php         # Editar item

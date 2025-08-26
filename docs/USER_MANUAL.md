@@ -5,6 +5,8 @@
 
 Bem-vindo ao Sistema de Inventário! Esta aplicação foi desenvolvida para ajudar no gerenciamento e controle de itens, locais e movimentações dentro de um ambiente. Ele permite que você mantenha um registro organizado de seus ativos, saiba onde eles estão localizados e quem é o responsável por eles.
 
+Ao acessar o sistema, você será direcionado automaticamente para o **Dashboard**, que oferece uma visão geral de todas as funcionalidades disponíveis e estatísticas importantes do sistema.
+
 ## [VISUALIZADOR] 2. Requisitos do Sistema
 
 Para utilizar o Sistema de Inventário, você precisará de:
