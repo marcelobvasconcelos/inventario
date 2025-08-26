@@ -55,6 +55,12 @@ $result = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 <h2>Itens Excluídos (Lixeira)</h2>
 
+<div class="controls-container">
+    <div class="main-actions">
+        <a href="itens.php" class="btn-custom">← Voltar para Itens</a>
+    </div>
+</div>
+
 <?php if (count($result) > 0): ?>
     <table class="table-striped table-hover">
         <thead>

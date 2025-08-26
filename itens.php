@@ -129,16 +129,23 @@ if($stmt = mysqli_prepare($link, $sql)){
 
 <h2>Itens do Inventário</h2>
 <div class="controls-container">
-    <div class="actions-buttons">
+    <div class="main-actions">
         <?php if($_SESSION['permissao'] == 'Administrador' || $_SESSION['permissao'] == 'Gestor'): ?>
             <a href="item_add.php" class="btn-custom">Adicionar Novo Item</a>
         <?php endif; ?>
         <?php if($_SESSION['permissao'] == 'Administrador'): ?>
-            <button id="movimentarBtn" class="btn-custom" style="display: none;"><i class="fas fa-exchange-alt"></i> Movimentar Selecionados</button>
-            <button id="excluirBtn" class="btn-custom btn-danger" style="display: none;"><i class="fas fa-trash"></i> Excluir Selecionados</button>
-            <a href="itens_excluidos.php" class="btn-custom"><i class="fas fa-trash-alt"></i> Ver Itens Excluídos</a>
+            <a href="itens_excluidos.php" class="btn-custom btn-icon" title="Ver Itens Excluídos">
+                <i class="fas fa-trash-alt"></i>
+            </a>
         <?php endif; ?>
     </div>
+
+    <?php if($_SESSION['permissao'] == 'Administrador'): ?>
+        <div class="bulk-actions" id="bulkActions" style="display: none;">
+            <button id="movimentarBtn" class="btn-custom"><i class="fas fa-exchange-alt"></i> Movimentar Selecionados</button>
+            <button id="excluirBtn" class="btn-custom btn-danger"><i class="fas fa-trash"></i> Excluir Selecionados</button>
+        </div>
+    <?php endif; ?>
 
     <?php if($_SESSION['permissao'] == 'Administrador'): ?>
     <div class="search-form">
@@ -166,9 +173,14 @@ if($stmt = mysqli_prepare($link, $sql)){
 </div>
 
 <?php if($_SESSION['permissao'] == 'Administrador'): ?>
-<div class="pdf-form-container card mt-4">
+<div class="pdf-form-container card mt-4" id="relatorioSection" style="display: none;">
     <div class="card-body">
-        <h5 class="card-title">Gerar Relatório</h5>
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h5 class="card-title mb-0">Gerar Relatório</h5>
+            <button type="button" class="btn btn-sm btn-secondary" id="ocultarRelatorioBtn">
+                <i class="fas fa-eye-slash"></i> Ocultar
+            </button>
+        </div>
         <form action="gerar_pdf_itens.php" method="post" target="_blank">
             <div class="form-group">
                 <label for="cabecalho_pdf">Cabeçalho do Relatório (opcional):</label>
@@ -181,21 +193,29 @@ if($stmt = mysqli_prepare($link, $sql)){
             
             <button type="submit" class="btn btn-primary mt-2">Gerar PDF</button>
         </form>
-        
-        <!-- Formulário para exportar CSV -->
-        <form action="exportar_itens_csv.php" method="post" target="_blank" class="mt-3">
-            <!-- Campos ocultos para passar os filtros de pesquisa -->
-            <input type="hidden" name="search_by" value="<?php echo htmlspecialchars($search_by); ?>">
-            <input type="hidden" name="search_query" value="<?php echo htmlspecialchars($search_query); ?>">
-            
-            <button type="submit" class="btn btn-secondary">Exportar para CSV</button>
-        </form>
-        
-        <!-- Botão para importar itens -->
-        <div class="mt-3">
-            <a href="importar_novos_itens_csv.php" class="btn btn-primary">Importar Itens via CSV</a>
-        </div>
     </div>
+</div>
+
+<div class="csv-actions mt-3">
+    <button type="button" class="btn btn-primary btn-icon" id="mostrarRelatorioBtn" title="Gerar Relatório">
+        <i class="fas fa-file-pdf"></i>
+    </button>
+    
+    <!-- Formulário para exportar CSV -->
+    <form action="exportar_itens_csv.php" method="post" target="_blank" class="d-inline">
+        <!-- Campos ocultos para passar os filtros de pesquisa -->
+        <input type="hidden" name="search_by" value="<?php echo htmlspecialchars($search_by); ?>">
+        <input type="hidden" name="search_query" value="<?php echo htmlspecialchars($search_query); ?>">
+        
+        <button type="submit" class="btn btn-success btn-icon" title="Exportar para CSV">
+            <i class="fas fa-file-csv"></i>
+        </button>
+    </form>
+    
+    <!-- Botão para importar itens -->
+    <a href="importar_novos_itens_csv.php" class="btn btn-warning btn-icon" title="Importar Itens via CSV">
+        <i class="fas fa-file-import"></i>
+    </a>
 </div>
 <?php endif; ?>
 
@@ -294,8 +314,6 @@ if($stmt = mysqli_prepare($link, $sql)){
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // ... (código de ordenação e seleção de itens permanece o mesmo) ...
-
     // --- Lógica de Movimentação com Autocomplete ---
     const movimentarBtn = document.getElementById('movimentarBtn');
     const modal = document.getElementById('movimentarModal');
@@ -436,15 +454,18 @@ document.addEventListener('DOMContentLoaded', function() {
             alert('Ocorreu um erro ao tentar movimentar os itens.');
         });
     });
-     // --- Lógica de Seleção e Botão de Movimentar/Excluir (existente) ---
+    
+    // --- Lógica de Seleção e Botão de Movimentar/Excluir (existente) ---
     const selectAllCheckbox = document.getElementById('selectAll');
     const itemCheckboxes = document.querySelectorAll('.item-checkbox');
     const excluirBtn = document.getElementById('excluirBtn');
+    const bulkActions = document.getElementById('bulkActions');
 
     function toggleActionButtons() {
         const anyChecked = Array.from(itemCheckboxes).some(cb => cb.checked);
-        movimentarBtn.style.display = anyChecked ? 'inline-block' : 'none';
-        excluirBtn.style.display = anyChecked ? 'inline-block' : 'none';
+        movimentarBtn.style.display = 'inline-block';
+        excluirBtn.style.display = 'inline-block';
+        bulkActions.style.display = anyChecked ? 'flex' : 'none';
     }
 
     if (selectAllCheckbox) {
@@ -494,6 +515,23 @@ document.addEventListener('DOMContentLoaded', function() {
             alert('Ocorreu um erro ao tentar excluir os itens.');
         });
     });
+    
+    // --- Lógica para mostrar/ocultar seção de relatório ---
+    const mostrarRelatorioBtn = document.getElementById('mostrarRelatorioBtn');
+    const ocultarRelatorioBtn = document.getElementById('ocultarRelatorioBtn');
+    const relatorioSection = document.getElementById('relatorioSection');
+    
+    if (mostrarRelatorioBtn && ocultarRelatorioBtn && relatorioSection) {
+        mostrarRelatorioBtn.addEventListener('click', function() {
+            relatorioSection.style.display = 'block';
+            this.style.display = 'none';
+        });
+        
+        ocultarRelatorioBtn.addEventListener('click', function() {
+            relatorioSection.style.display = 'none';
+            mostrarRelatorioBtn.style.display = 'inline-block';
+        });
+    }
 });
 </script>
 

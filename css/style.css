@@ -1,12 +1,198 @@
-/* Estilos para o botão de escanear */
-.form-group-with-button {
-    display: flex;
-    align-items: flex-end; /* Alinha o botão com a base do input */
-    gap: 10px; /* Espaçamento entre o input e o botão */
+/* Estilos para os botões de ação */
+.btn-custom {
+    display: inline-block;
+    padding: 10px 20px;
+    background-color: var(--cor-primaria);
+    color: white;
+    text-decoration: none;
+    border-radius: 5px;
+    border: none;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+    margin: 5px;
+    font-size: 14px;
 }
 
-.form-group-with-button input[type='text'] {
-    flex-grow: 1; /* Faz o input ocupar o espaço restante */
+.btn-custom:hover {
+    background-color: var(--cor-primaria-escura);
+}
+
+.btn-custom.btn-danger {
+    background-color: #dc3545;
+}
+
+.btn-custom.btn-danger:hover {
+    background-color: #c82333;
+}
+
+/* Estilos para botões com ícones */
+.btn-icon {
+    padding: 8px 12px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 5px;
+    border: none;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+    margin: 0 2px;
+}
+
+.btn-icon i {
+    font-size: 16px;
+}
+
+.csv-actions {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    margin-top: 15px;
+    flex-wrap: nowrap;
+}
+
+.csv-actions .btn-icon,
+.csv-actions .d-inline {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0;
+    padding: 0;
+}
+
+.csv-actions form {
+    margin: 0;
+    padding: 0;
+}
+
+.csv-actions .btn-icon {
+    width: 40px;
+    height: 40px;
+}
+
+.csv-actions .d-inline {
+    margin: 0;
+}
+
+#mostrarRelatorioBtn {
+    margin-bottom: 15px;
+}
+
+.d-flex {
+    display: flex !important;
+}
+
+.justify-content-between {
+    justify-content: space-between !important;
+}
+
+.align-items-center {
+    align-items: center !important;
+}
+
+.mb-3 {
+    margin-bottom: 1rem !important;
+}
+
+.mb-0 {
+    margin-bottom: 0 !important;
+}
+
+.mt-2 {
+    margin-top: 0.5rem !important;
+}
+
+.btn-sm {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.875rem;
+    border-radius: 0.2rem;
+}
+
+.card {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    word-wrap: break-word;
+    background-color: #fff;
+    background-clip: border-box;
+    border: 1px solid rgba(0,0,0,.125);
+    border-radius: 0.25rem;
+}
+
+.card-body {
+    flex: 1 1 auto;
+    min-height: 1px;
+    padding: 1.25rem;
+}
+
+.card-title {
+    margin-bottom: 0.75rem;
+}
+
+/* Estilos para o container de controles */
+.controls-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+    margin-bottom: 20px;
+    padding: 15px;
+    background-color: #f8f9fa;
+    border-radius: 8px;
+    border: 1px solid #e9ecef;
+}
+
+.main-actions {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.bulk-actions {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    padding: 10px;
+    background-color: #e9ecef;
+    border-radius: 5px;
+}
+
+.search-form {
+    flex: 1;
+    min-width: 300px;
+}
+
+.search-criteria {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
+.search-criteria label {
+    font-weight: 600;
+    margin: 0;
+}
+
+.search-criteria select {
+    width: auto;
+    padding: 5px 10px;
+}
+
+.search-input {
+    display: flex;
+    gap: 10px;
+}
+
+.search-input input[type="text"] {
+    flex: 1;
+    padding: 8px 12px;
+}
+
+.search-input input[type="submit"],
+.search-input .btn-custom {
+    padding: 8px 15px;
+    margin: 0;
 }
 
 /* Estilos para o Modal */
@@ -161,18 +347,27 @@ form textarea {
     box-sizing: border-box; /* Inclui padding e borda na largura total */
 }
 
-form input[type='submit'] {
-    background: #124a80; /* Cor principal para submit */
-    color: #fff;
-    padding: 10px 20px;
-    border: 0;
-    border-radius: 5px;
-    cursor: pointer;
-    transition: background-color 0.3s ease;
+/* Estilos para botões de ação em tabelas */
+table .btn {
+    padding: 5px 10px;
+    font-size: 12px;
+    line-height: 1.5;
+    border-radius: 3px;
+    margin: 2px;
 }
 
-form input[type='submit']:hover {
-    background: #0e3a66;
+/* Botão específico para restaurar itens */
+.btn-restaurar {
+    background-color: #28a745;
+    color: white;
+    border: none;
+    padding: 5px 10px;
+    border-radius: 3px;
+    cursor: pointer;
+}
+
+.btn-restaurar:hover {
+    background-color: #218838;
 }
 
 /* Estilos para os atalhos (cards) */
