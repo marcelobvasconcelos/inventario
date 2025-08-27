@@ -7,6 +7,9 @@ $itens_por_pagina = 20;
 $pagina_atual = isset($_GET['pagina']) ? (int)$_GET['pagina'] : 1;
 $offset = ($pagina_atual - 1) * $itens_por_pagina;
 
+// Variáveis de pesquisa
+$search_query = isset($_GET['search_query']) ? $_GET['search_query'] : '';
+
 $total_locais = 0;
 $sql_count = "";
 $sql_fetch = "";
@@ -20,19 +23,41 @@ $where_clause = "";
 if ($_SESSION['permissao'] == 'Visualizador') {
     $usuario_id = $_SESSION['id'];
     $where_clause = " WHERE i.responsavel_id = ? AND l.status = 'aprovado'";
+    
+    // Adiciona condição de pesquisa, se houver
+    if (!empty($search_query)) {
+        $where_clause .= " AND l.nome LIKE ?";
+        $params[] = '%' . $search_query . '%';
+        $param_types .= "s";
+    }
+    
     $sql_count = "SELECT COUNT(DISTINCT l.id) FROM locais l JOIN itens i ON l.id = i.local_id" . $where_clause;
     $sql_fetch = "SELECT DISTINCT l.id, l.nome, l.status FROM locais l JOIN itens i ON l.id = i.local_id" . $where_clause;
-    $params[] = $usuario_id;
-    $param_types = "i";
+    $params = array_merge([$usuario_id], $params);
+    $param_types = "i" . $param_types;
 } else { // Administrador e Gestor podem ver todos os locais aprovados por padrão, ou filtrar
     $sql_count = "SELECT COUNT(*) FROM locais";
     $sql_fetch = "SELECT id, nome, status, solicitado_por FROM locais";
 
+    // Adiciona condições de filtro
+    $conditions = [];
     if ($status_filter != 'todos') {
-        $where_clause = " WHERE status = ?";
+        $conditions[] = "status = ?";
         $params[] = $status_filter;
         $param_types = "s";
     }
+    
+    // Adiciona condição de pesquisa, se houver
+    if (!empty($search_query)) {
+        $conditions[] = "nome LIKE ?";
+        $params[] = '%' . $search_query . '%';
+        $param_types .= "s";
+    }
+    
+    if (!empty($conditions)) {
+        $where_clause = " WHERE " . implode(" AND ", $conditions);
+    }
+    
     $sql_count .= $where_clause;
     $sql_fetch .= $where_clause;
 }
@@ -78,17 +103,37 @@ if($stmt = mysqli_prepare($link, $sql_fetch)){
 ?>
 
 <h2>Locais de Armazenamento</h2>
-<div class="items-header-controls">
+<div class="controls-container">
+    <div class="main-actions">
+        <?php if($_SESSION["permissao"] == 'Administrador'): ?>
+        <a href="local_add.php" class="btn-custom">Adicionar Novo Local</a>
+        <?php endif; ?>
+    </div>
+    
     <?php if($_SESSION["permissao"] == 'Administrador'): ?>
-    <a href="local_add.php" class="btn-custom">Adicionar Novo Local</a>
+    <div class="search-form">
+        <form action="" method="GET">
+            <div class="search-input">
+                <input type="text" name="search_query" placeholder="Pesquisar por nome do setor..." value="<?php echo isset($_GET['search_query']) ? htmlspecialchars($_GET['search_query']) : ''; ?>">
+            </div>
+        </form>
+    </div>
+    
     <div class="filter-status">
-        <label for="status_filter">Filtrar por Status:</label>
-        <select id="status_filter" onchange="window.location.href='locais.php?status=' + this.value">
-            <option value="aprovado" <?php echo ($status_filter == 'aprovado') ? 'selected' : ''; ?>>Aprovados</option>
-            <option value="pendente" <?php echo ($status_filter == 'pendente') ? 'selected' : ''; ?>>Pendentes</option>
-            <option value="rejeitado" <?php echo ($status_filter == 'rejeitado') ? 'selected' : ''; ?>>Rejeitados</option>
-            <option value="todos" <?php echo ($status_filter == 'todos') ? 'selected' : ''; ?>>Todos</option>
-        </select>
+        <form action="" method="GET">
+            <!-- Manter o valor da pesquisa, se existir -->
+            <?php if (!empty($search_query)): ?>
+                <input type="hidden" name="search_query" value="<?php echo htmlspecialchars($search_query); ?>">
+            <?php endif; ?>
+            
+            <label for="status_filter">Filtrar por Status:</label>
+            <select id="status_filter" name="status" onchange="this.form.submit()">
+                <option value="aprovado" <?php echo ($status_filter == 'aprovado') ? 'selected' : ''; ?>>Aprovados</option>
+                <option value="pendente" <?php echo ($status_filter == 'pendente') ? 'selected' : ''; ?>>Pendentes</option>
+                <option value="rejeitado" <?php echo ($status_filter == 'rejeitado') ? 'selected' : ''; ?>>Rejeitados</option>
+                <option value="todos" <?php echo ($status_filter == 'todos') ? 'selected' : ''; ?>>Todos</option>
+            </select>
+        </form>
     </div>
     <?php endif; ?>
 </div>
@@ -164,16 +209,29 @@ if($stmt = mysqli_prepare($link, $sql_fetch)){
 
 <div class="pagination">
     <?php if ($total_paginas > 1): ?>
+        <?php 
+        // Constrói os parâmetros para manter a pesquisa e filtros na paginação
+        $query_params = [];
+        if (!empty($search_query)) {
+            $query_params['search_query'] = $search_query;
+        }
+        if ($status_filter != 'aprovado') { // 'aprovado' é o padrão, então só adiciona se for diferente
+            $query_params['status'] = $status_filter;
+        }
+        
+        $base_url = '?' . http_build_query($query_params);
+        ?>
+        
         <?php if ($pagina_atual > 1): ?>
-            <a href="?pagina=<?php echo $pagina_atual - 1; ?>&status=<?php echo $status_filter; ?>">Anterior</a>
+            <a href="<?php echo $base_url . '&pagina=' . ($pagina_atual - 1); ?>">Anterior</a>
         <?php endif; ?>
 
         <?php for ($i = 1; $i <= $total_paginas; $i++): ?>
-            <a href="?pagina=<?php echo $i; ?>&status=<?php echo $status_filter; ?>" class="<?php echo ($i == $pagina_atual) ? 'active' : ''; ?>"><?php echo $i; ?></a>
+            <a href="<?php echo $base_url . '&pagina=' . $i; ?>" class="<?php echo ($i == $pagina_atual) ? 'active' : ''; ?>"><?php echo $i; ?></a>
         <?php endfor; ?>
 
         <?php if ($pagina_atual < $total_paginas): ?>
-            <a href="?pagina=<?php echo $pagina_atual + 1; ?>&status=<?php echo $status_filter; ?>">Próxima</a>
+            <a href="<?php echo $base_url . '&pagina=' . ($pagina_atual + 1); ?>">Próxima</a>
         <?php endif; ?>
     <?php endif; ?>
 </div>
@@ -213,6 +271,29 @@ document.addEventListener('DOMContentLoaded', function() {
                 .forEach(tr => tbody.appendChild(tr));
         }));
     });
+    
+    // Implementação da pesquisa em tempo real
+    const searchInput = document.querySelector('input[name="search_query"]');
+    if (searchInput) {
+        let timeout = null;
+        
+        searchInput.addEventListener('input', function() {
+            clearTimeout(timeout);
+            const searchTerm = this.value;
+            
+            // Aguarda 300ms após o usuário parar de digitar antes de enviar a requisição
+            timeout = setTimeout(function() {
+                if (searchTerm.length >= 3) {
+                    // Aqui você poderia implementar uma pesquisa em tempo real via AJAX
+                    // Por enquanto, vamos apenas submeter o formulário automaticamente
+                    searchInput.form.submit();
+                } else if (searchTerm.length === 0) {
+                    // Se o campo estiver vazio, submete o formulário para limpar a pesquisa
+                    searchInput.form.submit();
+                }
+            }, 300);
+        });
+    }
 });
 </script>
 

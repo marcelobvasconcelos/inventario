@@ -166,6 +166,11 @@ Este documento descreve a finalidade de cada arquivo e diretório no projeto, co
 **Chamado por:** Requisições AJAX de scripts JavaScript no frontend (ex: formulários de movimentação).
 **Contexto:** Retorna dados de itens em formato JSON para uso dinâmico na interface.
 
+### `api/search_locais_nome.php`
+**Propósito:** Endpoint de API para buscar locais por nome (autocomplete).
+**Chamado por:** Requisições AJAX de scripts JavaScript no frontend (ex: campo de pesquisa de locais).
+**Contexto:** Retorna dados de locais em formato JSON para uso dinâmico na interface.
+
 ## Arquivos em `config/`
 
 ### `config/db.php`

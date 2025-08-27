@@ -47,7 +47,7 @@ O sistema possui diferentes níveis de acesso:
 Na seção "Itens", você pode ver uma lista de todos os itens cadastrados, com suas informações principais.
 
 ### 6.2. Visualizar Locais
-Na seção "Locais", você pode ver uma lista de todos os locais de armazenamento cadastrados.
+Na seção "Locais", você pode ver uma lista de todos os locais de armazenamento cadastrados e utilizar a barra de pesquisa para encontrar locais por nome.
 
 ### 6.3. Visualizar Movimentações
 Na seção "Movimentações", você pode visualizar o histórico de movimentações de itens. Gestores e Visualizadores veem apenas as movimentações dos itens pelos quais são responsáveis.
@@ -84,6 +84,7 @@ Como Administrador, você tem controle total sobre o sistema e pode:
 ### 8.2. Gerenciamento de Locais
 *   **Adicionar, Editar e Excluir Locais:** Controle total sobre os locais de armazenamento.
 *   **Aprovar/Rejeitar Solicitações:** Gerencie as solicitações de novos locais feitas pelos Gestores.
+*   **Pesquisar Locais:** Utilize a barra de pesquisa para encontrar locais por nome.
 
 
 ### 8.3. Gerenciamento de Movimentações

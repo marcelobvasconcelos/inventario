@@ -29,7 +29,7 @@ $pagina_atual = isset($_GET['pagina']) ? (int)$_GET['pagina'] : 1;
 $offset = ($pagina_atual - 1) * $itens_por_pagina;
 
 // Variáveis de pesquisa
-$search_by = isset($_GET['search_by']) ? $_GET['search_by'] : '';
+$search_by = isset($_GET['search_by']) ? $_GET['search_by'] : 'todos';
 $search_query = isset($_GET['search_query']) ? $_GET['search_query'] : '';
 
 // SQL base para contagem total de itens
@@ -73,6 +73,15 @@ if ($_SESSION['permissao'] != 'Administrador') {
                 $where_clause .= " AND u.nome LIKE ?";
                 $params[] = $search_term;
                 $param_types .= "s";
+                break;
+            case 'todos':
+                $where_clause .= " AND (i.nome LIKE ? OR i.patrimonio_novo LIKE ? OR i.patrimonio_secundario LIKE ? OR l.nome LIKE ? OR u.nome LIKE ?)";
+                $params[] = $search_term;
+                $params[] = $search_term;
+                $params[] = $search_term;
+                $params[] = $search_term;
+                $params[] = $search_term;
+                $param_types .= "sssss";
                 break;
             default:
                 $where_clause .= " AND i.nome LIKE ?";
@@ -150,22 +159,10 @@ if($stmt = mysqli_prepare($link, $sql)){
     <?php if($_SESSION['permissao'] == 'Administrador'): ?>
     <div class="search-form">
         <form action="" method="GET">
-            <div class="search-criteria">
-                <label for="search_by">Pesquisar por:</label>
-                <select name="search_by" id="search_by">
-                    <option value="id" <?php echo (isset($_GET['search_by']) && $_GET['search_by'] == 'id') ? 'selected' : ''; ?>>ID</option>
-                    <option value="patrimonio_novo" <?php echo (isset($_GET['search_by']) && $_GET['search_by'] == 'patrimonio_novo') ? 'selected' : ''; ?>>Patrimônio</option>
-                    <option value="patrimonio_secundario" <?php echo (isset($_GET['search_by']) && $_GET['search_by'] == 'patrimonio_secundario') ? 'selected' : ''; ?>>Patrimônio Secundário</option>
-                    <option value="local" <?php echo (isset($_GET['search_by']) && $_GET['search_by'] == 'local') ? 'selected' : ''; ?>>Local</option>
-                    <option value="responsavel" <?php echo (isset($_GET['search_by']) && $_GET['search_by'] == 'responsavel') ? 'selected' : ''; ?>>Responsável</option>
-                </select>
-            </div>
             <div class="search-input">
-                <input type="text" name="search_query" placeholder="Digite o termo de pesquisa" value="<?php echo isset($_GET['search_query']) ? htmlspecialchars($_GET['search_query']) : ''; ?>">
-                <input type="submit" value="Pesquisar">
-                <?php if(isset($_GET['search_query'])): ?>
-                    <a href="itens.php" class="btn-custom">Limpar Pesquisa</a>
-                <?php endif; ?>
+                <input type="text" name="search_query" placeholder="Pesquisar em qualquer campo..." value="<?php echo isset($_GET['search_query']) ? htmlspecialchars($_GET['search_query']) : ''; ?>">
+                <!-- Campo oculto para definir a pesquisa como 'todos' por padrão -->
+                <input type="hidden" name="search_by" value="todos">
             </div>
         </form>
     </div>
@@ -530,6 +527,53 @@ document.addEventListener('DOMContentLoaded', function() {
         ocultarRelatorioBtn.addEventListener('click', function() {
             relatorioSection.style.display = 'none';
             mostrarRelatorioBtn.style.display = 'inline-block';
+        });
+    }
+    
+    // --- Lógica para adicionar itens selecionados ao formulário de PDF ---
+    const pdfForm = document.querySelector('form[action="gerar_pdf_itens.php"]');
+    if (pdfForm) {
+        pdfForm.addEventListener('submit', function(e) {
+            // Remover campos hidden de itens selecionados anteriores, se existirem
+            const existingItemInputs = pdfForm.querySelectorAll('input[name="selected_item_ids[]"]');
+            existingItemInputs.forEach(input => input.remove());
+            
+            // Obter itens selecionados
+            const selectedItems = Array.from(document.querySelectorAll('.item-checkbox')).filter(cb => cb.checked);
+            
+            // Se houver itens selecionados, adicionar como campos hidden
+            if (selectedItems.length > 0) {
+                selectedItems.forEach(item => {
+                    const itemId = item.getAttribute('data-item-id');
+                    const hiddenInput = document.createElement('input');
+                    hiddenInput.type = 'hidden';
+                    hiddenInput.name = 'selected_item_ids[]';
+                    hiddenInput.value = itemId;
+                    pdfForm.appendChild(hiddenInput);
+                });
+            }
+        });
+    }
+    
+    // --- Lógica da pesquisa automática ---
+    const searchInput = document.querySelector('input[name="search_query"]');
+    if (searchInput) {
+        let timeout = null;
+        
+        searchInput.addEventListener('input', function() {
+            clearTimeout(timeout);
+            const searchTerm = this.value;
+            
+            // Aguarda 300ms após o usuário parar de digitar antes de enviar a requisição
+            timeout = setTimeout(function() {
+                if (searchTerm.length >= 3) {
+                    // Submete o formulário automaticamente
+                    searchInput.form.submit();
+                } else if (searchTerm.length === 0) {
+                    // Se o campo estiver vazio, submete o formulário para limpar a pesquisa
+                    searchInput.form.submit();
+                }
+            }, 300);
         });
     }
 });

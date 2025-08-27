@@ -91,7 +91,6 @@ if (isset($_SESSION['id'])) {
         <h1>Sistema de Inventário</h1>
         <nav>
             <a href="/inventario/dashboard.php">Dashboard</a>
-            <a href="/inventario/index.php">Início</a>
             <a href="/inventario/itens.php">Itens</a>
             <a href="/inventario/locais.php">Locais</a>
             <a href="/inventario/movimentacoes.php">Movimentações</a>

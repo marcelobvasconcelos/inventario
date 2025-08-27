@@ -27,6 +27,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     // Atualizar o cabeçalho
     if (isset($_POST['cabecalho_padrao_pdf'])) {
         $novo_cabecalho = $_POST['cabecalho_padrao_pdf'];
+        // Certificar-se de que a string esteja em UTF-8
+        $novo_cabecalho = mb_convert_encoding($novo_cabecalho, 'UTF-8', 'auto');
         $stmt = $pdo->prepare("UPDATE configuracoes SET valor = ? WHERE chave = 'cabecalho_padrao_pdf'");
         if ($stmt->execute([$novo_cabecalho])) {
             $cabecalho_padrao = $novo_cabecalho;

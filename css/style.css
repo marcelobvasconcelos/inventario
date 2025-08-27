@@ -835,6 +835,24 @@ td a i {
     border-bottom: none;
 }
 
+.filter-status {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-left: 20px;
+}
+
+.filter-status label {
+    margin: 0;
+    font-weight: 600;
+}
+
+.filter-status select {
+    padding: 8px 12px;
+    border-radius: 5px;
+    border: 1px solid #ccc;
+}
+
 .disabled-icon {
     color: #ccc;
     cursor: not-allowed;
