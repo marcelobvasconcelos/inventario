@@ -193,7 +193,7 @@ if($stmt = mysqli_prepare($link, $sql)){
     </div>
 </div>
 
-<div class="csv-actions">
+<div class="csv-actions" style="justify-content: flex-end;">
     <button type="button" class="btn btn-primary btn-icon" id="mostrarRelatorioBtn" title="Gerar Relatório">
         <i class="fas fa-file-pdf"></i>
     </button>
@@ -205,13 +205,13 @@ if($stmt = mysqli_prepare($link, $sql)){
         <input type="hidden" name="search_query" value="<?php echo htmlspecialchars($search_query); ?>">
         
         <button type="submit" class="btn btn-success btn-icon" title="Exportar para CSV">
-            <i class="fas fa-file-csv"></i>
+            <i class="fas fa-file-export"></i>
         </button>
     </form>
     
     <!-- Botão para importar itens -->
     <a href="importar_novos_itens_csv.php" class="btn btn-warning btn-icon" title="Importar Itens via CSV">
-        <i class="fas fa-file-import"></i>
+        <i class="fas fa-download"></i>
     </a>
 </div>
 <?php endif; ?>
@@ -225,7 +225,7 @@ if($stmt = mysqli_prepare($link, $sql)){
             <th data-column="id">ID <span class="sort-arrow"></span></th>
             <th data-column="nome">Nome <span class="sort-arrow"></span></th>
             <th data-column="patrimonio_novo">Patrimônio <span class="sort-arrow"></span></th>
-            <th data-column="patrimonio_secundario">Patrimônio Secundário <span class="sort-arrow"></span></th>
+            <th data-column="patrimonio_secundario">Patri_Sec <span class="sort-arrow"></span></th>
             <th data-column="local">Local <span class="sort-arrow"></span></th>
             <th data-column="responsavel">Responsável <span class="sort-arrow"></span></th>
             <th data-column="estado">Estado <span class="sort-arrow"></span></th>
@@ -576,6 +576,95 @@ document.addEventListener('DOMContentLoaded', function() {
             }, 300);
         });
     }
+    
+    // --- Lógica de ordenação de colunas ---
+    const sortableHeaders = document.querySelectorAll('th[data-column]');
+    let currentSortColumn = null;
+    let currentSortDirection = 'asc';
+    
+    // Função para obter o valor da célula
+    function getCellValue(tr, idx) {
+        const cell = tr.children[idx];
+        // Se for um link, retorna o texto do link
+        const link = cell.querySelector('a');
+        if (link) {
+            return link.textContent || link.innerText || '';
+        }
+        // Se for um elemento com classe badge, retorna o texto do badge
+        const badge = cell.querySelector('.badge');
+        if (badge) {
+            return badge.textContent || badge.innerText || '';
+        }
+        // Caso contrário, retorna o conteúdo da célula
+        return cell.textContent || cell.innerText || '';
+    }
+    
+    // Função de comparação
+    function comparer(idx, asc) {
+        return function(a, b) {
+            const v1 = getCellValue(asc ? a : b, idx);
+            const v2 = getCellValue(asc ? b : a, idx);
+            
+            // Verificar se são números
+            const num1 = parseFloat(v1);
+            const num2 = parseFloat(v2);
+            
+            // Se ambos forem números válidos, comparar como números
+            if (!isNaN(num1) && !isNaN(num2)) {
+                return num1 - num2;
+            }
+            
+            // Caso contrário, comparar como strings
+            return v1.toString().localeCompare(v2.toString());
+        };
+    }
+    
+    sortableHeaders.forEach(header => {
+        // Adicionar seta padrão para todas as colunas
+        const arrow = header.querySelector('.sort-arrow');
+        if (arrow) {
+            arrow.classList.add('none');
+        }
+        
+        header.style.cursor = 'pointer';
+        header.addEventListener('click', () => {
+            const table = header.closest('table');
+            const tbody = table.querySelector('tbody');
+            const columnIndex = Array.from(header.parentNode.children).indexOf(header);
+            
+            // Remover classes de ordenação de todas as setas
+            document.querySelectorAll('.sort-arrow').forEach(arrow => {
+                arrow.classList.remove('up', 'down');
+                arrow.classList.add('none');
+            });
+            
+            // Determinar a direção da ordenação
+            if (currentSortColumn === columnIndex) {
+                currentSortDirection = currentSortDirection === 'asc' ? 'desc' : 'asc';
+            } else {
+                currentSortDirection = 'asc';
+                currentSortColumn = columnIndex;
+            }
+            
+            // Atualizar a seta da coluna clicada
+            const clickedArrow = header.querySelector('.sort-arrow');
+            if (clickedArrow) {
+                clickedArrow.classList.remove('none');
+                if (currentSortDirection === 'asc') {
+                    clickedArrow.classList.add('up');
+                } else {
+                    clickedArrow.classList.add('down');
+                }
+            }
+            
+            // Ordenar as linhas
+            const rows = Array.from(tbody.querySelectorAll('tr'));
+            rows.sort(comparer(columnIndex, currentSortDirection === 'asc'));
+            
+            // Reordenar as linhas no tbody
+            rows.forEach(row => tbody.appendChild(row));
+        });
+    });
 });
 </script>
 

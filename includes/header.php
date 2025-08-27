@@ -90,14 +90,14 @@ if (isset($_SESSION['id'])) {
     <header class="main-header">
         <h1>Sistema de Inventário</h1>
         <nav>
-            <a href="/inventario/dashboard.php">Dashboard</a>
-            <a href="/inventario/itens.php">Itens</a>
-            <a href="/inventario/locais.php">Locais</a>
-            <a href="/inventario/movimentacoes.php">Movimentações</a>
+            <a href="/inventario/dashboard.php" <?php echo (strpos($_SERVER['REQUEST_URI'], '/dashboard.php') !== false) ? 'class="active"' : ''; ?>>Dashboard</a>
+            <a href="/inventario/itens.php" <?php echo (strpos($_SERVER['REQUEST_URI'], '/itens.php') !== false) ? 'class="active"' : ''; ?>>Itens</a>
+            <a href="/inventario/locais.php" <?php echo (strpos($_SERVER['REQUEST_URI'], '/locais.php') !== false) ? 'class="active"' : ''; ?>>Locais</a>
+            <a href="/inventario/movimentacoes.php" <?php echo (strpos($_SERVER['REQUEST_URI'], '/movimentacoes.php') !== false) ? 'class="active"' : ''; ?>>Movimentações</a>
             <?php if($_SESSION["permissao"] == 'Administrador'): ?>
-                <a href="/inventario/usuarios.php">Usuários</a>
-                <a href="/inventario/patrimonio_add.php">Patrimônio</a>
-                <a href="/inventario/notificacoes_admin.php">Gerenciar Notificações</a>
+                <a href="/inventario/usuarios.php" <?php echo (strpos($_SERVER['REQUEST_URI'], '/usuarios.php') !== false) ? 'class="active"' : ''; ?>>Usuários</a>
+                <a href="/inventario/patrimonio_add.php" <?php echo (strpos($_SERVER['REQUEST_URI'], '/patrimonio_add.php') !== false) ? 'class="active"' : ''; ?>>Patrimônio</a>
+                <a href="/inventario/notificacoes_admin.php" <?php echo (strpos($_SERVER['REQUEST_URI'], '/notificacoes_admin.php') !== false) ? 'class="active"' : ''; ?>>Gerenciar Notificações</a>
             <?php endif; ?>
         </nav>
         <div class="user-menu">

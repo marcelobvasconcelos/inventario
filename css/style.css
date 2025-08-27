@@ -74,10 +74,6 @@
     margin: 0;
 }
 
-#mostrarRelatorioBtn {
-    margin-bottom: 15px;
-}
-
 .d-flex {
     display: flex !important;
 }
@@ -851,6 +847,36 @@ td a i {
     padding: 8px 12px;
     border-radius: 5px;
     border: 1px solid #ccc;
+}
+
+.main-header nav a.active {
+    background-color: rgba(255, 255, 255, 0.2);
+    border-radius: 4px;
+    padding: 5px 10px;
+    font-weight: 600;
+}
+
+.sort-arrow {
+    display: inline-block;
+    width: 0;
+    height: 0;
+    margin-left: 5px;
+    vertical-align: middle;
+    border-left: 4px solid transparent;
+    border-right: 4px solid transparent;
+}
+
+.sort-arrow.up {
+    border-bottom: 4px solid #000;
+}
+
+.sort-arrow.down {
+    border-top: 4px solid #000;
+}
+
+.sort-arrow.none {
+    border-top: 4px solid #ccc;
+    border-bottom: 4px solid #ccc;
 }
 
 .disabled-icon {
