@@ -193,7 +193,7 @@ if($stmt = mysqli_prepare($link, $sql)){
     </div>
 </div>
 
-<div class="csv-actions mt-3">
+<div class="csv-actions">
     <button type="button" class="btn btn-primary btn-icon" id="mostrarRelatorioBtn" title="Gerar Relatório">
         <i class="fas fa-file-pdf"></i>
     </button>
