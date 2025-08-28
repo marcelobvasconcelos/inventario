@@ -171,6 +171,23 @@ Este documento descreve a finalidade de cada arquivo e diretório no projeto, co
 **Chamado por:** Requisições AJAX de scripts JavaScript no frontend (ex: campo de pesquisa de locais).
 **Contexto:** Retorna dados de locais em formato JSON para uso dinâmico na interface.
 
+## Arquivos em `docs/`
+
+### `docs/FILE_STRUCTURE.md`
+**Propósito:** Documenta a estrutura de arquivos do projeto.
+**Chamado por:** Referência dos desenvolvedores.
+**Contexto:** Fornece informações sobre a organização dos arquivos do sistema.
+
+### `docs/USER_MANUAL.md`
+**Propósito:** Manual do usuário do sistema.
+**Chamado por:** Link "Ajuda" no menu do usuário.
+**Contexto:** Explica como usar o sistema com base nas permissões do usuário.
+
+### `docs/MELHORIAS_USUARIOS.md`
+**Propósito:** Documenta melhorias identificadas para a página de gerenciamento de usuários.
+**Chamado por:** Referência dos desenvolvedores e administradores.
+**Contexto:** Fornece diretrizes para aprimoramento da funcionalidade de usuários.
+
 ## Arquivos em `config/`
 
 ### `config/db.php`

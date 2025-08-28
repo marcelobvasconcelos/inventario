@@ -39,65 +39,150 @@ if($_SERVER["REQUEST_METHOD"] == "POST"){
         $mensagem = "Por favor, preencha todos os campos obrigatórios (local e responsável).";
         $tipo_mensagem = "danger";
     } else if (!isset($_FILES['csv_file']) || $_FILES['csv_file']['error'] !== UPLOAD_ERR_OK) {
-        $mensagem = "Por favor, selecione um arquivo CSV válido para upload.";
+        $mensagem = "Por favor, selecione um arquivo CSV válido para upload. Erro do arquivo: " . $_FILES['csv_file']['error'];
         $tipo_mensagem = "danger";
     } else {
         // Verificar se o arquivo é realmente um CSV
         $file_type = mime_content_type($_FILES['csv_file']['tmp_name']);
-        if ($file_type !== 'text/plain' && $file_type !== 'text/csv' && $file_type !== 'application/csv') {
-            $mensagem = "O arquivo enviado não é um CSV válido.";
+        // Adicionar verificação adicional para arquivos CSV com diferentes tipos MIME
+        $allowed_types = ['text/plain', 'text/csv', 'application/csv', 'application/vnd.ms-excel'];
+        if (!in_array($file_type, $allowed_types)) {
+            $mensagem = "O arquivo enviado não é um CSV válido. Tipo detectado: " . $file_type . ". Tipos permitidos: " . implode(', ', $allowed_types);
             $tipo_mensagem = "danger";
         } else {
             // Processar o arquivo CSV
             $csv_file = $_FILES['csv_file']['tmp_name'];
+            // Abrir o arquivo com a codificação UTF-8 para lidar com caracteres especiais
             $handle = fopen($csv_file, 'r');
             
             if ($handle) {
+                // Tentar detectar a codificação do arquivo
+                $sample = fread($handle, 1024);
+                fclose($handle);
+                
+                // Reabrir o arquivo
+                $handle = fopen($csv_file, 'r');
+                
                 // Ler o cabeçalho
                 $header = fgetcsv($handle, 1000, ',');
                 
                 // Verificar se o cabeçalho contém as colunas esperadas
-                if ($header && count($header) >= 2 && 
-                    in_array('PATRIMÔNIO NOVO', $header) && 
-                    in_array('DESCRIÇÃO', $header)) {
+                // Tratar possíveis problemas de codificação
+                if ($header) {
+                    // Mostrar os cabeçalhos para depuração
+                    // error_log("Cabeçalhos do CSV: " . print_r($header, true));
                     
-                    $patrimonio_index = array_search('PATRIMÔNIO NOVO', $header);
-                    $descricao_index = array_search('DESCRIÇÃO', $header);
-                    // Verificar se existe a coluna PATRIMÔNIO ANTIGO (opcional)
-                    $patrimonio_secundario_index = array_search('PATRIMÔNIO ANTIGO', $header);
+                    // Tentar corrigir a codificação dos cabeçalhos se necessário
+                    $header = array_map(function($item) {
+                        // Se o item não estiver em UTF-8, tentar converter
+                        if (!mb_check_encoding($item, 'UTF-8')) {
+                            return mb_convert_encoding($item, 'UTF-8', 'auto');
+                        }
+                        return $item;
+                    }, $header);
+                    
+                    // Normalizar os cabeçalhos para comparação
+                    $normalized_header = array_map('trim', $header);
+                    $normalized_header = array_map('mb_strtoupper', $normalized_header);
+                    
+                    // Verificar se contém as colunas esperadas (com tratamento de maiúsculas)
+                    $has_patrimonio = false;
+                    $has_descricao = false;
+                    
+                    foreach ($normalized_header as $col) {
+                        if (strpos($col, 'PATRIMÔNIO') !== false && strpos($col, 'NOVO') !== false) {
+                            $has_patrimonio = true;
+                        }
+                        if (strpos($col, 'DESCRIÇÃO') !== false || strpos($col, 'DESCRICAO') !== false) {
+                            $has_descricao = true;
+                        }
+                    }
+                }
+                
+                // Adicionar verificação adicional para mostrar os cabeçalhos normalizados
+                // error_log("Cabeçalhos normalizados: " . print_r($normalized_header, true));
+                // error_log("Tem patrimônio: " . ($has_patrimonio ? 'Sim' : 'Não'));
+                // error_log("Tem descrição: " . ($has_descricao ? 'Sim' : 'Não'));
+                
+                if ($header && count($header) >= 2 && $has_patrimonio && $has_descricao) {
+                    
+                    // Encontrar os índices corretos das colunas
+                    $patrimonio_index = null;
+                    $descricao_index = null;
+                    $patrimonio_secundario_index = null;
+                    
+                    // Normalizar cabeçalhos para comparação
+                    $normalized_header = array_map('trim', $header);
+                    $normalized_header = array_map('mb_strtoupper', $normalized_header);
+                    
+                    foreach ($header as $index => $column) {
+                        $normalized_column = mb_strtoupper(trim($column));
+                        if (strpos($normalized_column, 'PATRIMÔNIO') !== false && strpos($normalized_column, 'NOVO') !== false) {
+                            $patrimonio_index = $index;
+                        }
+                        if (strpos($normalized_column, 'DESCRIÇÃO') !== false || strpos($normalized_column, 'DESCRICAO') !== false) {
+                            $descricao_index = $index;
+                        }
+                        if (strpos($normalized_column, 'PATRIMÔNIO') !== false && strpos($normalized_column, 'ANTIGO') !== false) {
+                            $patrimonio_secundario_index = $index;
+                        }
+                    }
                     $novos_itens = [];
+                    
+                    // Verificar se os índices foram encontrados
+                    if ($patrimonio_index === null || $descricao_index === null) {
+                        $mensagem = "Não foi possível encontrar as colunas necessárias no arquivo CSV. Verifique se as colunas estão nomeadas corretamente.";
+                        $tipo_mensagem = "danger";
+                        fclose($handle);
+                        return;
+                    }
                     
                     // Ler as linhas do CSV
                     while (($data = fgetcsv($handle, 1000, ',')) !== FALSE) {
+                        // Verificar se a linha tem o número correto de colunas
+                        if (count($data) < 2) {
+                            continue; // Pular linhas inválidas
+                        }
+                        
                         if (isset($data[$patrimonio_index]) && isset($data[$descricao_index])) {
                             $patrimonio = trim($data[$patrimonio_index]);
                             $descricao = trim($data[$descricao_index]);
                             // Obter patrimônio secundário se a coluna existir
                             $patrimonio_secundario = '';
-                            if ($patrimonio_secundario_index !== false && isset($data[$patrimonio_secundario_index])) {
+                            if ($patrimonio_secundario_index !== null && isset($data[$patrimonio_secundario_index])) {
                                 $patrimonio_secundario = trim($data[$patrimonio_secundario_index]);
                             }
                             
-                            if (!empty($patrimonio) && !empty($descricao)) {
-                                // Verificar se o patrimônio já existe
-                                $sql_check = "SELECT id FROM itens WHERE patrimonio_novo = ?";
-                                $stmt_check = mysqli_prepare($link, $sql_check);
-                                mysqli_stmt_bind_param($stmt_check, "s", $patrimonio);
-                                mysqli_stmt_execute($stmt_check);
-                                $result_check = mysqli_stmt_get_result($stmt_check);
-                                
-                                if (mysqli_fetch_assoc($result_check)) {
-                                    $mensagem .= "Item com patrimônio '$patrimonio' já existe e foi ignorado.<br>";
-                                    $tipo_mensagem = "warning";
-                                } else {
-                                    $novos_itens[] = [
-                                        'patrimonio' => $patrimonio,
-                                        'descricao' => $descricao,
-                                        'patrimonio_secundario' => $patrimonio_secundario
-                                    ];
-                                }
-                                mysqli_stmt_close($stmt_check);
-                            }
+                            // Verificar se os campos obrigatórios não estão vazios
+                    if (!empty($patrimonio) && !empty($descricao)) {
+                        // Verificar se o patrimônio já existe
+                        $sql_check = "SELECT id FROM itens WHERE patrimonio_novo = ?";
+                        $stmt_check = mysqli_prepare($link, $sql_check);
+                        mysqli_stmt_bind_param($stmt_check, "s", $patrimonio);
+                        mysqli_stmt_execute($stmt_check);
+                        $result_check = mysqli_stmt_get_result($stmt_check);
+                        
+                        if (mysqli_fetch_assoc($result_check)) {
+                            $mensagem .= "Item com patrimônio '$patrimonio' já existe e foi ignorado.<br>";
+                            $tipo_mensagem = "warning";
+                        } else {
+                            $novos_itens[] = [
+                                'patrimonio' => $patrimonio,
+                                'descricao' => $descricao,
+                                'patrimonio_secundario' => $patrimonio_secundario
+                            ];
+                        }
+                        mysqli_stmt_close($stmt_check);
+                    } else {
+                        // Adicionar mensagem de depuração para campos vazios
+                        if (empty($patrimonio)) {
+                            $mensagem .= "Patrimônio vazio encontrado na linha.<br>";
+                        }
+                        if (empty($descricao)) {
+                            $mensagem .= "Descrição vazia encontrada na linha.<br>";
+                        }
+                        $tipo_mensagem = "warning";
+                    }
                         }
                     }
                     
@@ -105,6 +190,10 @@ if($_SERVER["REQUEST_METHOD"] == "POST"){
                     
                     // Se encontrou itens novos, processar a inserção
                     if (!empty($novos_itens)) {
+                        // Mostrar informações de depuração
+                        // error_log("Número de itens a importar: " . count($novos_itens));
+                        // error_log("Primeiro item: " . print_r($novos_itens[0], true));
+                        
                         // --- TRANSAÇÃO DE BANCO DE DADOS ---
                         mysqli_begin_transaction($link);
                         try {
@@ -165,16 +254,16 @@ if($_SERVER["REQUEST_METHOD"] == "POST"){
                         }
                     } else {
                         if (empty($mensagem)) {
-                            $mensagem = "Nenhum item novo encontrado no arquivo CSV.";
+                            $mensagem = "Nenhum item novo encontrado no arquivo CSV. Verifique se os dados estão preenchidos corretamente e se o arquivo contém as colunas esperadas.";
                             $tipo_mensagem = "warning";
                         }
                     }
                 } else {
-                    $mensagem = "Formato de CSV inválido. O arquivo deve conter colunas chamadas 'patrimonio' e 'descricao'.";
+                    $mensagem = "Formato de CSV inválido. O arquivo deve conter colunas chamadas 'PATRIMÔNIO NOVO', 'PATRIMÔNIO ANTIGO' (opcional) e 'DESCRIÇÃO'. Cabeçalhos encontrados: " . implode(', ', $header) . ". Verifique se os nomes das colunas estão exatamente como especificado.";
                     $tipo_mensagem = "danger";
                 }
             } else {
-                $mensagem = "Erro ao ler o arquivo CSV.";
+                $mensagem = "Erro ao ler o arquivo CSV. Verifique se o arquivo está corrompido ou protegido.";
                 $tipo_mensagem = "danger";
             }
         }
