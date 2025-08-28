@@ -283,7 +283,10 @@ require_once 'includes/header.php';
                 }
                 ?>
                 <div class="notification-item card mb-1 <?php echo $notif_card_class; ?>" data-notif-id="<?php echo $notificacao['id']; ?>" data-item-statuses="<?php echo htmlspecialchars($notificacao['data_item_statuses']); ?>" style="padding: 0.5rem 0.7rem; border-radius: 8px;">
-                    <div class="card-header notification-summary">
+                    <div class="card-header notification-summary d-flex align-items-center">
+                        <?php if (!$notificacao_unica_id && (empty($notificacao['status']) || $notificacao['status'] == 'Pendente' || $notificacao['status'] == 'Em Disputa')): ?>
+                            <input type="checkbox" class="notification-checkbox mr-3" name="notificacoes_confirmar[]" value="<?php echo $notificacao['id']; ?>" style="width:20px; height:20px; margin-right:15px;">
+                        <?php endif; ?>
                         <a href="notificacoes_usuario.php?notif_id=<?php echo $notificacao['id']; ?>" class="d-flex justify-content-between align-items-center w-100 text-decoration-none text-dark">
                             <div>
                                 <i class="fas <?php 
@@ -642,7 +645,8 @@ document.addEventListener('DOMContentLoaded', function() {
     });
     
     // --- Lógica para seleção em massa e ações em massa ---
-    const checkboxes = document.querySelectorAll('.item-checkbox');
+    const notificationCheckboxes = document.querySelectorAll('.notification-checkbox');
+    const itemCheckboxes = document.querySelectorAll('.item-checkbox');
     const bulkActionButtons = document.querySelector('.bulk-action-buttons');
     const bulkConfirmBtn = document.getElementById('bulkConfirmBtn');
     const bulkRejectBtn = document.getElementById('bulkRejectBtn');
@@ -652,83 +656,170 @@ document.addEventListener('DOMContentLoaded', function() {
     const cancelBulkJustificativa = document.getElementById('cancelBulkJustificativa');
     
     // Mostrar/ocultar botões de ação em massa quando checkboxes são selecionados
-    checkboxes.forEach(checkbox => {
-        checkbox.addEventListener('change', function() {
-            const anyChecked = Array.from(checkboxes).some(cb => cb.checked);
-            bulkActionButtons.style.display = anyChecked ? 'block' : 'none';
-        });
+    function updateBulkActionsVisibility() {
+        const anyChecked = Array.from(notificationCheckboxes).some(cb => cb.checked) || 
+                          Array.from(itemCheckboxes).some(cb => cb.checked);
+        bulkActionButtons.style.display = anyChecked ? 'block' : 'none';
+    }
+    
+    // Adicionar listeners para checkboxes de notificações
+    notificationCheckboxes.forEach(checkbox => {
+        checkbox.addEventListener('change', updateBulkActionsVisibility);
+    });
+    
+    // Adicionar listeners para checkboxes de itens (mantendo a funcionalidade existente)
+    itemCheckboxes.forEach(checkbox => {
+        checkbox.addEventListener('change', updateBulkActionsVisibility);
     });
     
     // Ação de confirmação em massa
     bulkConfirmBtn.addEventListener('click', function() {
-        const selectedItems = Array.from(checkboxes).filter(cb => cb.checked);
-        if (selectedItems.length === 0) {
-            alert('Por favor, selecione pelo menos um item.');
+        // Verificar se há notificações selecionadas
+        const selectedNotifications = Array.from(notificationCheckboxes).filter(cb => cb.checked);
+        const selectedItems = Array.from(itemCheckboxes).filter(cb => cb.checked);
+        
+        if (selectedNotifications.length === 0 && selectedItems.length === 0) {
+            alert('Por favor, selecione pelo menos uma notificação ou item.');
             return;
         }
         
-        // Confirmar todos os itens selecionados
-        const promises = selectedItems.map(checkbox => {
-            const notifId = checkbox.dataset.notifId;
-            const itemId = checkbox.value;
-            
-            const formData = new FormData();
-            formData.append('is_ajax', 'true');
-            formData.append('notificacao_id', notifId);
-            formData.append('item_id', itemId);
-            formData.append('action', 'confirmar_item');
-            
-            return fetch('notificacoes_usuario.php', {
-                method: 'POST',
-                body: formData
-            }).then(response => response.json());
-        });
-        
-        Promise.all(promises)
-            .then(results => {
-                // Verificar se todas as operações foram bem-sucedidas
-                const allSuccess = results.every(result => result.success);
-                const feedbackMessage = document.getElementById('feedback-message');
-                feedbackMessage.style.display = 'block';
-                feedbackMessage.className = `alert ${allSuccess ? 'alert-success' : 'alert-danger'}`;
-                feedbackMessage.textContent = allSuccess ? 
-                    `Todos os ${selectedItems.length} itens foram confirmados com sucesso!` : 
-                    'Alguns itens não puderam ser confirmados. Verifique os detalhes.';
+        // Se houver notificações selecionadas, confirmar todas as notificações
+        if (selectedNotifications.length > 0) {
+            // Confirmar todas as notificações selecionadas
+            const promises = selectedNotifications.map(checkbox => {
+                const notifId = checkbox.value;
                 
-                // Atualizar a interface para os itens confirmados
-                selectedItems.forEach(checkbox => {
-                    const notifId = checkbox.dataset.notifId;
-                    const itemId = checkbox.value;
-                    const itemCard = document.querySelector(`.item-detail-card[data-item-id="${itemId}"]`);
-                    if (itemCard) {
-                        // Esconder os botões de ação
-                        const actionContainer = document.getElementById(`item_actions_${notifId}_${itemId}`);
-                        if (actionContainer) {
-                            actionContainer.style.display = 'none';
-                        }
+                // Encontrar o primeiro item desta notificação para confirmar
+                const notificationElement = checkbox.closest('.notification-item');
+                const firstItemElement = notificationElement.querySelector('.item-detail-card');
+                const itemId = firstItemElement ? firstItemElement.dataset.itemId : null;
+                
+                if (!itemId) {
+                    return Promise.reject(new Error('Item não encontrado na notificação'));
+                }
+                
+                const formData = new FormData();
+                formData.append('is_ajax', 'true');
+                formData.append('notificacao_id', notifId);
+                formData.append('item_id', itemId);
+                formData.append('action', 'confirmar_item');
+                
+                return fetch('notificacoes_usuario.php', {
+                    method: 'POST',
+                    body: formData
+                }).then(response => response.json());
+            });
+            
+            Promise.all(promises)
+                .then(results => {
+                    // Verificar se todas as operações foram bem-sucedidas
+                    const allSuccess = results.every(result => result.success);
+                    const feedbackMessage = document.getElementById('feedback-message');
+                    feedbackMessage.style.display = 'block';
+                    feedbackMessage.className = `alert ${allSuccess ? 'alert-success' : 'alert-danger'}`;
+                    feedbackMessage.textContent = allSuccess ? 
+                        `Todas as ${selectedNotifications.length} notificações foram confirmadas com sucesso!` : 
+                        'Algumas notificações não puderam ser confirmadas. Verifique os detalhes.';
+                    
+                    // Atualizar a interface para as notificações confirmadas
+                    selectedNotifications.forEach(checkbox => {
                         // Marcar o checkbox como não selecionável
                         checkbox.disabled = true;
                         checkbox.checked = false;
-                    }
+                        
+                        // Atualizar visualmente a notificação
+                        const notificationElement = checkbox.closest('.notification-item');
+                        if (notificationElement) {
+                            notificationElement.classList.remove('notif-pendente');
+                            notificationElement.classList.add('notif-nao-pendente');
+                            
+                            // Atualizar o ícone
+                            const icon = notificationElement.querySelector('.fas');
+                            if (icon) {
+                                icon.classList.remove('fa-envelope');
+                                icon.classList.add('fa-envelope-open');
+                            }
+                        }
+                    });
+                    
+                    // Ocultar botões de ação em massa
+                    bulkActionButtons.style.display = 'none';
+                })
+                .catch(error => {
+                    console.error('Erro na confirmação em massa:', error);
+                    const feedbackMessage = document.getElementById('feedback-message');
+                    feedbackMessage.style.display = 'block';
+                    feedbackMessage.className = 'alert alert-danger';
+                    feedbackMessage.textContent = 'Ocorreu um erro ao confirmar as notificações em massa.';
                 });
+        } 
+        // Se houver itens selecionados, confirmar os itens individuais (funcionalidade existente)
+        else if (selectedItems.length > 0) {
+            // Confirmar todos os itens selecionados
+            const promises = selectedItems.map(checkbox => {
+                const notifId = checkbox.dataset.notifId;
+                const itemId = checkbox.value;
                 
-                // Ocultar botões de ação em massa
-                bulkActionButtons.style.display = 'none';
-            })
-            .catch(error => {
-                console.error('Erro na confirmação em massa:', error);
-                const feedbackMessage = document.getElementById('feedback-message');
-                feedbackMessage.style.display = 'block';
-                feedbackMessage.className = 'alert alert-danger';
-                feedbackMessage.textContent = 'Ocorreu um erro ao confirmar os itens em massa.';
+                const formData = new FormData();
+                formData.append('is_ajax', 'true');
+                formData.append('notificacao_id', notifId);
+                formData.append('item_id', itemId);
+                formData.append('action', 'confirmar_item');
+                
+                return fetch('notificacoes_usuario.php', {
+                    method: 'POST',
+                    body: formData
+                }).then(response => response.json());
             });
+            
+            Promise.all(promises)
+                .then(results => {
+                    // Verificar se todas as operações foram bem-sucedidas
+                    const allSuccess = results.every(result => result.success);
+                    const feedbackMessage = document.getElementById('feedback-message');
+                    feedbackMessage.style.display = 'block';
+                    feedbackMessage.className = `alert ${allSuccess ? 'alert-success' : 'alert-danger'}`;
+                    feedbackMessage.textContent = allSuccess ? 
+                        `Todos os ${selectedItems.length} itens foram confirmados com sucesso!` : 
+                        'Alguns itens não puderam ser confirmados. Verifique os detalhes.';
+                    
+                    // Atualizar a interface para os itens confirmados
+                    selectedItems.forEach(checkbox => {
+                        const notifId = checkbox.dataset.notifId;
+                        const itemId = checkbox.value;
+                        const itemCard = document.querySelector(`.item-detail-card[data-item-id="${itemId}"]`);
+                        if (itemCard) {
+                            // Esconder os botões de ação
+                            const actionContainer = document.getElementById(`item_actions_${notifId}_${itemId}`);
+                            if (actionContainer) {
+                                actionContainer.style.display = 'none';
+                            }
+                            // Marcar o checkbox como não selecionável
+                            checkbox.disabled = true;
+                            checkbox.checked = false;
+                        }
+                    });
+                    
+                    // Ocultar botões de ação em massa
+                    bulkActionButtons.style.display = 'none';
+                })
+                .catch(error => {
+                    console.error('Erro na confirmação em massa:', error);
+                    const feedbackMessage = document.getElementById('feedback-message');
+                    feedbackMessage.style.display = 'block';
+                    feedbackMessage.className = 'alert alert-danger';
+                    feedbackMessage.textContent = 'Ocorreu um erro ao confirmar os itens em massa.';
+                });
+        }
     });
     
     // Ação de rejeição em massa - mostrar formulário de justificativa
     bulkRejectBtn.addEventListener('click', function() {
-        const selectedItems = Array.from(checkboxes).filter(cb => cb.checked);
-        if (selectedItems.length === 0) {
-            alert('Por favor, selecione pelo menos um item.');
+        const selectedNotifications = Array.from(notificationCheckboxes).filter(cb => cb.checked);
+        const selectedItems = Array.from(itemCheckboxes).filter(cb => cb.checked);
+        
+        if (selectedNotifications.length === 0 && selectedItems.length === 0) {
+            alert('Por favor, selecione pelo menos uma notificação ou item.');
             return;
         }
         
@@ -744,70 +835,148 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
         
-        const selectedItems = Array.from(checkboxes).filter(cb => cb.checked);
-        if (selectedItems.length === 0) {
-            alert('Nenhum item selecionado.');
+        const selectedNotifications = Array.from(notificationCheckboxes).filter(cb => cb.checked);
+        const selectedItems = Array.from(itemCheckboxes).filter(cb => cb.checked);
+        
+        if (selectedNotifications.length === 0 && selectedItems.length === 0) {
+            alert('Nenhuma notificação ou item selecionado.');
             return;
         }
         
-        // Rejeitar todos os itens selecionados com a mesma justificativa
-        const promises = selectedItems.map(checkbox => {
-            const notifId = checkbox.dataset.notifId;
-            const itemId = checkbox.value;
-            
-            const formData = new FormData();
-            formData.append('is_ajax', 'true');
-            formData.append('notificacao_id', notifId);
-            formData.append('item_id', itemId);
-            formData.append('action', 'nao_confirmar_item');
-            formData.append('justificativa', justificativa);
-            
-            return fetch('notificacoes_usuario.php', {
-                method: 'POST',
-                body: formData
-            }).then(response => response.json());
-        });
-        
-        Promise.all(promises)
-            .then(results => {
-                // Verificar se todas as operações foram bem-sucedidas
-                const allSuccess = results.every(result => result.success);
-                const feedbackMessage = document.getElementById('feedback-message');
-                feedbackMessage.style.display = 'block';
-                feedbackMessage.className = `alert ${allSuccess ? 'alert-success' : 'alert-danger'}`;
-                feedbackMessage.textContent = allSuccess ? 
-                    `Todos os ${selectedItems.length} itens foram rejeitados com sucesso!` : 
-                    'Alguns itens não puderam ser rejeitados. Verifique os detalhes.';
+        // Se houver notificações selecionadas, rejeitar todas as notificações
+        if (selectedNotifications.length > 0) {
+            // Rejeitar todas as notificações selecionadas com a mesma justificativa
+            const promises = selectedNotifications.map(checkbox => {
+                const notifId = checkbox.value;
                 
-                // Atualizar a interface para os itens rejeitados
-                selectedItems.forEach(checkbox => {
-                    const notifId = checkbox.dataset.notifId;
-                    const itemId = checkbox.value;
-                    const itemCard = document.querySelector(`.item-detail-card[data-item-id="${itemId}"]`);
-                    if (itemCard) {
-                        // Esconder os botões de ação
-                        const actionContainer = document.getElementById(`item_actions_${notifId}_${itemId}`);
-                        if (actionContainer) {
-                            actionContainer.style.display = 'none';
-                        }
+                // Encontrar o primeiro item desta notificação para rejeitar
+                const notificationElement = checkbox.closest('.notification-item');
+                const firstItemElement = notificationElement.querySelector('.item-detail-card');
+                const itemId = firstItemElement ? firstItemElement.dataset.itemId : null;
+                
+                if (!itemId) {
+                    return Promise.reject(new Error('Item não encontrado na notificação'));
+                }
+                
+                const formData = new FormData();
+                formData.append('is_ajax', 'true');
+                formData.append('notificacao_id', notifId);
+                formData.append('item_id', itemId);
+                formData.append('action', 'nao_confirmar_item');
+                formData.append('justificativa', justificativa);
+                
+                return fetch('notificacoes_usuario.php', {
+                    method: 'POST',
+                    body: formData
+                }).then(response => response.json());
+            });
+            
+            Promise.all(promises)
+                .then(results => {
+                    // Verificar se todas as operações foram bem-sucedidas
+                    const allSuccess = results.every(result => result.success);
+                    const feedbackMessage = document.getElementById('feedback-message');
+                    feedbackMessage.style.display = 'block';
+                    feedbackMessage.className = `alert ${allSuccess ? 'alert-success' : 'alert-danger'}`;
+                    feedbackMessage.textContent = allSuccess ? 
+                        `Todas as ${selectedNotifications.length} notificações foram rejeitadas com sucesso!` : 
+                        'Algumas notificações não puderam ser rejeitadas. Verifique os detalhes.';
+                    
+                    // Atualizar a interface para as notificações rejeitadas
+                    selectedNotifications.forEach(checkbox => {
                         // Marcar o checkbox como não selecionável
                         checkbox.disabled = true;
                         checkbox.checked = false;
-                    }
+                        
+                        // Atualizar visualmente a notificação
+                        const notificationElement = checkbox.closest('.notification-item');
+                        if (notificationElement) {
+                            notificationElement.classList.remove('notif-pendente');
+                            notificationElement.classList.add('notif-nao-pendente');
+                            
+                            // Atualizar o ícone
+                            const icon = notificationElement.querySelector('.fas');
+                            if (icon) {
+                                icon.classList.remove('fa-envelope');
+                                icon.classList.add('fa-envelope-open');
+                            }
+                        }
+                    });
+                    
+                    // Ocultar formulário de justificativa e botões de ação em massa
+                    bulkJustificativaForm.style.display = 'none';
+                    bulkJustificativaText.value = '';
+                    bulkActionButtons.style.display = 'none';
+                })
+                .catch(error => {
+                    console.error('Erro na rejeição em massa:', error);
+                    const feedbackMessage = document.getElementById('feedback-message');
+                    feedbackMessage.style.display = 'block';
+                    feedbackMessage.className = 'alert alert-danger';
+                    feedbackMessage.textContent = 'Ocorreu um erro ao rejeitar as notificações em massa.';
                 });
+        } 
+        // Se houver itens selecionados, rejeitar os itens individuais (funcionalidade existente)
+        else if (selectedItems.length > 0) {
+            // Rejeitar todos os itens selecionados com a mesma justificativa
+            const promises = selectedItems.map(checkbox => {
+                const notifId = checkbox.dataset.notifId;
+                const itemId = checkbox.value;
                 
-                // Ocultar formulário de justificativa e botões de ação em massa
-                bulkJustificativaForm.style.display = 'none';
-                bulkJustificativaText.value = '';
-                bulkActionButtons.style.display = 'none';
-            })
-            .catch(error => {
-                console.error('Erro na rejeição em massa:', error);
-                const feedbackMessage = document.getElementById('feedback-message');
-                feedbackMessage.style.display = 'block';
-                feedbackMessage.className = 'alert alert-danger';
-                feedbackMessage.textContent = 'Ocorreu um erro ao rejeitar os itens em massa.';
+                const formData = new FormData();
+                formData.append('is_ajax', 'true');
+                formData.append('notificacao_id', notifId);
+                formData.append('item_id', itemId);
+                formData.append('action', 'nao_confirmar_item');
+                formData.append('justificativa', justificativa);
+                
+                return fetch('notificacoes_usuario.php', {
+                    method: 'POST',
+                    body: formData
+                }).then(response => response.json());
             });
+            
+            Promise.all(promises)
+                .then(results => {
+                    // Verificar se todas as operações foram bem-sucedidas
+                    const allSuccess = results.every(result => result.success);
+                    const feedbackMessage = document.getElementById('feedback-message');
+                    feedbackMessage.style.display = 'block';
+                    feedbackMessage.className = `alert ${allSuccess ? 'alert-success' : 'alert-danger'}`;
+                    feedbackMessage.textContent = allSuccess ? 
+                        `Todos os ${selectedItems.length} itens foram rejeitados com sucesso!` : 
+                        'Alguns itens não puderam ser rejeitados. Verifique os detalhes.';
+                    
+                    // Atualizar a interface para os itens rejeitados
+                    selectedItems.forEach(checkbox => {
+                        const notifId = checkbox.dataset.notifId;
+                        const itemId = checkbox.value;
+                        const itemCard = document.querySelector(`.item-detail-card[data-item-id="${itemId}"]`);
+                        if (itemCard) {
+                            // Esconder os botões de ação
+                            const actionContainer = document.getElementById(`item_actions_${notifId}_${itemId}`);
+                            if (actionContainer) {
+                                actionContainer.style.display = 'none';
+                            }
+                            // Marcar o checkbox como não selecionável
+                            checkbox.disabled = true;
+                            checkbox.checked = false;
+                        }
+                    });
+                    
+                    // Ocultar formulário de justificativa e botões de ação em massa
+                    bulkJustificativaForm.style.display = 'none';
+                    bulkJustificativaText.value = '';
+                    bulkActionButtons.style.display = 'none';
+                })
+                .catch(error => {
+                    console.error('Erro na rejeição em massa:', error);
+                    const feedbackMessage = document.getElementById('feedback-message');
+                    feedbackMessage.style.display = 'block';
+                    feedbackMessage.className = 'alert alert-danger';
+                    feedbackMessage.textContent = 'Ocorreu um erro ao rejeitar os itens em massa.';
+                });
+        }
     });
     
     // Cancelar justificativa em massa
