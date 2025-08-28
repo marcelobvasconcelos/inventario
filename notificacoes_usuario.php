@@ -241,11 +241,33 @@ require_once 'includes/header.php';
             <button class="btn btn-sm btn-outline-secondary filter-btn" data-filter="Confirmado">Confirmados</button>
             <button class="btn btn-sm btn-outline-secondary filter-btn" data-filter="Nao Confirmado">Não Confirmados</button>
         </div>
+        
+        <!-- Botões de confirmação em massa -->
+        <div class="bulk-action-buttons mb-3" style="display: none;">
+            <button id="bulkConfirmBtn" class="btn btn-success btn-sm">
+                <i class="fas fa-check"></i> Confirmar Selecionados
+            </button>
+            <button id="bulkRejectBtn" class="btn btn-danger btn-sm">
+                <i class="fas fa-times"></i> Não Confirmar Selecionados
+            </button>
+        </div>
+        
+        <!-- Formulário de justificativa em massa -->
+        <div id="bulkJustificativaForm" class="card mt-3" style="display: none;">
+            <div class="card-header">
+                <h5>Justificativa para Itens Não Confirmados</h5>
+            </div>
+            <div class="card-body">
+                <div class="form-group">
+                    <label for="bulkJustificativaText">Justificativa:</label>
+                    <textarea id="bulkJustificativaText" class="form-control" rows="3" placeholder="Informe a justificativa para não confirmar os itens selecionados..."></textarea>
+                </div>
+                <button id="submitBulkJustificativa" class="btn btn-primary">Enviar Justificativa</button>
+                <button id="cancelBulkJustificativa" class="btn btn-secondary">Cancelar</button>
+            </div>
+        </div>
         <?php endif; ?>
-
-    <?php if (!$notificacao_unica_id): ?>
-    <!-- Botões de confirmação em massa removidos conforme solicitado -->
-    <?php endif; ?>
+        
         <div class="notification-inbox">
         <?php foreach ($notificacoes as $notificacao): ?>
                 <?php
@@ -617,6 +639,181 @@ document.addEventListener('DOMContentLoaded', function() {
                 item.style.display = shouldDisplay ? 'block' : 'none';
             });
         });
+    });
+    
+    // --- Lógica para seleção em massa e ações em massa ---
+    const checkboxes = document.querySelectorAll('.item-checkbox');
+    const bulkActionButtons = document.querySelector('.bulk-action-buttons');
+    const bulkConfirmBtn = document.getElementById('bulkConfirmBtn');
+    const bulkRejectBtn = document.getElementById('bulkRejectBtn');
+    const bulkJustificativaForm = document.getElementById('bulkJustificativaForm');
+    const bulkJustificativaText = document.getElementById('bulkJustificativaText');
+    const submitBulkJustificativa = document.getElementById('submitBulkJustificativa');
+    const cancelBulkJustificativa = document.getElementById('cancelBulkJustificativa');
+    
+    // Mostrar/ocultar botões de ação em massa quando checkboxes são selecionados
+    checkboxes.forEach(checkbox => {
+        checkbox.addEventListener('change', function() {
+            const anyChecked = Array.from(checkboxes).some(cb => cb.checked);
+            bulkActionButtons.style.display = anyChecked ? 'block' : 'none';
+        });
+    });
+    
+    // Ação de confirmação em massa
+    bulkConfirmBtn.addEventListener('click', function() {
+        const selectedItems = Array.from(checkboxes).filter(cb => cb.checked);
+        if (selectedItems.length === 0) {
+            alert('Por favor, selecione pelo menos um item.');
+            return;
+        }
+        
+        // Confirmar todos os itens selecionados
+        const promises = selectedItems.map(checkbox => {
+            const notifId = checkbox.dataset.notifId;
+            const itemId = checkbox.value;
+            
+            const formData = new FormData();
+            formData.append('is_ajax', 'true');
+            formData.append('notificacao_id', notifId);
+            formData.append('item_id', itemId);
+            formData.append('action', 'confirmar_item');
+            
+            return fetch('notificacoes_usuario.php', {
+                method: 'POST',
+                body: formData
+            }).then(response => response.json());
+        });
+        
+        Promise.all(promises)
+            .then(results => {
+                // Verificar se todas as operações foram bem-sucedidas
+                const allSuccess = results.every(result => result.success);
+                const feedbackMessage = document.getElementById('feedback-message');
+                feedbackMessage.style.display = 'block';
+                feedbackMessage.className = `alert ${allSuccess ? 'alert-success' : 'alert-danger'}`;
+                feedbackMessage.textContent = allSuccess ? 
+                    `Todos os ${selectedItems.length} itens foram confirmados com sucesso!` : 
+                    'Alguns itens não puderam ser confirmados. Verifique os detalhes.';
+                
+                // Atualizar a interface para os itens confirmados
+                selectedItems.forEach(checkbox => {
+                    const notifId = checkbox.dataset.notifId;
+                    const itemId = checkbox.value;
+                    const itemCard = document.querySelector(`.item-detail-card[data-item-id="${itemId}"]`);
+                    if (itemCard) {
+                        // Esconder os botões de ação
+                        const actionContainer = document.getElementById(`item_actions_${notifId}_${itemId}`);
+                        if (actionContainer) {
+                            actionContainer.style.display = 'none';
+                        }
+                        // Marcar o checkbox como não selecionável
+                        checkbox.disabled = true;
+                        checkbox.checked = false;
+                    }
+                });
+                
+                // Ocultar botões de ação em massa
+                bulkActionButtons.style.display = 'none';
+            })
+            .catch(error => {
+                console.error('Erro na confirmação em massa:', error);
+                const feedbackMessage = document.getElementById('feedback-message');
+                feedbackMessage.style.display = 'block';
+                feedbackMessage.className = 'alert alert-danger';
+                feedbackMessage.textContent = 'Ocorreu um erro ao confirmar os itens em massa.';
+            });
+    });
+    
+    // Ação de rejeição em massa - mostrar formulário de justificativa
+    bulkRejectBtn.addEventListener('click', function() {
+        const selectedItems = Array.from(checkboxes).filter(cb => cb.checked);
+        if (selectedItems.length === 0) {
+            alert('Por favor, selecione pelo menos um item.');
+            return;
+        }
+        
+        // Mostrar formulário de justificativa em massa
+        bulkJustificativaForm.style.display = 'block';
+    });
+    
+    // Submeter justificativa em massa
+    submitBulkJustificativa.addEventListener('click', function() {
+        const justificativa = bulkJustificativaText.value.trim();
+        if (!justificativa) {
+            alert('Por favor, informe uma justificativa.');
+            return;
+        }
+        
+        const selectedItems = Array.from(checkboxes).filter(cb => cb.checked);
+        if (selectedItems.length === 0) {
+            alert('Nenhum item selecionado.');
+            return;
+        }
+        
+        // Rejeitar todos os itens selecionados com a mesma justificativa
+        const promises = selectedItems.map(checkbox => {
+            const notifId = checkbox.dataset.notifId;
+            const itemId = checkbox.value;
+            
+            const formData = new FormData();
+            formData.append('is_ajax', 'true');
+            formData.append('notificacao_id', notifId);
+            formData.append('item_id', itemId);
+            formData.append('action', 'nao_confirmar_item');
+            formData.append('justificativa', justificativa);
+            
+            return fetch('notificacoes_usuario.php', {
+                method: 'POST',
+                body: formData
+            }).then(response => response.json());
+        });
+        
+        Promise.all(promises)
+            .then(results => {
+                // Verificar se todas as operações foram bem-sucedidas
+                const allSuccess = results.every(result => result.success);
+                const feedbackMessage = document.getElementById('feedback-message');
+                feedbackMessage.style.display = 'block';
+                feedbackMessage.className = `alert ${allSuccess ? 'alert-success' : 'alert-danger'}`;
+                feedbackMessage.textContent = allSuccess ? 
+                    `Todos os ${selectedItems.length} itens foram rejeitados com sucesso!` : 
+                    'Alguns itens não puderam ser rejeitados. Verifique os detalhes.';
+                
+                // Atualizar a interface para os itens rejeitados
+                selectedItems.forEach(checkbox => {
+                    const notifId = checkbox.dataset.notifId;
+                    const itemId = checkbox.value;
+                    const itemCard = document.querySelector(`.item-detail-card[data-item-id="${itemId}"]`);
+                    if (itemCard) {
+                        // Esconder os botões de ação
+                        const actionContainer = document.getElementById(`item_actions_${notifId}_${itemId}`);
+                        if (actionContainer) {
+                            actionContainer.style.display = 'none';
+                        }
+                        // Marcar o checkbox como não selecionável
+                        checkbox.disabled = true;
+                        checkbox.checked = false;
+                    }
+                });
+                
+                // Ocultar formulário de justificativa e botões de ação em massa
+                bulkJustificativaForm.style.display = 'none';
+                bulkJustificativaText.value = '';
+                bulkActionButtons.style.display = 'none';
+            })
+            .catch(error => {
+                console.error('Erro na rejeição em massa:', error);
+                const feedbackMessage = document.getElementById('feedback-message');
+                feedbackMessage.style.display = 'block';
+                feedbackMessage.className = 'alert alert-danger';
+                feedbackMessage.textContent = 'Ocorreu um erro ao rejeitar os itens em massa.';
+            });
+    });
+    
+    // Cancelar justificativa em massa
+    cancelBulkJustificativa.addEventListener('click', function() {
+        bulkJustificativaForm.style.display = 'none';
+        bulkJustificativaText.value = '';
     });
 });
 </script>

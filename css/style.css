@@ -1010,6 +1010,46 @@ td a i {
     border-bottom: 1px solid #eee;
 }
 
+/* Estilos para ações em massa nas notificações */
+.bulk-action-buttons {
+    padding: 15px;
+    background-color: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 5px;
+    margin-bottom: 20px;
+}
+
+.bulk-action-buttons .btn {
+    margin-right: 10px;
+}
+
+#bulkJustificativaForm {
+    margin-bottom: 20px;
+}
+
+/* Estilos para checkboxes de itens nas notificações */
+.item-checkbox {
+    transform: scale(1.3);
+    margin-right: 15px;
+}
+
+.item-checkbox:checked {
+    background-color: #28a745;
+}
+
+.notification-filter-controls {
+    margin-bottom: 20px;
+    padding: 15px;
+    background-color: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 5px;
+}
+
+.notification-filter-controls .btn {
+    margin-right: 5px;
+    margin-bottom: 5px;
+}
+
 .suggestions-list div:last-child {
     border-bottom: none;
 }
