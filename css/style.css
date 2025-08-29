@@ -1023,8 +1023,26 @@ td a i {
     margin-right: 10px;
 }
 
+.select-all-controls {
+    padding: 15px;
+    background-color: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 5px;
+    margin-bottom: 20px;
+}
+
+.select-all-controls .btn {
+    margin-right: 10px;
+}
+
 #bulkJustificativaForm {
     margin-bottom: 20px;
+}
+
+#bulkJustificativaText {
+    min-height: 30%;
+    min-width: 100%;
+    resize: vertical;
 }
 
 /* Estilos para checkboxes de itens nas notificações */

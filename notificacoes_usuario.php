@@ -242,6 +242,16 @@ require_once 'includes/header.php';
             <button class="btn btn-sm btn-outline-secondary filter-btn" data-filter="Nao Confirmado">Não Confirmados</button>
         </div>
         
+        <!-- Botão Marcar Todas -->
+        <div class="select-all-controls mb-3" style="display: none;">
+            <button id="selectAllBtn" class="btn btn-sm btn-outline-primary">
+                <i class="fas fa-check-square"></i> Marcar Todas
+            </button>
+            <button id="deselectAllBtn" class="btn btn-sm btn-outline-secondary" style="display: none;">
+                <i class="fas fa-square"></i> Desmarcar Todas
+            </button>
+        </div>
+        
         <!-- Botões de confirmação em massa -->
         <div class="bulk-action-buttons mb-3" style="display: none;">
             <button id="bulkConfirmBtn" class="btn btn-success btn-sm">
@@ -641,7 +651,58 @@ document.addEventListener('DOMContentLoaded', function() {
                 
                 item.style.display = shouldDisplay ? 'block' : 'none';
             });
+            
+            // Mostrar/ocultar controles de seleção todas com base no filtro
+            const selectAllControls = document.querySelector('.select-all-controls');
+            if (filter === 'Pendente' || filter === 'Todos' || filter === 'Nao Confirmado') {
+                selectAllControls.style.display = 'block';
+            } else {
+                selectAllControls.style.display = 'none';
+            }
         });
+    });
+    
+    // --- Lógica para Marcar/Desmarcar Todas ---
+    const selectAllBtn = document.getElementById('selectAllBtn');
+    const deselectAllBtn = document.getElementById('deselectAllBtn');
+    const selectAllControls = document.querySelector('.select-all-controls');
+    
+    // Mostrar controles de seleção quando há notificações visíveis
+    if (notificationItems.length > 0) {
+        selectAllControls.style.display = 'block';
+    }
+    
+    // Marcar todas as notificações visíveis
+    selectAllBtn.addEventListener('click', function() {
+        const visibleNotificationCheckboxes = Array.from(notificationCheckboxes).filter(checkbox => {
+            const notificationElement = checkbox.closest('.notification-item');
+            return notificationElement && notificationElement.style.display !== 'none';
+        });
+        
+        visibleNotificationCheckboxes.forEach(checkbox => {
+            checkbox.checked = true;
+        });
+        
+        // Mostrar botão de desmarcar
+        selectAllBtn.style.display = 'none';
+        deselectAllBtn.style.display = 'inline-block';
+        
+        // Atualizar visibilidade dos botões de ação em massa
+        updateBulkActionsVisibility();
+    });
+    
+    // Desmarcar todas as notificações
+    deselectAllBtn.addEventListener('click', function() {
+        notificationCheckboxes.forEach(checkbox => {
+            checkbox.checked = false;
+        });
+        
+        // Mostrar botão de marcar
+        selectAllBtn.style.display = 'inline-block';
+        deselectAllBtn.style.display = 'none';
+        
+        // Atualizar visibilidade dos botões de ação em massa
+        updateBulkActionsVisibility();
     });
     
     // --- Lógica para seleção em massa e ações em massa ---

@@ -2,6 +2,12 @@
 // Inicia a sessão PHP e inclui a conexão com o banco de dados
 require_once 'config/db.php';
 
+// Redireciona para a página de login se o usuário não estiver logado ou não for Administrador
+if (!isset($_SESSION["id"]) || $_SESSION["permissao"] != 'Administrador') {
+    header("location: login.php");
+    exit;
+}
+
 // --- Processamento de Ações do Administrador via AJAX ---
 if(isset($_POST['is_ajax']) && $_POST['is_ajax'] == 'true') {
     // Log dos dados recebidos
@@ -206,7 +212,207 @@ if(isset($_POST['is_ajax']) && $_POST['is_ajax'] == 'true') {
             error_log("Erro na ação do administrador (ID: $administrador_logado_id, Notif: $notificacao_movimentacao_id, Item: $item_id): " . $e->getMessage() . "
 Stack trace: " . $e->getTraceAsString());
         }
-    } else {
+    } 
+    // --- Processamento de Ações em Lote do Administrador ---
+    elseif (isset($_POST['action'], $_POST['selected_notifications']) && $_POST['action'] == 'bulk_responder_usuario') {
+        $selected_notificacoes = $_POST['selected_notifications']; // Array de IDs de notificacoes_movimentacao
+        $admin_reply = isset($_POST['admin_reply']) ? trim($_POST['admin_reply']) : '';
+        $administrador_logado_id = $_SESSION['id'];
+        $data_atualizacao = date('Y-m-d H:i:s');
+        
+        if (empty($selected_notificacoes) || !is_array($selected_notificacoes)) {
+            $response['message'] = 'Nenhuma notificação selecionada.';
+            echo json_encode($response);
+            exit;
+        }
+        
+        if (empty($admin_reply)) {
+            $response['message'] = 'Por favor, forneça uma resposta.';
+            echo json_encode($response);
+            exit;
+        }
+        
+        $pdo->beginTransaction();
+        try {
+            // 1. Agrupar itens por usuário notificado
+            $usuarios_notificados = [];
+            foreach ($selected_notificacoes as $notif_id) {
+                $notif_id = filter_var($notif_id, FILTER_VALIDATE_INT);
+                if (!$notif_id) continue;
+                
+                // Buscar informações da notificação
+                $sql_notif_info = "SELECT nm.item_id, nm.usuario_notificado_id, i.status_confirmacao as item_status FROM notificacoes_movimentacao nm JOIN itens i ON nm.item_id = i.id WHERE nm.id = ?";
+                $stmt_notif_info = $pdo->prepare($sql_notif_info);
+                $stmt_notif_info->execute([$notif_id]);
+                $notif_data = $stmt_notif_info->fetch(PDO::FETCH_ASSOC);
+                
+                if (!$notif_data) continue;
+                
+                // Verificar se o status do item permite resposta
+                $item_status = $notif_data['item_status'];
+                if ($item_status !== 'Nao Confirmado' && $item_status !== 'Em Disputa' && $item_status !== 'Pendente') {
+                    continue; // Pular itens que não podem ser respondidos
+                }
+                
+                $usuario_id = $notif_data['usuario_notificado_id'];
+                $item_id = $notif_data['item_id'];
+                
+                if (!isset($usuarios_notificados[$usuario_id])) {
+                    $usuarios_notificados[$usuario_id] = [];
+                }
+                $usuarios_notificados[$usuario_id][] = ['notif_id' => $notif_id, 'item_id' => $item_id];
+            }
+            
+            if (empty($usuarios_notificados)) {
+                throw new Exception("Nenhum item selecionado pode ser respondido.");
+            }
+            
+            // 2. Para cada usuário, atualizar seus itens
+            foreach ($usuarios_notificados as $usuario_id => $itens) {
+                foreach ($itens as $item_info) {
+                    $notif_id = $item_info['notif_id'];
+                    $item_id = $item_info['item_id'];
+                    
+                    // Atualizar notificacoes_movimentacao
+                    $sql_update_notif = "UPDATE notificacoes_movimentacao SET status_confirmacao = 'Pendente', resposta_admin = ?, data_atualizacao = ? WHERE id = ?";
+                    $stmt_update_notif = $pdo->prepare($sql_update_notif);
+                    $stmt_update_notif->execute([$admin_reply, $data_atualizacao, $notif_id]);
+                    
+                    // Atualizar itens
+                    $sql_update_item = "UPDATE itens SET status_confirmacao = 'Pendente' WHERE id = ?";
+                    $stmt_update_item = $pdo->prepare($sql_update_item);
+                    $stmt_update_item->execute([$item_id]);
+                    
+                    // Inserir no histórico
+                    $sql_insert_history = "INSERT INTO notificacoes_respostas_historico (notificacao_movimentacao_id, remetente_id, tipo_remetente, conteudo_resposta, data_resposta) VALUES (?, ?, ?, ?, ?)";
+                    $stmt_insert_history = $pdo->prepare($sql_insert_history);
+                    $stmt_insert_history->execute([$notif_id, $administrador_logado_id, 'admin', $admin_reply, $data_atualizacao]);
+                }
+            }
+            
+            $pdo->commit();
+            $response['success'] = true;
+            $response['message'] = 'Respostas enviadas com sucesso para os usuários selecionados. Os itens voltaram para o status "Pendente".';
+            
+        } catch (Exception $e) {
+            $pdo->rollBack();
+            $response['message'] = "Erro ao processar ação em lote: " . $e->getMessage();
+            error_log("Erro na ação em lote do administrador (ID: $administrador_logado_id): " . $e->getMessage() . "
+Stack trace: " . $e->getTraceAsString());
+        }
+    }
+    // --- Processamento de Ações em Lote do Administrador para Desfazer/Atribuir ---
+    elseif (isset($_POST['action'], $_POST['selected_notifications']) && 
+             ($_POST['action'] == 'bulk_desfazer_movimentacao' || $_POST['action'] == 'bulk_atribuir_responsavel')) {
+        $selected_notificacoes = $_POST['selected_notifications']; // Array de IDs de notificacoes_movimentacao
+        $action = $_POST['action'];
+        $administrador_logado_id = $_SESSION['id'];
+        $data_atualizacao = date('Y-m-d H:i:s');
+        
+        if (empty($selected_notificacoes) || !is_array($selected_notificacoes)) {
+            $response['message'] = 'Nenhuma notificação selecionada.';
+            echo json_encode($response);
+            exit;
+        }
+        
+        $pdo->beginTransaction();
+        try {
+            $mensagens = [];
+            
+            foreach ($selected_notificacoes as $notif_id) {
+                $notif_id = filter_var($notif_id, FILTER_VALIDATE_INT);
+                if (!$notif_id) continue;
+                
+                // Buscar informações da notificação
+                $sql_notif_info = "SELECT nm.item_id, nm.movimentacao_id, i.status_confirmacao as item_status FROM notificacoes_movimentacao nm JOIN itens i ON nm.item_id = i.id WHERE nm.id = ?";
+                $stmt_notif_info = $pdo->prepare($sql_notif_info);
+                $stmt_notif_info->execute([$notif_id]);
+                $notif_data = $stmt_notif_info->fetch(PDO::FETCH_ASSOC);
+                
+                if (!$notif_data) continue;
+                
+                // Verificar se o status do item permite ação
+                $item_status = $notif_data['item_status'];
+                if ($item_status !== 'Nao Confirmado' && $item_status !== 'Em Disputa' && $item_status !== 'Pendente') {
+                    $mensagens[] = "Item da notificação #{$notif_id} não pode ser processado (status inválido).";
+                    continue;
+                }
+                
+                $item_id = $notif_data['item_id'];
+                $movimentacao_id = $notif_data['movimentacao_id'];
+                
+                if ($action == 'bulk_desfazer_movimentacao') {
+                    // Buscar dados da movimentação
+                    $sql_get_mov_details = "SELECT local_origem_id, usuario_anterior_id FROM movimentacoes WHERE id = ?";
+                    $stmt_get_mov_details = $pdo->prepare($sql_get_mov_details);
+                    $stmt_get_mov_details->execute([$movimentacao_id]);
+                    $mov_details = $stmt_get_mov_details->fetch(PDO::FETCH_ASSOC);
+                    
+                    if ($mov_details && !empty($mov_details['usuario_anterior_id'])) {
+                        // Desfazer movimentação
+                        $new_item_status = 'Confirmado';
+                        $sql_update_item = "UPDATE itens SET local_id = ?, responsavel_id = ?, status_confirmacao = ? WHERE id = ?";
+                        $stmt_update_item = $pdo->prepare($sql_update_item);
+                        $stmt_update_item->execute([$mov_details['local_origem_id'], $mov_details['usuario_anterior_id'], $new_item_status, $item_id]);
+                        
+                        $sql_update_notif = "UPDATE notificacoes_movimentacao SET status_confirmacao = ?, data_atualizacao = ? WHERE id = ?";
+                        $stmt_update_notif = $pdo->prepare($sql_update_notif);
+                        $stmt_update_notif->execute([$new_item_status, $data_atualizacao, $notif_id]);
+                        
+                        $mensagens[] = "Movimentação do item #{$item_id} desfeita.";
+                    } else {
+                        $mensagens[] = "Não foi possível desfazer a movimentação do item #{$item_id}.";
+                    }
+                } elseif ($action == 'bulk_atribuir_responsavel') {
+                    $novo_responsavel_id = isset($_POST['novo_responsavel_id']) ? (int)$_POST['novo_responsavel_id'] : 0;
+                    if (!$novo_responsavel_id) {
+                        throw new Exception('Selecione um novo responsável válido.');
+                    }
+                    
+                    // Obter dados atuais do item
+                    $stmt_item = $pdo->prepare('SELECT local_id, responsavel_id FROM itens WHERE id = ?');
+                    $stmt_item->execute([$item_id]);
+                    $item_row = $stmt_item->fetch(PDO::FETCH_ASSOC);
+                    if (!$item_row) {
+                        $mensagens[] = "Item #{$item_id} não encontrado.";
+                        continue;
+                    }
+                    $local_atual = (int)$item_row['local_id'];
+                    $responsavel_anterior = (int)$item_row['responsavel_id'];
+                    
+                    // Atualizar item
+                    $stmt_upd_item = $pdo->prepare("UPDATE itens SET responsavel_id = ?, status_confirmacao = 'Pendente' WHERE id = ?");
+                    $stmt_upd_item->execute([$novo_responsavel_id, $item_id]);
+                    
+                    // Inserir nova movimentação
+                    $stmt_mov = $pdo->prepare('INSERT INTO movimentacoes (item_id, local_origem_id, local_destino_id, usuario_id, usuario_anterior_id, usuario_destino_id, data_movimentacao) VALUES (?, ?, ?, ?, ?, ?, NOW())');
+                    $stmt_mov->execute([$item_id, $local_atual, $local_atual, $administrador_logado_id, $responsavel_anterior, $novo_responsavel_id]);
+                    $nova_mov_id = $pdo->lastInsertId();
+                    
+                    // Criar nova notificação
+                    $stmt_nm = $pdo->prepare("INSERT INTO notificacoes_movimentacao (movimentacao_id, item_id, usuario_notificado_id, status_confirmacao) VALUES (?, ?, ?, 'Pendente')");
+                    $stmt_nm->execute([$nova_mov_id, $item_id, $novo_responsavel_id]);
+                    
+                    // Marcar notificação antiga como 'Movimento Desfeito'
+                    $stmt_close_nm = $pdo->prepare("UPDATE notificacoes_movimentacao SET status_confirmacao = 'Movimento Desfeito', data_atualizacao = ? WHERE id = ?");
+                    $stmt_close_nm->execute([$data_atualizacao, $notif_id]);
+                    
+                    $mensagens[] = "Novo responsável atribuído ao item #{$item_id}.";
+                }
+            }
+            
+            $pdo->commit();
+            $response['success'] = true;
+            $response['message'] = implode(' ', $mensagens);
+            
+        } catch (Exception $e) {
+            $pdo->rollBack();
+            $response['message'] = "Erro ao processar ação em lote: " . $e->getMessage();
+            error_log("Erro na ação em lote do administrador (ID: $administrador_logado_id): " . $e->getMessage() . "
+Stack trace: " . $e->getTraceAsString());
+        }
+    }
+    else {
         $response['message'] = 'Dados incompletos na requisição.';
     }
     // Garante que não há saída anterior
@@ -233,7 +439,31 @@ $notificacoes = []; // Este array agora conterá os registros de notificacoes_mo
 // Obtém o status de filtro da URL, padrão é 'Todos'
 $filtro_status = isset($_GET['status']) ? $_GET['status'] : 'Todos';
 
+// Ajustar o filtro para corresponder aos mesmos filtros da página do usuário
+// Na página do usuário, 'Pendente' inclui 'Pendente' e 'Em Disputa'
+// Na página do administrador, vamos seguir a mesma lógica
+$filtro_status_ajustado = $filtro_status;
+if ($filtro_status == 'Pendente') {
+    // Para pendentes, vamos mostrar Pendente e Em Disputa
+    $filtro_status_ajustado = 'Pendente'; // Vamos ajustar a query depois
+} else if ($filtro_status == 'Confirmado') {
+    $filtro_status_ajustado = 'Confirmado';
+} else if ($filtro_status == 'Nao Confirmado') {
+    // Para não confirmados, vamos mostrar apenas Nao Confirmado
+    $filtro_status_ajustado = 'Nao Confirmado';
+} else {
+    $filtro_status_ajustado = 'Todos';
+}
+
 // SQL base para buscar notificações de movimentação
+
+// Obter o ID do usuário "Lixeira"
+$lixeira_id = null;
+$stmt_lixeira = $pdo->prepare("SELECT id FROM usuarios WHERE nome = 'Lixeira'");
+$stmt_lixeira->execute();
+$lixeira = $stmt_lixeira->fetch(PDO::FETCH_ASSOC);
+$lixeira_id = $lixeira ? $lixeira['id'] : null;
+error_log("ID do usuário Lixeira: " . ($lixeira_id ? $lixeira_id : "não encontrado"));
 
 $sql = "
     SELECT
@@ -261,18 +491,43 @@ $sql = "
 
 $params = [];
 
+// Adicionar condição para excluir itens da lixeira, se o ID da lixeira for conhecido
+if ($lixeira_id) {
+    $sql .= " AND i.responsavel_id != ?";
+    $params[] = $lixeira_id;
+    error_log("Adicionando condição para excluir itens da lixeira com ID: " . $lixeira_id);
+} else {
+    error_log("ID do usuário Lixeira não encontrado, não adicionando condição de filtro");
+}
+
 if ($notificacao_unica_id > 0) {
     $sql .= " AND nm.id = ?";
     $params[] = $notificacao_unica_id;
+    error_log("Adicionando filtro por ID de notificação: " . $notificacao_unica_id);
 } else {
     // Filtra pelo status do item, não da notificação
     if ($filtro_status != 'Todos') {
-        $sql .= " AND i.status_confirmacao = ?";
-        $params[] = $filtro_status;
+        if ($filtro_status == 'Pendente') {
+            // Para Pendente, incluir também 'Em Disputa'
+            $sql .= " AND (i.status_confirmacao = ? OR i.status_confirmacao = ?)";
+            $params[] = 'Pendente';
+            $params[] = 'Em Disputa';
+            error_log("Adicionando filtro por status Pendente e Em Disputa");
+        } else if ($filtro_status == 'Confirmado') {
+            $sql .= " AND i.status_confirmacao = ?";
+            $params[] = 'Confirmado';
+            error_log("Adicionando filtro por status Confirmado");
+        } else if ($filtro_status == 'Nao Confirmado') {
+            $sql .= " AND i.status_confirmacao = ?";
+            $params[] = 'Nao Confirmado';
+            error_log("Adicionando filtro por status Não Confirmado");
+        }
     }
 }
 
 $sql .= " ORDER BY nm.data_notificacao DESC";
+error_log("SQL final: " . $sql);
+error_log("Parâmetros finais: " . print_r($params, true));
 
 $stmt = $pdo->prepare($sql);
 $stmt->execute($params);
@@ -280,6 +535,7 @@ $notificacoes_movimentacao_raw = $stmt->fetchAll(PDO::FETCH_ASSOC);
 $usuarios_aprovados = $pdo->query("SELECT id, nome FROM usuarios WHERE status = 'aprovado' ORDER BY nome ASC")->fetchAll(PDO::FETCH_ASSOC);
 
 // Reestrutura os dados para compatibilidade com o HTML existente
+$notificacoes = [];
 foreach ($notificacoes_movimentacao_raw as $nm) {
     $notificacoes[] = [
         'id' => $nm['id'],
@@ -318,6 +574,35 @@ foreach ($notificacoes_movimentacao_raw as $nm) {
 
 ?>
 
+<style>
+.notification-item {
+    position: relative;
+    margin-left: 3px; /* Deslocamento para a direita para melhor estética */
+    margin-right: 3px; /* Para manter o equilíbrio */
+}
+
+.bulk-select-checkbox {
+    width: 18px;
+    height: 18px;
+    position: absolute;
+    left: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 10;
+    cursor: pointer;
+    margin-top: -1px; /* Ajuste fino para alinhamento vertical */
+}
+
+.card-header.notification-summary {
+    cursor: pointer;
+    padding: 12px 15px 12px 40px; /* Ajuste de padding para melhor alinhamento vertical */
+}
+
+.notification-details {
+    padding-left: 30px;
+}
+</style>
+
 <div class="container mt-5">
     <?php if ($notificacao_unica_id > 0): ?>
         <div class="d-flex justify-content-between align-items-center mb-3">
@@ -332,12 +617,58 @@ foreach ($notificacoes_movimentacao_raw as $nm) {
             <label for="filtroStatus">Filtrar por Status:</label>
             <select id="filtroStatus" class="form-control" onchange="window.location.href='notificacoes_admin.php?status=' + this.value">
                 <option value="Todos" <?php echo ($filtro_status == 'Todos') ? 'selected' : ''; ?>>Todos</option>
-                <option value="Pendente" <?php echo ($filtro_status == 'Pendente') ? 'selected' : ''; ?>>Pendente</option>
-                <option value="Confirmado" <?php echo ($filtro_status == 'Confirmado') ? 'selected' : ''; ?>>Confirmado</option>
-                <option value="Nao Confirmado" <?php echo ($filtro_status == 'Nao Confirmado') ? 'selected' : ''; ?>>Não Confirmado</option>
-                <option value="Em Disputa" <?php echo ($filtro_status == 'Em Disputa') ? 'selected' : ''; ?>>Em Disputa</option>
-                <option value="Movimento Desfeito" <?php echo ($filtro_status == 'Movimento Desfeito') ? 'selected' : ''; ?>>Movimento Desfeito</option>
+                <option value="Pendente" <?php echo ($filtro_status == 'Pendente') ? 'selected' : ''; ?>>Pendentes</option>
+                <option value="Confirmado" <?php echo ($filtro_status == 'Confirmado') ? 'selected' : ''; ?>>Confirmados</option>
+                <option value="Nao Confirmado" <?php echo ($filtro_status == 'Nao Confirmado') ? 'selected' : ''; ?>>Não Confirmados</option>
             </select>
+        </div>
+        
+        <!-- Botões de Ação em Lote -->
+        <div id="bulk-action-buttons" class="mb-3" style="display: none;">
+            <button id="bulkResponderBtn" class="btn btn-primary btn-sm">
+                <i class="fas fa-reply"></i> Responder ao Usuário
+            </button>
+            <button id="bulkDesfazerBtn" class="btn btn-warning btn-sm">
+                <i class="fas fa-undo"></i> Desfazer Movimentação
+            </button>
+            <button id="bulkAtribuirBtn" class="btn btn-info btn-sm">
+                <i class="fas fa-user-plus"></i> Escolher Novo Responsável
+            </button>
+        </div>
+        
+        <!-- Formulário de Resposta em Lote -->
+        <div id="bulk-resposta-form" class="card mt-3" style="display: none;">
+            <div class="card-header">
+                <h5>Responder aos Usuários Selecionados</h5>
+            </div>
+            <div class="card-body">
+                <div class="form-group">
+                    <label for="bulk-admin-reply">Sua Resposta:</label>
+                    <textarea id="bulk-admin-reply" class="form-control" rows="3" placeholder="Informe a justificativa..."></textarea>
+                </div>
+                <button id="submitBulkReply" class="btn btn-success">Enviar Respostas</button>
+                <button id="cancelBulkReply" class="btn btn-secondary">Cancelar</button>
+            </div>
+        </div>
+        
+        <!-- Formulário de Atribuição em Lote -->
+        <div id="bulk-atribuir-form" class="card mt-3" style="display: none;">
+            <div class="card-header">
+                <h5>Escolher Novo Responsável para Itens Selecionados</h5>
+            </div>
+            <div class="card-body">
+                <div class="form-group">
+                    <label for="bulk-novo-responsavel">Selecione o novo responsável:</label>
+                    <select id="bulk-novo-responsavel" class="form-control">
+                        <option value="">Selecione...</option>
+                        <?php foreach ($usuarios_aprovados as $usr): ?>
+                            <option value="<?php echo $usr['id']; ?>"><?php echo htmlspecialchars($usr['nome']); ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <button id="submitBulkAtribuir" class="btn btn-success">Atribuir e Notificar</button>
+                <button id="cancelBulkAtribuir" class="btn btn-secondary">Cancelar</button>
+            </div>
         </div>
     <?php endif; ?>
 
@@ -348,8 +679,11 @@ foreach ($notificacoes_movimentacao_raw as $nm) {
     <?php else: ?>
         <div class="notification-inbox">
             <?php foreach ($notificacoes as $notificacao): ?>
-                <div class="notification-item card mb-2" data-notif-id="<?php echo $notificacao['id']; ?>">
-                    <div class="card-header notification-summary" onclick="window.location.href='notificacoes_admin.php?notif_id=<?php echo $notificacao['id']; ?>';">
+                <div class="notification-item card mb-2" data-notif-id="<?php echo $notificacao['id']; ?>" style="position: relative;">
+                    <?php if ($notificacao['status'] == 'Nao Confirmado' || $notificacao['status'] == 'Em Disputa'): ?>
+                        <input type="checkbox" class="bulk-select-checkbox mr-2" data-notif-id="<?php echo $notificacao['id']; ?>" style="width: 18px; height: 18px; position: absolute; left: 10px; top: 50%; transform: translateY(-50%); z-index: 10;">
+                    <?php endif; ?>
+                    <div class="card-header notification-summary" style="cursor: pointer; padding-left: 30px;">
                         <div class="d-flex justify-content-between align-items-center">
                             <div>
                                 <i class="fas <?php 
@@ -498,7 +832,7 @@ foreach ($notificacoes_movimentacao_raw as $nm) {
 </div>
 
 <script>
-// Função para exibir/esconder o formulário de resposta do administrador
+// Funções para exibir/esconder o formulário de resposta do administrador
 function toggleAdminReplyForm(notifId) {
     const form = document.getElementById('admin_reply_form_' + notifId);
     if (form.style.display === 'none' || form.style.display === '') {
@@ -531,7 +865,47 @@ function toggleAssignForm(notifId, itemId) {
     }
 }
 
+// --- Funções para Ações em Lote ---
+function showBulkActionButtons() {
+    const bulkActionButtons = document.getElementById('bulk-action-buttons');
+    const checkboxes = document.querySelectorAll('.bulk-select-checkbox:checked');
+    
+    if (checkboxes.length > 0) {
+        bulkActionButtons.style.display = 'block';
+    } else {
+        bulkActionButtons.style.display = 'none';
+        // Esconder formulários se nenhum item estiver selecionado
+        document.getElementById('bulk-resposta-form').style.display = 'none';
+        document.getElementById('bulk-atribuir-form').style.display = 'none';
+    }
+}
+
+function hideBulkForms() {
+    document.getElementById('bulk-resposta-form').style.display = 'none';
+    document.getElementById('bulk-atribuir-form').style.display = 'none';
+}
+
 document.addEventListener('DOMContentLoaded', function() {
+    // --- Lógica para cliques no card ---
+    document.querySelectorAll('.notification-item').forEach(item => {
+        const notifId = item.dataset.notifId;
+        const cardHeader = item.querySelector('.card-header');
+        const checkbox = item.querySelector('.bulk-select-checkbox');
+        
+        if (cardHeader) {
+            cardHeader.addEventListener('click', function(e) {
+                // Verificar se o clique foi no checkbox ou em seus elementos filhos
+                if (e.target === checkbox || (checkbox && checkbox.contains(e.target))) {
+                    // Não fazer nada, deixar o evento do checkbox lidar com isso
+                    return;
+                }
+                // Redirecionar para a página de detalhes
+                window.location.href = 'notificacoes_admin.php?notif_id=' + notifId;
+            });
+        }
+    });
+    
+    // --- Lógica para Ações Individuais ---
     document.querySelectorAll('.admin-item-action-form').forEach(form => { // Changed selector to target item-specific forms
         form.addEventListener('submit', function(e) {
             e.preventDefault(); // Previne o recarregamento da página
@@ -604,7 +978,191 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         });
     });
-
+    
+    // --- Lógica para Ações em Lote ---
+    // Mostrar/ocultar botões de ação em lote ao selecionar checkboxes
+    document.querySelectorAll('.bulk-select-checkbox').forEach(checkbox => {
+        // Adicionar listener de mudança
+        checkbox.addEventListener('change', function(e) {
+            showBulkActionButtons();
+        });
+        
+        // Adicionar listener de clique para impedir a propagação
+        checkbox.addEventListener('click', function(e) {
+            e.stopPropagation();
+        });
+    });
+    
+    // Botão de Responder ao Usuário em Lote
+    document.getElementById('bulkResponderBtn').addEventListener('click', function() {
+        hideBulkForms();
+        document.getElementById('bulk-resposta-form').style.display = 'block';
+    });
+    
+    // Botão de Desfazer Movimentação em Lote
+    document.getElementById('bulkDesfazerBtn').addEventListener('click', function() {
+        const selectedNotifIds = Array.from(document.querySelectorAll('.bulk-select-checkbox:checked'))
+                                     .map(cb => cb.dataset.notifId);
+        
+        if (selectedNotifIds.length === 0) {
+            alert('Nenhuma notificação selecionada.');
+            return;
+        }
+        
+        if (confirm(`Tem certeza que deseja desfazer a movimentação de ${selectedNotifIds.length} item(s)?`)) {
+            const formData = new FormData();
+            formData.append('is_ajax', 'true');
+            formData.append('action', 'bulk_desfazer_movimentacao');
+            selectedNotifIds.forEach(id => formData.append('selected_notifications[]', id));
+            
+            fetch('notificacoes_admin.php', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                const feedbackMessage = document.getElementById('feedback-message');
+                feedbackMessage.style.display = 'block';
+                feedbackMessage.textContent = data.message;
+                feedbackMessage.className = data.success ? 'alert alert-success' : 'alert alert-danger';
+                
+                if (data.success) {
+                    // Atualizar a página ou os elementos afetados
+                    location.reload();
+                }
+            })
+            .catch(error => {
+                console.error('Erro na requisição Fetch:', error);
+                const feedbackMessage = document.getElementById('feedback-message');
+                feedbackMessage.style.display = 'block';
+                feedbackMessage.className = 'alert alert-danger';
+                feedbackMessage.textContent = 'Ocorreu um erro ao processar sua solicitação.';
+            });
+        }
+    });
+    
+    // Botão de Escolher Novo Responsável em Lote
+    document.getElementById('bulkAtribuirBtn').addEventListener('click', function() {
+        hideBulkForms();
+        document.getElementById('bulk-atribuir-form').style.display = 'block';
+    });
+    
+    // Submeter resposta em lote
+    document.getElementById('submitBulkReply').addEventListener('click', function() {
+        const replyText = document.getElementById('bulk-admin-reply').value.trim();
+        const selectedNotifIds = Array.from(document.querySelectorAll('.bulk-select-checkbox:checked'))
+                                     .map(cb => cb.dataset.notifId);
+        
+        if (selectedNotifIds.length === 0) {
+            alert('Nenhuma notificação selecionada.');
+            return;
+        }
+        
+        if (replyText === '') {
+            alert('Por favor, informe uma resposta.');
+            return;
+        }
+        
+        const formData = new FormData();
+        formData.append('is_ajax', 'true');
+        formData.append('action', 'bulk_responder_usuario');
+        formData.append('admin_reply', replyText);
+        selectedNotifIds.forEach(id => formData.append('selected_notifications[]', id));
+        
+        fetch('notificacoes_admin.php', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            const feedbackMessage = document.getElementById('feedback-message');
+            feedbackMessage.style.display = 'block';
+            feedbackMessage.textContent = data.message;
+            feedbackMessage.className = data.success ? 'alert alert-success' : 'alert alert-danger';
+            
+            if (data.success) {
+                // Limpar formulário e checkboxes
+                document.getElementById('bulk-admin-reply').value = '';
+                document.querySelectorAll('.bulk-select-checkbox:checked').forEach(cb => cb.checked = false);
+                hideBulkForms();
+                showBulkActionButtons();
+                // Atualizar a página ou os elementos afetados
+                location.reload();
+            }
+        })
+        .catch(error => {
+            console.error('Erro na requisição Fetch:', error);
+            const feedbackMessage = document.getElementById('feedback-message');
+            feedbackMessage.style.display = 'block';
+            feedbackMessage.className = 'alert alert-danger';
+            feedbackMessage.textContent = 'Ocorreu um erro ao processar sua solicitação.';
+        });
+    });
+    
+    // Submeter atribuição em lote
+    document.getElementById('submitBulkAtribuir').addEventListener('click', function() {
+        const novoResponsavelId = document.getElementById('bulk-novo-responsavel').value;
+        const selectedNotifIds = Array.from(document.querySelectorAll('.bulk-select-checkbox:checked'))
+                                     .map(cb => cb.dataset.notifId);
+        
+        if (selectedNotifIds.length === 0) {
+            alert('Nenhuma notificação selecionada.');
+            return;
+        }
+        
+        if (novoResponsavelId === '') {
+            alert('Por favor, selecione um novo responsável.');
+            return;
+        }
+        
+        const formData = new FormData();
+        formData.append('is_ajax', 'true');
+        formData.append('action', 'bulk_atribuir_responsavel');
+        formData.append('novo_responsavel_id', novoResponsavelId);
+        selectedNotifIds.forEach(id => formData.append('selected_notifications[]', id));
+        
+        fetch('notificacoes_admin.php', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            const feedbackMessage = document.getElementById('feedback-message');
+            feedbackMessage.style.display = 'block';
+            feedbackMessage.textContent = data.message;
+            feedbackMessage.className = data.success ? 'alert alert-success' : 'alert alert-danger';
+            
+            if (data.success) {
+                // Limpar formulário e checkboxes
+                document.getElementById('bulk-novo-responsavel').value = '';
+                document.querySelectorAll('.bulk-select-checkbox:checked').forEach(cb => cb.checked = false);
+                hideBulkForms();
+                showBulkActionButtons();
+                // Atualizar a página ou os elementos afetados
+                location.reload();
+            }
+        })
+        .catch(error => {
+            console.error('Erro na requisição Fetch:', error);
+            const feedbackMessage = document.getElementById('feedback-message');
+            feedbackMessage.style.display = 'block';
+            feedbackMessage.className = 'alert alert-danger';
+            feedbackMessage.textContent = 'Ocorreu um erro ao processar sua solicitação.';
+        });
+    });
+    
+    // Cancelar resposta em lote
+    document.getElementById('cancelBulkReply').addEventListener('click', function() {
+        document.getElementById('bulk-resposta-form').style.display = 'none';
+        document.getElementById('bulk-admin-reply').value = '';
+    });
+    
+    // Cancelar atribuição em lote
+    document.getElementById('cancelBulkAtribuir').addEventListener('click', function() {
+        document.getElementById('bulk-atribuir-form').style.display = 'none';
+        document.getElementById('bulk-novo-responsavel').value = '';
+    });
+    
     // Funções auxiliares para atualizar a classe do badge e o ícone (copiadas de notificacoes_usuario.php)
     function updateBadgeClass(badge, status) {
         badge.className = 'badge '; // Reseta classes
@@ -620,6 +1178,14 @@ document.addEventListener('DOMContentLoaded', function() {
         if (status === 'Pendente' || status === 'Em Disputa') icon.classList.add('fa-envelope');
         else if (status === 'Confirmado' || status === 'Movimento Desfeito') icon.classList.add('fa-envelope-open');
         else icon.classList.add('fa-envelope');
+    }
+    
+    // --- Lógica para o Filtro de Status (similar à página do usuário) ---
+    const filtroStatus = document.getElementById('filtroStatus');
+    if (filtroStatus) {
+        filtroStatus.addEventListener('change', function() {
+            window.location.href = 'notificacoes_admin.php?status=' + this.value;
+        });
     }
 });
 </script>

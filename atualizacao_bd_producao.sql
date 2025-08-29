@@ -1,12 +1,16 @@
--- Arquivo de atualização para produção - Correção do item_edit.php
+-- Arquivo de atualização para produção - Melhorias na página de usuários
 -- Data: 2025-08-29
 
 /*
  * Nenhuma alteração no banco de dados é necessária para esta atualização.
- * A correção foi feita apenas no arquivo item_edit.php para resolver
- * o problema com mysqli_stmt_bind_param() que exigia passagem de 
- * parâmetros por referência.
+ * As melhorias foram feitas apenas na interface da página de usuários para:
+ * - Remover a tabela redundante
+ * - Organizar os usuários em seções por status
+ * - Adicionar funcionalidade de pesquisa em tempo real
+ * - Melhorar a visualização com cards
+ * - Reorganizar a seção de usuários pendentes
  *
  * Arquivos modificados:
- * - item_edit.php
+ * - usuarios.php
+ * - api/buscar_usuarios.php (novo arquivo)
  */

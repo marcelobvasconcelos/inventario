@@ -12,12 +12,12 @@ Ao acessar o sistema, você será direcionado automaticamente para o **Dashboard
 Para utilizar o Sistema de Inventário, você precisará de:
 
 *   Um navegador web moderno (Google Chrome, Mozilla Firefox, Microsoft Edge, Safari).
-*   Conexão com a internet (se o sistema estiver hospedado online) ou acesso à rede local (se estiver em um servidor local como XAMPP).
+*   Conexão com a internet (se o sistema estiver hospedado online) ou acesso à rede local.
 
 ## [VISUALIZADOR] 3. Primeiros Passos
 
 ### 3.1. Acessando o Sistema
-Para acessar o sistema, abra seu navegador web e digite o endereço fornecido pelo administrador (ex: `http://localhost/inventario` se estiver usando XAMPP).
+Para acessar o sistema, abra seu navegador web e digite o endereço fornecido pelo administrador.
 
 ### 3.2. Login e Logout
 *   **Login:** Na tela inicial, insira seu **Email** e **Senha** nos campos designados e clique no botão "Login".
@@ -90,6 +90,8 @@ Como Administrador, você tem controle total sobre o sistema e pode:
 ### 8.3. Gerenciamento de Movimentações
 - **Registrar Movimentação:** Registre movimentações de itens individuais ou em massa entre locais e responsáveis.
 - **Notificações e Disputas:** Ao transferir um item para um gestor, o sistema envia uma notificação. Caso o gestor recuse, você pode responder justificando a movimentação ou desfazer a transferência, retornando o item ao local e responsável anterior. Todo o histórico da comunicação fica registrado e visível para ambos.
+- **Ações em Lote:** Na página de notificações, você pode selecionar várias notificações de itens "Não Confirmados" e realizar ações em lote, como responder a todos os usuários, desfazer movimentações ou atribuir novos responsáveis.
+- **Filtros de Notificações:** Na página de gerenciamento de notificações, você pode filtrar as notificações por status: "Todos", "Pendentes", "Confirmados" e "Não Confirmados", facilitando a gestão das notificações.
 
 ### 8.4. Gerenciamento de Usuários
 *   **Adicionar, Editar e Excluir Usuários:** Crie, modifique e remova contas de usuário.
@@ -97,6 +99,9 @@ Como Administrador, você tem controle total sobre o sistema e pode:
 *   **Aprovar Contas:** Aprove ou rejeite o registro de novas contas de usuário.
 *   **Exclusão de Usuários com Itens:** Agora é possível excluir usuários que tenham tido itens sob sua responsabilidade, desde que esses itens tenham sido excluídos (movidos para a "Lixeira").
 *   **Geração de Senha Temporária:** Ao criar um novo usuário, o sistema gera automaticamente uma senha temporária que o usuário deve alterar no primeiro acesso.
+*   **Gerenciamento de Usuários por Status:** Os usuários são organizados em seções por status (Aprovados, Pendentes de Aceitação, Rejeitados) para facilitar a gestão.
+*   **Pesquisa de Usuários:** Utilize a barra de pesquisa para encontrar usuários por nome em tempo real.
+*   **Rejeição de Usuários:** Ao excluir um usuário que tenha realizado movimentações, ele será movido para o status "Rejeitado" em vez de ser excluído permanentemente, preservando o histórico de movimentações.
 
 
 ## [VISUALIZADOR] 9. Ícones Utilizados
@@ -114,7 +119,12 @@ Como Administrador, você tem controle total sobre o sistema e pode:
 
 ## [VISUALIZADOR] 11. Solução de Problemas
 
-*   **Não consigo fazer login:** Verifique seus dados e se sua conta foi aprovada. Se esqueceu a senha, contate um administrador.
+*   **Não consigo fazer login:** Verifique seus dados e se sua conta foi aprovada. Se esqueceu a senha:
+    1. Clique no link "Esqueceu sua senha?" na página de login
+    2. Preencha seu nome completo e email
+    3. Um administrador receberá sua solicitação e gerará uma nova senha temporária para você
+    4. A senha temporária será enviada para o seu email
+    5. Ao fazer login com a senha temporária, você será solicitado a criar uma nova senha
 
 ## [VISUALIZADOR] 12. Informações do Sistema
 

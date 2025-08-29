@@ -6,7 +6,7 @@ require_once 'includes/header.php';
 // Função para exibir uma página de erro padronizada e sair
 function display_error($message) {
     echo '<main>';
-    echo '<h2>Erro ao Excluir Usuário</h2>';
+    echo '<h2>Erro ao Rejeitar Usuário</h2>';
     echo '<div class="alert alert-danger">' . htmlspecialchars($message) . '</div>';
     echo '<a href="usuarios.php" class="btn-custom">Voltar para Usuários</a>';
     echo '</main>';
@@ -28,7 +28,7 @@ $id = $_GET['id'];
 
 // Impede que o administrador se auto-exclua
 if($id == $_SESSION['id']){
-    display_error("Você não pode excluir seu próprio usuário.");
+    display_error("Você não pode rejeitar seu próprio usuário.");
 }
 
 // Obter o ID do usuário "Lixeira"
@@ -68,21 +68,40 @@ if($stmt_check_mov = mysqli_prepare($link, $check_mov_sql)){
     mysqli_stmt_execute($stmt_check_mov);
     mysqli_stmt_store_result($stmt_check_mov);
     if(mysqli_stmt_num_rows($stmt_check_mov) > 0){
+        // Se o usuário tem movimentações, apenas o rejeitamos em vez de excluí-lo
         mysqli_stmt_close($stmt_check_mov);
-        display_error("Não é possível excluir este usuário, pois ele possui registros de movimentações. Considere desativar o usuário em vez de excluí-lo para manter o histórico.");
+        
+        // Atualiza o status do usuário para 'rejeitado'
+        $update_sql = "UPDATE usuarios SET status = 'rejeitado' WHERE id = ?";
+        if($stmt_update = mysqli_prepare($link, $update_sql)){
+            mysqli_stmt_bind_param($stmt_update, "i", $id);
+            
+            if(mysqli_stmt_execute($stmt_update)){
+                // Redireciona com mensagem de sucesso
+                header("location: usuarios.php?status=usuario_rejeitado");
+                exit();
+            } else{
+                display_error("Oops! Algo deu errado ao rejeitar o usuário. Por favor, tente novamente mais tarde.");
+            }
+            mysqli_stmt_close($stmt_update);
+        } else {
+            display_error("Oops! Algo deu errado na preparação da atualização. Por favor, tente novamente mais tarde.");
+        }
+        // Importante: sair aqui para não continuar com a exclusão
+        exit();
     }
     mysqli_stmt_close($stmt_check_mov);
 } else {
     display_error("Erro ao verificar as movimentações do usuário.");
 }
 
-// Se todas as verificações passaram, prossiga com a exclusão
+// Se o usuário não tem movimentações, podemos excluí-lo permanentemente
 $sql = "DELETE FROM usuarios WHERE id = ?";
 if($stmt = mysqli_prepare($link, $sql)){
     mysqli_stmt_bind_param($stmt, "i", $id);
     
     if(mysqli_stmt_execute($stmt)){
-        header("location: usuarios.php");
+        header("location: usuarios.php?status=usuario_excluido");
         exit();
     } else{
         display_error("Oops! Algo deu errado na exclusão. Por favor, tente novamente mais tarde.");

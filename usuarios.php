@@ -64,42 +64,53 @@ if(isset($_GET['acao']) && isset($_GET['id'])){
     }
 }
 
-// Configurações de paginação
-$itens_por_pagina = 20;
-$pagina_atual = isset($_GET['pagina']) ? (int)$_GET['pagina'] : 1;
-$offset = ($pagina_atual - 1) * $itens_por_pagina;
+// Consultas para os diferentes status de usuários
+$sql_pendentes = "SELECT u.id, u.nome, u.email, p.nome as perfil_nome 
+                  FROM usuarios u 
+                  JOIN perfis p ON u.permissao_id = p.id 
+                  WHERE u.status = 'pendente' AND u.nome != 'Lixeira' 
+                  ORDER BY u.nome ASC";
+$result_pendentes = mysqli_query($link, $sql_pendentes);
+$count_pendentes = mysqli_num_rows($result_pendentes);
 
-// Consulta para contagem total de usuários
-$sql_count = "SELECT COUNT(*) FROM usuarios u JOIN perfis p ON u.permissao_id = p.id WHERE u.nome != 'Lixeira'";
-$result_count = mysqli_query($link, $sql_count);
-$total_usuarios = mysqli_fetch_row($result_count)[0];
-mysqli_free_result($result_count);
+$sql_rejeitados = "SELECT u.id, u.nome, u.email, p.nome as perfil_nome 
+                   FROM usuarios u 
+                   JOIN perfis p ON u.permissao_id = p.id 
+                   WHERE u.status = 'rejeitado' AND u.nome != 'Lixeira' 
+                   ORDER BY u.nome ASC";
+$result_rejeitados = mysqli_query($link, $sql_rejeitados);
 
-$total_paginas = ceil($total_usuarios / $itens_por_pagina);
-
-// Consulta para os usuários da página atual, incluindo informações sobre solicitações de senha
-$sql = "SELECT u.id, u.nome, u.email, p.nome as perfil_nome, u.status,
-               (SELECT COUNT(*) FROM solicitacoes_senha WHERE usuario_id = u.id AND status = 'pendente') as solicitacoes_pendentes
-        FROM usuarios u
-        JOIN perfis p ON u.permissao_id = p.id
-        WHERE u.nome != 'Lixeira'
-        ORDER BY u.nome ASC LIMIT ? OFFSET ?";
-
-if($stmt = mysqli_prepare($link, $sql)){
-    $refs = [];
-    $params_main = ["ii", $itens_por_pagina, $offset];
-    foreach($params_main as $key => $value)
-        $refs[$key] = &$params_main[$key];
-    call_user_func_array('mysqli_stmt_bind_param', array_merge([$stmt], $refs));
-    mysqli_stmt_execute($stmt);
-    $result = mysqli_stmt_get_result($stmt);
-} else {
-    $result = false;
-}
+$sql_aprovados = "SELECT u.id, u.nome, u.email, p.nome as perfil_nome 
+                  FROM usuarios u 
+                  JOIN perfis p ON u.permissao_id = p.id 
+                  WHERE u.status = 'aprovado' AND u.nome != 'Lixeira' 
+                  ORDER BY u.nome ASC";
+$result_aprovados = mysqli_query($link, $sql_aprovados);
 ?>
 
 <h2>Gerenciar Usuários</h2>
-<a href="usuario_add.php" class="btn-custom">Adicionar Novo Usuário</a>
+
+<!-- Barra de ferramentas com botão de adicionar e pesquisa -->
+<div style="display: flex; align-items: center; gap: 10px; margin-bottom: 20px;">
+    <a href="usuario_add.php" class="btn-custom" title="Adicionar Novo Usuário" style="padding: 10px 15px;">
+        <i class="fas fa-user-plus"></i>
+    </a>
+    
+    <!-- Campo de pesquisa -->
+    <div style="flex: 1; max-width: 400px;">
+        <input type="text" id="pesquisa-usuario" placeholder="Pesquisar usuários (digite pelo menos 3 letras)" style="padding: 10px; width: 100%; border: 1px solid #ddd; border-radius: 5px;">
+    </div>
+    
+    <button id="limpar-pesquisa" class="btn-custom" title="Limpar pesquisa" style="padding: 10px 15px;">
+        <i class="fas fa-times"></i>
+    </button>
+</div>
+
+<!-- Container para resultados da pesquisa -->
+<div id="resultados-pesquisa" style="display: none; margin: 20px 0;">
+    <h3>Resultados da Pesquisa</h3>
+    <div id="lista-resultados" class="user-list"></div>
+</div>
 
 <style>
 .alert-success {
@@ -139,6 +150,36 @@ if($stmt = mysqli_prepare($link, $sql)){
 .btn-aprovar, .btn-rejeitar, .btn-editar, .btn-excluir, .btn-pendente, .btn-warning {
     margin: 2px;
 }
+
+/* Estilos para as seções de usuários */
+.user-section {
+    margin-top: 30px;
+    padding: 15px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    background-color: #f9f9f9;
+}
+
+.user-section h3 {
+    margin-top: 0;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 10px;
+}
+
+.user-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.user-card {
+    background: white;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    padding: 10px;
+    min-width: 250px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
 </style>
 
 <?php if(!empty($senha_temporaria_gerada)): ?>
@@ -149,49 +190,174 @@ if($stmt = mysqli_prepare($link, $sql)){
     </div>
 <?php endif; ?>
 
-<table class="table-striped table-hover">
-    <thead>
-        <tr>
-            <th data-column="id">ID <span class="sort-arrow"></span></th>
-            <th data-column="nome">Nome <span class="sort-arrow"></span></th>
-            <th data-column="email">Email <span class="sort-arrow"></span></th>
-            <th data-column="perfil_nome">Permissão <span class="sort-arrow"></span></th>
-            <th data-column="status">Status <span class="sort-arrow"></span></th>
-            <th>Solicitações de Senha</th>
-            <th>Ações</th>
-        </tr>
-    </thead>
-    <tbody>
-        <?php if ($result && mysqli_num_rows($result) > 0): ?>
-            <?php while($row = mysqli_fetch_assoc($result)): ?>
-            <tr>
-                <td><?php echo $row['id']; ?></td>
-                <td><a href="usuario_itens.php?id=<?php echo $row['id']; ?>"><?php echo htmlspecialchars($row['nome']); ?></a></td>
-                <td><?php echo htmlspecialchars($row['email']); ?></td>
-                <td><?php echo htmlspecialchars($row['perfil_nome']); ?></td>
-                <td><?php echo ucfirst(htmlspecialchars($row['status'])); ?></td>
-                <td>
-                    <?php if($row['solicitacoes_pendentes'] > 0): ?>
-                        <span class="badge badge-warning"><?php echo $row['solicitacoes_pendentes']; ?> pendente(s)</span>
-                    <?php else: ?>
-                        <span class="badge badge-success">Nenhuma</span>
-                    <?php endif; ?>
-                </td>
-                <td>
-                    <?php if($row['status'] == 'pendente'): ?>
-                        <a href="usuarios.php?acao=aprovar&id=<?php echo $row['id']; ?>" class="btn btn-aprovar btn-sm" title="Aprovar">
-                            <i class="fas fa-check"></i>
-                        </a>
-                        <a href="usuarios.php?acao=rejeitar&id=<?php echo $row['id']; ?>" class="btn btn-rejeitar btn-sm" title="Rejeitar">
-                            <i class="fas fa-times"></i>
-                        </a>
-                    <?php else: ?>
+<?php if(isset($_GET['status']) && $_GET['status'] == 'usuario_rejeitado'): ?>
+    <div class="alert alert-success">
+        <strong>Usuário rejeitado com sucesso!</strong><br>
+        <small>O usuário foi movido para a seção de usuários rejeitados.</small>
+    </div>
+<?php endif; ?>
+
+<?php if(isset($_GET['status']) && $_GET['status'] == 'usuario_excluido'): ?>
+    <div class="alert alert-success">
+        <strong>Usuário excluído com sucesso!</strong><br>
+        <small>O usuário foi excluído permanentemente do sistema.</small>
+    </div>
+<?php endif; ?>
+
+<?php
+// Consulta para usuários pendentes
+$sql_pendentes = "SELECT u.id, u.nome, u.email, p.nome as perfil_nome 
+                  FROM usuarios u 
+                  JOIN perfis p ON u.permissao_id = p.id 
+                  WHERE u.status = 'pendente' AND u.nome != 'Lixeira' 
+                  ORDER BY u.nome ASC";
+$result_pendentes = mysqli_query($link, $sql_pendentes);
+
+// Consulta para usuários rejeitados
+$sql_rejeitados = "SELECT u.id, u.nome, u.email, p.nome as perfil_nome 
+                   FROM usuarios u 
+                   JOIN perfis p ON u.permissao_id = p.id 
+                   WHERE u.status = 'rejeitado' AND u.nome != 'Lixeira' 
+                   ORDER BY u.nome ASC";
+$result_rejeitados = mysqli_query($link, $sql_rejeitados);
+
+// Consulta para demais usuários (aprovados)
+$sql_aprovados = "SELECT u.id, u.nome, u.email, p.nome as perfil_nome 
+                  FROM usuarios u 
+                  JOIN perfis p ON u.permissao_id = p.id 
+                  WHERE u.status = 'aprovado' AND u.nome != 'Lixeira' 
+                  ORDER BY u.nome ASC";
+$result_aprovados = mysqli_query($link, $sql_aprovados);
+?>
+
+<?php if ($count_pendentes > 0): ?>
+    <!-- PENDENTES DE ACEITAÇÃO (no topo quando há pendências) -->
+    <div class="user-section">
+        <h3>PENDENTES DE ACEITAÇÃO</h3>
+        <div class="user-list">
+            <?php if ($result_pendentes && mysqli_num_rows($result_pendentes) > 0): ?>
+                <?php while($row = mysqli_fetch_assoc($result_pendentes)): ?>
+                    <?php
+                    // Definir cor do perfil
+                    $cor_perfil = '#95a5a6'; // Cor padrão
+                    switch($row['perfil_nome']) {
+                        case 'Administrador':
+                            $cor_perfil = '#ff6b6b';
+                            break;
+                        case 'Gestor':
+                            $cor_perfil = '#4ecdc4';
+                            break;
+                        case 'Visualizador':
+                            $cor_perfil = '#45b7d1';
+                            break;
+                    }
+                    ?>
+                    <div class="user-card">
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                            <div>
+                                <strong><?php echo htmlspecialchars($row['nome']); ?></strong><br>
+                                <small>ID: <?php echo $row['id']; ?></small><br>
+                                <small><?php echo htmlspecialchars($row['email']); ?></small><br>
+                                <a href="usuario_itens.php?id=<?php echo $row['id']; ?>" style="color: #3498db; text-decoration: none; font-size: 0.9em;">
+                                    <i class="fas fa-box"></i> Itens do usuário
+                                </a>
+                            </div>
+                        </div>
+                        <div style="margin-top: 10px;">
+                            <span class="badge" style="background-color: <?php echo $cor_perfil; ?>;"><?php echo htmlspecialchars($row['perfil_nome']); ?></span>
+                            <span class="badge" style="background-color: #ffc107; color: white;">Pendente</span>
+                        </div>
+                        <div style="margin-top: 10px;">
+                            <a href="usuarios.php?acao=aprovar&id=<?php echo $row['id']; ?>" class="btn btn-aprovar btn-sm" title="Aprovar">
+                                <i class="fas fa-check"></i> Aprovar
+                            </a>
+                            <a href="usuarios.php?acao=rejeitar&id=<?php echo $row['id']; ?>" class="btn btn-rejeitar btn-sm" title="Rejeitar">
+                                <i class="fas fa-times"></i> Rejeitar
+                            </a>
+                        </div>
+                    </div>
+                <?php endwhile; ?>
+            <?php else: ?>
+                <p>Nenhum usuário pendente encontrado.</p>
+            <?php endif; ?>
+        </div>
+    </div>
+<?php endif; ?>
+
+<!-- USUÁRIOS APROVADOS -->
+<div class="user-section">
+    <h3>USUÁRIOS APROVADOS</h3>
+    <div class="user-list">
+        <?php if ($result_aprovados && mysqli_num_rows($result_aprovados) > 0): ?>
+            <?php while($row = mysqli_fetch_assoc($result_aprovados)): ?>
+                <!-- Consulta para verificar solicitações pendentes -->
+                <?php
+                $sql_solicitacoes = "SELECT COUNT(*) as solicitacoes_pendentes FROM solicitacoes_senha WHERE usuario_id = ? AND status = 'pendente'";
+                $stmt_solicitacoes = mysqli_prepare($link, $sql_solicitacoes);
+                mysqli_stmt_bind_param($stmt_solicitacoes, "i", $row['id']);
+                mysqli_stmt_execute($stmt_solicitacoes);
+                $result_solicitacoes = mysqli_stmt_get_result($stmt_solicitacoes);
+                $solicitacoes = mysqli_fetch_assoc($result_solicitacoes);
+                $solicitacoes_pendentes = $solicitacoes['solicitacoes_pendentes'];
+                mysqli_stmt_close($stmt_solicitacoes);
+                
+                // Definir cor do perfil
+                $cor_perfil = '#95a5a6'; // Cor padrão
+                switch($row['perfil_nome']) {
+                    case 'Administrador':
+                        $cor_perfil = '#ff6b6b';
+                        break;
+                    case 'Gestor':
+                        $cor_perfil = '#4ecdc4';
+                        break;
+                    case 'Visualizador':
+                        $cor_perfil = '#45b7d1';
+                        break;
+                }
+                ?>
+                <div class="user-card" <?php echo ($solicitacoes_pendentes > 0) ? 'style="border: 2px solid #f39c12; box-shadow: 0 0 10px rgba(243, 156, 18, 0.5);"' : ''; ?>>
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                        <div>
+                            <strong><?php echo htmlspecialchars($row['nome']); ?></strong><br>
+                            <small>ID: <?php echo $row['id']; ?></small><br>
+                            <small><?php echo htmlspecialchars($row['email']); ?></small><br>
+                            <a href="usuario_itens.php?id=<?php echo $row['id']; ?>" style="color: #3498db; text-decoration: none; font-size: 0.9em;">
+                                <i class="fas fa-box"></i> Itens do usuário
+                            </a>
+                        </div>
+                    </div>
+                    <div style="margin-top: 10px;">
+                        <span class="badge" style="background-color: <?php echo $cor_perfil; ?>;"><?php echo htmlspecialchars($row['perfil_nome']); ?></span>
+                        <span class="badge" style="background-color: #28a745; color: white;">Aprovado</span>
+                        <?php if($solicitacoes_pendentes > 0): ?>
+                            <br><span class="badge badge-warning" style="margin-top: 5px; display: inline-block;"><?php echo $solicitacoes_pendentes; ?> solicitação(ões)</span>
+                        <?php endif; ?>
+                    </div>
+                    <div style="margin-top: 10px;">
                         <a href="usuario_edit.php?id=<?php echo $row['id']; ?>" class="btn btn-editar btn-sm" title="Editar">
                             <i class="fas fa-edit"></i>
                         </a>
-                        <a href="usuario_delete.php?id=<?php echo $row['id']; ?>" class="btn btn-excluir btn-sm" title="Excluir" onclick="return confirm('Tem certeza que deseja excluir este usuário?');">
-                            <i class="fas fa-trash"></i>
-                        </a>
+                        <?php 
+                        // Verificar se o usuário tem movimentações
+                        $sql_check_mov = "SELECT COUNT(*) as total FROM movimentacoes WHERE usuario_id = ?";
+                        $stmt_check_mov = mysqli_prepare($link, $sql_check_mov);
+                        mysqli_stmt_bind_param($stmt_check_mov, "i", $row['id']);
+                        mysqli_stmt_execute($stmt_check_mov);
+                        $result_check_mov = mysqli_stmt_get_result($stmt_check_mov);
+                        $movimentacoes = mysqli_fetch_assoc($result_check_mov);
+                        $tem_movimentacoes = $movimentacoes['total'] > 0;
+                        mysqli_stmt_close($stmt_check_mov);
+                        
+                        // Mostrar o botão de exclusão apenas se o usuário não tiver movimentações
+                        if (!$tem_movimentacoes): ?>
+                            <a href="usuario_delete.php?id=<?php echo $row['id']; ?>" class="btn btn-excluir btn-sm" title="Excluir" onclick="return confirm('Tem certeza que deseja excluir este usuário?');">
+                                <i class="fas fa-trash"></i>
+                            </a>
+                        <?php else: ?>
+                            <a href="usuarios.php?acao=rejeitar&id=<?php echo $row['id']; ?>" class="btn btn-rejeitar btn-sm" title="Rejeitar" onclick="return confirm('Tem certeza que deseja rejeitar este usuário? Ele será movido para a seção de usuários rejeitados.');">
+                                <i class="fas fa-user-times"></i>
+                            </a>
+                        <?php endif; ?>
                         <a href="usuarios.php?acao=pendente&id=<?php echo $row['id']; ?>" class="btn btn-pendente btn-sm" title="Marcar como Pendente">
                             <i class="fas fa-clock"></i>
                         </a>
@@ -200,41 +366,277 @@ if($stmt = mysqli_prepare($link, $sql)){
                         <form method="post" style="display: inline;">
                             <input type="hidden" name="usuario_id" value="<?php echo $row['id']; ?>">
                             <button type="submit" name="gerar_senha_temporaria" class="btn btn-warning btn-sm" title="Gerar Senha Temporária"
-                                    <?php echo ($row['solicitacoes_pendentes'] > 0) ? '' : 'disabled'; ?>
+                                    <?php echo ($solicitacoes_pendentes > 0) ? '' : 'disabled'; ?>
                                     onclick="return confirm('Tem certeza que deseja gerar uma senha temporária para este usuário?');">
                                 <i class="fas fa-key"></i>
                             </button>
                         </form>
-                    <?php endif; ?>
-                </td>
-            </tr>
+                    </div>
+                </div>
             <?php endwhile; ?>
         <?php else: ?>
-            <tr>
-                <td colspan="7">Nenhum usuário encontrado.</td>
-            </tr>
+            <p>Nenhum usuário aprovado encontrado.</p>
         <?php endif; ?>
-    </tbody>
-</table>
+    </div>
+</div>
 
-<div class="pagination">
-    <?php if ($total_paginas > 1): ?>
-        <?php if ($pagina_atual > 1): ?>
-            <a href="?pagina=<?php echo $pagina_atual - 1; ?>">Anterior</a>
+<!-- REJEITADOS -->
+
+<?php if ($count_pendentes == 0): ?>
+    <!-- PENDENTES DE ACEITAÇÃO (na posição original quando não há pendências) -->
+    <div class="user-section">
+        <h3>PENDENTES DE ACEITAÇÃO</h3>
+        <div class="user-list">
+            <?php if ($result_pendentes && mysqli_num_rows($result_pendentes) > 0): ?>
+                <?php while($row = mysqli_fetch_assoc($result_pendentes)): ?>
+                    <?php
+                    // Definir cor do perfil
+                    $cor_perfil = '#95a5a6'; // Cor padrão
+                    switch($row['perfil_nome']) {
+                        case 'Administrador':
+                            $cor_perfil = '#ff6b6b';
+                            break;
+                        case 'Gestor':
+                            $cor_perfil = '#4ecdc4';
+                            break;
+                        case 'Visualizador':
+                            $cor_perfil = '#45b7d1';
+                            break;
+                    }
+                    ?>
+                    <div class="user-card">
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                            <div>
+                                <strong><?php echo htmlspecialchars($row['nome']); ?></strong><br>
+                                <small>ID: <?php echo $row['id']; ?></small><br>
+                                <small><?php echo htmlspecialchars($row['email']); ?></small><br>
+                                <a href="usuario_itens.php?id=<?php echo $row['id']; ?>" style="color: #3498db; text-decoration: none; font-size: 0.9em;">
+                                    <i class="fas fa-box"></i> Itens do usuário
+                                </a>
+                            </div>
+                        </div>
+                        <div style="margin-top: 10px;">
+                            <span class="badge" style="background-color: <?php echo $cor_perfil; ?>;"><?php echo htmlspecialchars($row['perfil_nome']); ?></span>
+                            <span class="badge" style="background-color: #ffc107; color: white;">Pendente</span>
+                        </div>
+                        <div style="margin-top: 10px;">
+                            <a href="usuarios.php?acao=aprovar&id=<?php echo $row['id']; ?>" class="btn btn-aprovar btn-sm" title="Aprovar">
+                                <i class="fas fa-check"></i> Aprovar
+                            </a>
+                            <a href="usuarios.php?acao=rejeitar&id=<?php echo $row['id']; ?>" class="btn btn-rejeitar btn-sm" title="Rejeitar">
+                                <i class="fas fa-times"></i> Rejeitar
+                            </a>
+                        </div>
+                    </div>
+                <?php endwhile; ?>
+            <?php else: ?>
+                <p>Nenhum usuário pendente encontrado.</p>
+            <?php endif; ?>
+        </div>
+    </div>
+<?php endif; ?>
+<div class="user-section">
+    <h3>REJEITADOS</h3>
+    <div class="user-list">
+        <?php if ($result_rejeitados && mysqli_num_rows($result_rejeitados) > 0): ?>
+            <?php while($row = mysqli_fetch_assoc($result_rejeitados)): ?>
+                <?php
+                // Definir cor do perfil
+                $cor_perfil = '#95a5a6'; // Cor padrão
+                switch($row['perfil_nome']) {
+                    case 'Administrador':
+                        $cor_perfil = '#ff6b6b';
+                        break;
+                    case 'Gestor':
+                        $cor_perfil = '#4ecdc4';
+                        break;
+                    case 'Visualizador':
+                        $cor_perfil = '#45b7d1';
+                        break;
+                }
+                ?>
+                <div class="user-card">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                        <div>
+                            <strong><?php echo htmlspecialchars($row['nome']); ?></strong><br>
+                            <small>ID: <?php echo $row['id']; ?></small><br>
+                            <small><?php echo htmlspecialchars($row['email']); ?></small><br>
+                            <a href="usuario_itens.php?id=<?php echo $row['id']; ?>" style="color: #3498db; text-decoration: none; font-size: 0.9em;">
+                                <i class="fas fa-box"></i> Itens do usuário
+                            </a>
+                        </div>
+                    </div>
+                    <div style="margin-top: 10px;">
+                        <span class="badge" style="background-color: <?php echo $cor_perfil; ?>;"><?php echo htmlspecialchars($row['perfil_nome']); ?></span>
+                        <span class="badge" style="background-color: #dc3545; color: white;">Rejeitado</span>
+                    </div>
+                    <div style="margin-top: 10px;">
+                        <a href="usuarios.php?acao=aprovar&id=<?php echo $row['id']; ?>" class="btn btn-aprovar btn-sm" title="Aprovar">
+                            <i class="fas fa-check"></i> Aprovar
+                        </a>
+                        <a href="usuarios.php?acao=pendente&id=<?php echo $row['id']; ?>" class="btn btn-pendente btn-sm" title="Marcar como Pendente">
+                            <i class="fas fa-clock"></i> Pendente
+                        </a>
+                    </div>
+                </div>
+            <?php endwhile; ?>
+        <?php else: ?>
+            <p>Nenhum usuário rejeitado encontrado.</p>
         <?php endif; ?>
-
-        <?php for ($i = 1; $i <= $total_paginas; $i++): ?>
-            <a href="?pagina=<?php echo $i; ?>" class="<?php echo ($i == $pagina_atual) ? 'active' : ''; ?>"><?php echo $i; ?></a>
-        <?php endfor; ?>
-
-        <?php if ($pagina_atual < $total_paginas): ?>
-            <a href="?pagina=<?php echo $pagina_atual + 1; ?>">Próxima</a>
-        <?php endif; ?>
-    <?php endif; ?>
+    </div>
 </div>
 
 <script>
+// Função para formatar o status do usuário
+function formatarStatus(status) {
+    const statusMap = {
+        'pendente': 'Pendente',
+        'aprovado': 'Aprovado',
+        'rejeitado': 'Rejeitado'
+    };
+    return statusMap[status] || status;
+}
+
+// Função para obter a cor do perfil
+function getCorPerfil(perfil) {
+    switch(perfil) {
+        case 'Administrador':
+            return '#ff6b6b';
+        case 'Gestor':
+            return '#4ecdc4';
+        case 'Visualizador':
+            return '#45b7d1';
+        default:
+            return '#95a5a6';
+    }
+}
+
+// Função para criar um card de usuário
+function criarCardUsuario(usuario) {
+    const card = document.createElement('div');
+    card.className = 'user-card';
+    
+    // Verifica se há solicitações pendentes
+    const temSolicitacoes = parseInt(usuario.solicitacoes_pendentes) > 0;
+    
+    // Adiciona classe de destaque se houver solicitações pendentes
+    if (temSolicitacoes) {
+        card.style.border = '2px solid #f39c12';
+        card.style.boxShadow = '0 0 10px rgba(243, 156, 18, 0.5)';
+    }
+    
+    // Define a cor do perfil
+    const corPerfil = getCorPerfil(usuario.perfil_nome);
+    
+    card.innerHTML = `
+        <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+            <div>
+                <strong>${usuario.nome}</strong><br>
+                <small>ID: ${usuario.id}</small><br>
+                <small>${usuario.email}</small><br>
+                <a href="usuario_itens.php?id=${usuario.id}" style="color: #3498db; text-decoration: none; font-size: 0.9em;">
+                    <i class="fas fa-box"></i> Itens do usuário
+                </a>
+            </div>
+        </div>
+        <div style="margin-top: 10px;">
+            <span class="badge" style="background-color: ${corPerfil};">${usuario.perfil_nome}</span>
+            <span class="badge" style="background-color: ${usuario.status === 'aprovado' ? '#28a745' : usuario.status === 'pendente' ? '#ffc107' : '#dc3545'}; color: white;">
+                ${formatarStatus(usuario.status)}
+            </span>
+            ${temSolicitacoes ? `<br><span class="badge badge-warning" style="margin-top: 5px; display: inline-block;">${usuario.solicitacoes_pendentes} solicitação(ões)</span>` : ''}
+        </div>
+        <div style="margin-top: 10px;">
+            ${usuario.status === 'pendente' ? 
+                `<a href="usuarios.php?acao=aprovar&id=${usuario.id}" class="btn btn-aprovar btn-sm" title="Aprovar">
+                    <i class="fas fa-check"></i>
+                </a>
+                <a href="usuarios.php?acao=rejeitar&id=${usuario.id}" class="btn btn-rejeitar btn-sm" title="Rejeitar">
+                    <i class="fas fa-times"></i>
+                </a>` :
+                `<a href="usuario_edit.php?id=${usuario.id}" class="btn btn-editar btn-sm" title="Editar">
+                    <i class="fas fa-edit"></i>
+                </a>
+                <a href="usuario_delete.php?id=${usuario.id}" class="btn btn-excluir btn-sm" title="Excluir" onclick="return confirm('Tem certeza que deseja excluir este usuário?');">
+                    <i class="fas fa-trash"></i>
+                </a>
+                <a href="usuarios.php?acao=pendente&id=${usuario.id}" class="btn btn-pendente btn-sm" title="Marcar como Pendente">
+                    <i class="fas fa-clock"></i>
+                </a>
+                <form method="post" style="display: inline;">
+                    <input type="hidden" name="usuario_id" value="${usuario.id}">
+                    <button type="submit" name="gerar_senha_temporaria" class="btn btn-warning btn-sm" title="Gerar Senha Temporária"
+                            ${temSolicitacoes ? '' : 'disabled'}
+                            onclick="return confirm('Tem certeza que deseja gerar uma senha temporária para este usuário?');">
+                        <i class="fas fa-key"></i>
+                    </button>
+                </form>`
+            }
+        </div>
+    `;
+    
+    return card;
+}
+
+// Função para buscar usuários via AJAX
+function buscarUsuarios(termo) {
+    if (termo.length < 3) {
+        document.getElementById('resultados-pesquisa').style.display = 'none';
+        return;
+    }
+    
+    fetch(`/inventario/api/buscar_usuarios.php?q=${encodeURIComponent(termo)}`)
+        .then(response => response.json())
+        .then(usuarios => {
+            const container = document.getElementById('lista-resultados');
+            container.innerHTML = '';
+            
+            if (usuarios.length > 0) {
+                usuarios.forEach(usuario => {
+                    container.appendChild(criarCardUsuario(usuario));
+                });
+                document.getElementById('resultados-pesquisa').style.display = 'block';
+            } else {
+                container.innerHTML = '<p>Nenhum usuário encontrado.</p>';
+                document.getElementById('resultados-pesquisa').style.display = 'block';
+            }
+        })
+        .catch(error => {
+            console.error('Erro ao buscar usuários:', error);
+            document.getElementById('lista-resultados').innerHTML = '<p>Erro ao buscar usuários.</p>';
+            document.getElementById('resultados-pesquisa').style.display = 'block';
+        });
+}
+
+// Event listeners
 document.addEventListener('DOMContentLoaded', function() {
+    const campoPesquisa = document.getElementById('pesquisa-usuario');
+    const botaoLimpar = document.getElementById('limpar-pesquisa');
+    const resultadosPesquisa = document.getElementById('resultados-pesquisa');
+    
+    // Evento de digitação no campo de pesquisa
+    let timeout;
+    campoPesquisa.addEventListener('input', function() {
+        clearTimeout(timeout);
+        const termo = this.value.trim();
+        
+        if (termo.length >= 3) {
+            timeout = setTimeout(() => {
+                buscarUsuarios(termo);
+            }, 300); // Aguarda 300ms após parar de digitar
+        } else {
+            resultadosPesquisa.style.display = 'none';
+        }
+    });
+    
+    // Botão para limpar pesquisa
+    botaoLimpar.addEventListener('click', function() {
+        campoPesquisa.value = '';
+        resultadosPesquisa.style.display = 'none';
+        campoPesquisa.focus();
+    });
+    
+    // Funcionalidade de ordenação da tabela original
     const getCellValue = (tr, idx) => tr.children[idx].innerText || tr.children[idx].textContent;
 
     const comparer = (idx, asc) => (a, b) => ((v1, v2) =>
