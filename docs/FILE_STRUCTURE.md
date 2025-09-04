@@ -224,6 +224,11 @@ Este documento descreve a finalidade de cada arquivo e diretório no projeto, co
 **Chamado por:** Referência dos desenvolvedores e administradores.
 **Contexto:** Fornece informações sobre o funcionamento do módulo de almoxarifado.
 
+### `docs/EMPENHOS.md`
+**Propósito:** Documenta o módulo de controle de empenhos, notas fiscais e materiais.
+**Chamado por:** Referência dos desenvolvedores e administradores.
+**Contexto:** Fornece informações sobre o funcionamento do módulo de empenhos.
+
 ## Arquivos em `almoxarifado/`
 
 ### `almoxarifado/index.php`
@@ -245,6 +250,43 @@ Este documento descreve a finalidade de cada arquivo e diretório no projeto, co
 **Propósito:** Redireciona para o diretório do almoxarifado.
 **Chamado por:** Acesso direto via URL (`/inventario/almoxarifado.php`).
 **Contexto:** Redireciona para a página principal do módulo de almoxarifado.
+
+## Arquivos em `empenhos/`
+
+### `empenhos/index.php`
+**Propósito:** Página principal do módulo de controle de empenhos, notas fiscais e materiais.
+**Chamado por:** Acesso direto via URL (`/inventario/empenhos/`) ou clique no menu de navegação.
+**Contexto:** Exibe um resumo das entidades cadastradas e permite acesso às funcionalidades do módulo.
+
+### `empenhos/categoria_add.php`
+**Propósito:** Formulário para adicionar ou editar categorias.
+**Chamado por:** Clique no botão "Gerenciar Categorias" na página `empenhos/index.php`.
+**Contexto:** Processa o formulário para inserir ou atualizar categorias no banco de dados.
+
+### `empenhos/categoria_edit.php`
+**Propósito:** Formulário para editar uma categoria existente.
+**Chamado por:** Clique no link "Editar" ao lado de uma categoria na página `empenhos/categoria_add.php`.
+**Contexto:** Preenche o formulário com os dados da categoria e processa as atualizações no banco de dados.
+
+### `empenhos/empenho_add.php`
+**Propósito:** Formulário para adicionar ou editar empenhos.
+**Chamado por:** Clique no botão "Gerenciar Empenhos" na página `empenhos/index.php`.
+**Contexto:** Processa o formulário para inserir ou atualizar empenhos no banco de dados.
+
+### `empenhos/empenho_edit.php`
+**Propósito:** Formulário para editar um empenho existente.
+**Chamado por:** Clique no link "Editar" ao lado de um empenho na página `empenhos/empenho_add.php`.
+**Contexto:** Preenche o formulário com os dados do empenho e processa as atualizações no banco de dados.
+
+### `empenhos/nota_fiscal_add.php`
+**Propósito:** Formulário para adicionar notas fiscais.
+**Chamado por:** Clique no botão "Gerenciar Notas Fiscais" na página `empenhos/index.php` ou link "Adicionar Nota Fiscal" na página `empenhos/empenho_add.php`.
+**Contexto:** Processa o formulário para inserir notas fiscais no banco de dados.
+
+### `empenhos/material_add.php`
+**Propósito:** Formulário para adicionar materiais.
+**Chamado por:** Clique no botão "Gerenciar Materiais" na página `empenhos/index.php` ou link "Adicionar Materiais" na página `empenhos/nota_fiscal_add.php`.
+**Contexto:** Processa o formulário para inserir materiais no banco de dados.
 
 ## Arquivos em `api/`
 

@@ -89,6 +89,7 @@ if($stmt = mysqli_prepare($link, $sql)){
     <?php endif; ?>
     <?php if($_SESSION["permissao"] == 'Administrador'): ?>
         <a href="admin_notificacoes.php" class="btn-custom">Gerenciar Requisições</a>
+        <a href="empenhos/index.php" class="btn-custom">Gerenciar Empenhos</a>
     <?php endif; ?>
 </div>
 

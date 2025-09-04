@@ -122,7 +122,43 @@ O módulo de almoxarifado está disponível no menu de navegação superior para
 - **Aprovar Requisições:** Clique no botão "Aprovar" para autorizar a retirada dos produtos.
 - **Rejeitar Requisições:** Clique no botão "Rejeitar" para negar a requisição, se necessário.
 
-## [VISUALIZADOR] 10. Ícones Utilizados
+## [ADMINISTRADOR] 10. Módulo de Controle de Empenhos, Notas Fiscais e Materiais
+
+O módulo de controle de empenhos, notas fiscais e materiais permite gerenciar essas entidades e seus relacionamentos de forma organizada.
+
+### 10.1. Acesso ao Módulo
+O módulo está disponível no menu de navegação superior para usuários com perfil de Administrador.
+
+### 10.2. Gerenciamento de Categorias
+- **Cadastrar Categorias:** Registre categorias para classificação dos materiais.
+- **Editar Categorias:** Atualize as informações das categorias existentes.
+- **Visualizar Categorias:** Veja a lista de todas as categorias cadastradas.
+
+### 10.3. Gerenciamento de Empenhos
+- **Cadastrar Empenhos:** Registre os empenhos recebidos com informações como número, data de emissão, fornecedor e CNPJ.
+- **Editar Empenhos:** Atualize as informações dos empenhos existentes.
+- **Definir Status:** Marque os empenhos como "Aberto" ou "Fechado".
+- **Visualizar Empenhos:** Veja a lista de todos os empenhos cadastrados.
+
+### 10.4. Gerenciamento de Notas Fiscais
+- **Cadastrar Notas Fiscais:** Registre as notas fiscais vinculadas aos empenhos.
+- **Visualizar Notas Fiscais:** Veja a lista de todas as notas fiscais cadastradas.
+
+### 10.5. Gerenciamento de Materiais
+- **Cadastrar Materiais:** Registre os materiais com nome, quantidade, categoria e valor unitário.
+- **Vincular a Notas Fiscais:** Associe os materiais às notas fiscais correspondentes.
+- **Cadastro Independente:** Cadastre materiais sem vincular a notas fiscais, apenas associando-os a uma categoria.
+- **Visualizar Materiais:** Veja a lista de todos os materiais cadastrados.
+
+### 10.6. Fluxo de Trabalho
+1. **Cadastrar Categorias:** Primeiro, cadastre as categorias de materiais no sistema.
+2. **Cadastrar Empenhos:** Registre os empenhos recebidos, vinculando-os às categorias apropriadas.
+3. **Cadastrar Notas Fiscais:** Para cada empenho, registre as notas fiscais correspondentes.
+4. **Cadastrar Materiais:** Finalmente, cadastre os materiais, vinculando-os às notas fiscais e categorias.
+
+Também é possível cadastrar materiais independentemente de notas fiscais, apenas vinculando-os a uma categoria.
+
+## [VISUALIZADOR] 12. Ícones Utilizados
 
 *   **Editar:** `<i class="fas fa-edit"></i>`
 *   **Excluir:** `<i class="fas fa-trash"></i>` (Pode estar desativado se você não tiver permissão)
@@ -130,12 +166,12 @@ O módulo de almoxarifado está disponível no menu de navegação superior para
 *   **Rejeitar:** `<i class="fas fa-times-circle"></i>`
 *   **Pendente:** `<i class="fas fa-hourglass-half"></i>`
 
-## [VISUALIZADOR] 11. Perguntas Frequentes (FAQ)
+## [VISUALIZADOR] 13. Perguntas Frequentes (FAQ)
 
 *   **Minha conta está "Pendente". O que devo fazer?**
     Sua conta precisa ser aprovada por um administrador. Entre em contato com ele.
 
-## [VISUALIZADOR] 12. Solução de Problemas
+## [VISUALIZADOR] 14. Solução de Problemas
 
 *   **Não consigo fazer login:** Verifique seus dados e se sua conta foi aprovada. Se esqueceu a senha:
     1. Clique no link "Esqueceu sua senha?" na página de login
@@ -144,12 +180,11 @@ O módulo de almoxarifado está disponível no menu de navegação superior para
     4. A senha temporária será enviada para o seu email
     5. Ao fazer login com a senha temporária, você será solicitado a criar uma nova senha
 
-## [VISUALIZADOR] 13. Informações do Sistema
+## [VISUALIZADOR] 15. Informações do Sistema
 
 Este sistema foi desenvolvido pela [Seção de Tecnologia da Informação (STI-UAST)](https://uast.ufrpe.br/sti).
 
 ---
-
 
 ---
 

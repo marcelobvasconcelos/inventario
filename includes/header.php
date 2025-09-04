@@ -65,8 +65,32 @@ if (isset($_SESSION['id'])) {
     $js_path = '';
     $is_almoxarifado = (strpos($_SERVER['REQUEST_URI'], '/almoxarifado/') !== false);
     if ($is_almoxarifado) {
-        $css_path = '../';
-        $js_path = '../';
+        // Verificar se estamos em um subdiretório do almoxarifado
+        $request_uri = $_SERVER['REQUEST_URI'];
+        $almoxarifado_pos = strpos($request_uri, '/almoxarifado/');
+        
+        if ($almoxarifado_pos !== false) {
+            // Extrair o caminho após /almoxarifado/
+            $path_after_almoxarifado = substr($request_uri, $almoxarifado_pos + strlen('/almoxarifado/'));
+            
+            // Contar quantos níveis de diretórios existem após /almoxarifado/
+            $level_count = substr_count($path_after_almoxarifado, '/');
+            
+            // Se houver pelo menos um nível (ex: /empenhos/), ajustar o caminho
+            if ($level_count > 0) {
+                // Para cada nível, adicionamos '../' ao caminho base
+                $css_path = str_repeat('../', $level_count) . '../';
+                $js_path = str_repeat('../', $level_count) . '../';
+            } else {
+                // Página diretamente em /almoxarifado/
+                $css_path = '../';
+                $js_path = '../';
+            }
+        } else {
+            // Caso de fallback
+            $css_path = '../';
+            $js_path = '../';
+        }
     }
     ?>
     <link rel="stylesheet" href="<?php echo $css_path; ?>css/style.css">
@@ -77,6 +101,8 @@ if (isset($_SESSION['id'])) {
     <?php if($is_almoxarifado): ?>
         <link rel="stylesheet" href="<?php echo $css_path; ?>css/almoxarifado.css">
     <?php endif; ?>
+    <!-- Inclui o Bootstrap CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
     <style>
