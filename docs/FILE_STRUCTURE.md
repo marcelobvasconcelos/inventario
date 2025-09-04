@@ -4,6 +4,7 @@ Este documento descreve a finalidade de cada arquivo e diretório no projeto, co
 
 ## Diretórios Principais
 
+*   `almoxarifado/`: Contém os arquivos do módulo de almoxarifado.
 *   `api/`: Contém scripts para endpoints de API.
 *   `config/`: Armazena arquivos de configuração do sistema.
 *   `css/`: Contém arquivos de estilo CSS.
@@ -171,6 +172,36 @@ Este documento descreve a finalidade de cada arquivo e diretório no projeto, co
 **Chamado por:** Requisições AJAX de scripts JavaScript no frontend (ex: campo de pesquisa de locais).
 **Contexto:** Retorna dados de locais em formato JSON para uso dinâmico na interface.
 
+### `api/almoxarifado_processar_requisicao.php`
+**Propósito:** Endpoint de API para processar requisições de almoxarifado.
+**Chamado por:** Requisições AJAX do formulário de requisição.
+**Contexto:** Insere uma nova requisição no banco de dados.
+
+### `api/almoxarifado_aprovar_requisicao.php`
+**Propósito:** Endpoint de API para aprovar requisições de almoxarifado.
+**Chamado por:** Requisições AJAX da página de notificações do administrador.
+**Contexto:** Atualiza o status de uma requisição para "aprovada" e reduz o estoque dos produtos.
+
+### `api/almoxarifado_rejeitar_requisicao.php`
+**Propósito:** Endpoint de API para rejeitar requisições de almoxarifado.
+**Chamado por:** Requisições AJAX da página de notificações do administrador.
+**Contexto:** Atualiza o status de uma requisição para "rejeitada".
+
+### `api/almoxarifado_listar_requisicoes.php`
+**Propósito:** Endpoint de API para listar todas as requisições de almoxarifado.
+**Chamado por:** Requisições AJAX da página de notificações do administrador.
+**Contexto:** Retorna a lista de todas as requisições para exibição.
+
+### `api/almoxarifado_listar_minhas_requisicoes.php`
+**Propósito:** Endpoint de API para listar as requisições do usuário logado.
+**Chamado por:** Requisições AJAX da página de notificações do usuário.
+**Contexto:** Retorna a lista de requisições feitas pelo usuário logado.
+
+### `api/almoxarifado_confirmar_recebimento.php`
+**Propósito:** Endpoint de API para confirmar o recebimento de uma requisição.
+**Chamado por:** Requisições AJAX da página de notificações do usuário.
+**Contexto:** Atualiza o status de uma requisição para "concluida".
+
 ## Arquivos em `docs/`
 
 ### `docs/FILE_STRUCTURE.md`
@@ -188,7 +219,34 @@ Este documento descreve a finalidade de cada arquivo e diretório no projeto, co
 **Chamado por:** Referência dos desenvolvedores e administradores.
 **Contexto:** Fornece diretrizes para aprimoramento da funcionalidade de usuários.
 
-## Arquivos em `config/`
+### `docs/ALMOXARIFADO.md`
+**Propósito:** Documenta o módulo de almoxarifado.
+**Chamado por:** Referência dos desenvolvedores e administradores.
+**Contexto:** Fornece informações sobre o funcionamento do módulo de almoxarifado.
+
+## Arquivos em `almoxarifado/`
+
+### `almoxarifado/index.php`
+**Propósito:** Página principal do módulo de almoxarifado.
+**Chamado por:** Acesso direto via URL (`/inventario/almoxarifado/`) ou clique no menu de navegação.
+**Contexto:** Exibe a lista de produtos em estoque e permite acesso às funcionalidades do módulo.
+
+### `almoxarifado/add_produto.php`
+**Propósito:** Formulário para adicionar ou editar produtos.
+**Chamado por:** Clique no botão "Adicionar Produto" na página `almoxarifado/index.php`.
+**Contexto:** Processa o formulário para inserir ou atualizar produtos no banco de dados.
+
+### `almoxarifado/requisicao.php`
+**Propósito:** Formulário para criar requisições de produtos.
+**Chamado por:** Clique no botão "Nova Requisição" na página `almoxarifado/index.php`.
+**Contexto:** Permite aos usuários solicitar produtos do almoxarifado.
+
+### `almoxarifado.php`
+**Propósito:** Redireciona para o diretório do almoxarifado.
+**Chamado por:** Acesso direto via URL (`/inventario/almoxarifado.php`).
+**Contexto:** Redireciona para a página principal do módulo de almoxarifado.
+
+## Arquivos em `api/`
 
 ### `config/db.php`
 **Propósito:** Contém as configurações de conexão com o banco de dados.

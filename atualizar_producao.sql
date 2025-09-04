@@ -145,6 +145,13 @@ PREPARE stmt FROM @sql;
 EXECUTE stmt;
 DEALLOCATE PREPARE stmt;
 
+-- Verifica se a coluna `codigo_requisicao` existe na tabela `almoxarifado_requisicoes`
+SET @col_exists = (SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'almoxarifado_requisicoes' AND COLUMN_NAME = 'codigo_requisicao');
+SET @sql = IF(@col_exists > 0, 'SELECT ''Column codigo_requisicao already exists'';', 'ALTER TABLE `almoxarifado_requisicoes` ADD COLUMN `codigo_requisicao` VARCHAR(50) UNIQUE;');
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
 -- Atualiza a estrutura da tabela `notificacoes_itens_detalhes` (se necessário)
 -- Verifica se a coluna `data_admin_reply` existe
 SET @col_exists = (SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'notificacoes_itens_detalhes' AND COLUMN_NAME = 'data_admin_reply');

@@ -254,32 +254,88 @@ document.addEventListener('DOMContentLoaded', function() {
         v1 !== '' && v2 !== '' && !isNaN(v1) && !isNaN(v2) ? v1 - v2 : v1.toString().localeCompare(v2)
     )(getCellValue(asc ? a : b, idx), getCellValue(asc ? b : a, idx));
 
-    document.querySelectorAll('th[data-column]').forEach(th => {
-        th.addEventListener('click', (() => {
-            const table = th.closest('table');
-            const tbody = table.querySelector('tbody');
-            const column = Array.from(th.parentNode.children).indexOf(th);
-            const currentIsAsc = th.classList.contains('asc');
-
-            // Remove sorting classes from all headers
-            document.querySelectorAll('th[data-column]').forEach(header => {
-                header.classList.remove('asc', 'desc');
-                header.querySelector('.sort-arrow').innerText = '';
-            });
-
-            // Add sorting class to the clicked header
-            if (currentIsAsc) {
-                th.classList.add('desc');
-                th.querySelector('.sort-arrow').innerText = ' ↓'; // Down arrow
-            } else {
-                th.classList.add('asc');
-                th.querySelector('.sort-arrow').innerText = ' ↑'; // Up arrow
+    // --- Lógica de ordenação de colunas ---
+    const sortableHeaders = document.querySelectorAll('th[data-column]');
+    let currentSortColumn = null;
+    let currentSortDirection = 'asc';
+    
+    // Função para obter o valor da célula
+    function getCellValue(tr, idx) {
+        const cell = tr.children[idx];
+        // Se for um link, retorna o texto do link
+        const link = cell.querySelector('a');
+        if (link) {
+            return link.textContent || link.innerText || '';
+        }
+        // Caso contrário, retorna o conteúdo da célula
+        return cell.textContent || cell.innerText || '';
+    }
+    
+    // Função de comparação
+    function comparer(idx, asc) {
+        return function(a, b) {
+            const v1 = getCellValue(asc ? a : b, idx);
+            const v2 = getCellValue(asc ? b : a, idx);
+            
+            // Verificar se são números
+            const num1 = parseFloat(v1);
+            const num2 = parseFloat(v2);
+            
+            // Se ambos forem números válidos, comparar como números
+            if (!isNaN(num1) && !isNaN(num2)) {
+                return num1 - num2;
             }
-
-            Array.from(tbody.querySelectorAll('tr'))
-                .sort(comparer(column, !currentIsAsc))
-                .forEach(tr => tbody.appendChild(tr));
-        }));
+            
+            // Caso contrário, comparar como strings
+            return v1.toString().localeCompare(v2.toString());
+        };
+    }
+    
+    sortableHeaders.forEach(header => {
+        // Adicionar seta padrão para todas as colunas
+        const arrow = header.querySelector('.sort-arrow');
+        if (arrow) {
+            arrow.classList.add('none');
+        }
+        
+        header.style.cursor = 'pointer';
+        header.addEventListener('click', () => {
+            const table = header.closest('table');
+            const tbody = table.querySelector('tbody');
+            const columnIndex = Array.from(header.parentNode.children).indexOf(header);
+            
+            // Remover classes de ordenação de todas as setas
+            document.querySelectorAll('.sort-arrow').forEach(arrow => {
+                arrow.classList.remove('up', 'down');
+                arrow.classList.add('none');
+            });
+            
+            // Determinar a direção da ordenação
+            if (currentSortColumn === columnIndex) {
+                currentSortDirection = currentSortDirection === 'asc' ? 'desc' : 'asc';
+            } else {
+                currentSortDirection = 'asc';
+                currentSortColumn = columnIndex;
+            }
+            
+            // Atualizar a seta da coluna clicada
+            const clickedArrow = header.querySelector('.sort-arrow');
+            if (clickedArrow) {
+                clickedArrow.classList.remove('none');
+                if (currentSortDirection === 'asc') {
+                    clickedArrow.classList.add('up');
+                } else {
+                    clickedArrow.classList.add('down');
+                }
+            }
+            
+            // Ordenar as linhas
+            const rows = Array.from(tbody.querySelectorAll('tr'));
+            rows.sort(comparer(columnIndex, currentSortDirection === 'asc'));
+            
+            // Reordenar as linhas no tbody
+            rows.forEach(row => tbody.appendChild(row));
+        });
     });
 
     <?php if($_SESSION['permissao'] == 'Administrador'): ?>

@@ -1,22 +1,16 @@
 <?php
-// almoxarifado/index.php - Página principal do almoxarifado
-require_once '../includes/header.php';
-require_once '../config/db.php';
+// produtos.php - Listagem de produtos do almoxarifado
+require_once 'includes/header.php';
+require_once 'config/db.php';
 
 // Verificar permissões
 if (!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true) {
-    header("location: ../login.php");
-    exit;
-}
-
-// Verificar se o usuário tem permissão de administrador, almoxarife, visualizador ou gestor
-if ($_SESSION["permissao"] != 'Administrador' && $_SESSION["permissao"] != 'Almoxarife' && $_SESSION["permissao"] != 'Visualizador' && $_SESSION["permissao"] != 'Gestor') {
-    header("location: ../dashboard.php");
+    header("location: login.php");
     exit;
 }
 
 // Configurações de paginação
-$itens_por_pagina = 10;
+$itens_por_pagina = 20;
 $pagina_atual = isset($_GET['pagina']) ? (int)$_GET['pagina'] : 1;
 $offset = ($pagina_atual - 1) * $itens_por_pagina;
 
@@ -79,16 +73,9 @@ if($stmt = mysqli_prepare($link, $sql)){
 ?>
 
 <div class="almoxarifado-header">
-    <h2>Estoque do Almoxarifado</h2>
-    <?php if($_SESSION["permissao"] == 'Administrador' || $_SESSION["permissao"] == 'Almoxarife'): ?>
-        <a href="add_produto.php" class="btn-custom">Adicionar Produto</a>
-    <?php endif; ?>
-    <?php if($_SESSION["permissao"] == 'Administrador' || $_SESSION["permissao"] == 'Almoxarife' || $_SESSION["permissao"] == 'Visualizador'): ?>
-        <a href="requisicao.php" class="btn-custom">Nova Requisição</a>
-        <a href="minhas_notificacoes.php" class="btn-custom">Minhas Notificações</a>
-    <?php endif; ?>
+    <h2>Produtos do Almoxarifado</h2>
     <?php if($_SESSION["permissao"] == 'Administrador'): ?>
-        <a href="admin_notificacoes.php" class="btn-custom">Gerenciar Requisições</a>
+        <a href="produto_add.php" class="btn-custom">Adicionar Novo Produto</a>
     <?php endif; ?>
 </div>
 
@@ -113,7 +100,7 @@ if($stmt = mysqli_prepare($link, $sql)){
             <th>Estoque Atual</th>
             <th>Estoque Mínimo</th>
             <th>Status</th>
-            <?php if($_SESSION["permissao"] == 'Administrador' || $_SESSION["permissao"] == 'Almoxarife'): ?>
+            <?php if($_SESSION["permissao"] == 'Administrador'): ?>
                 <th>Ações</th>
             <?php endif; ?>
         </tr>
@@ -137,16 +124,17 @@ if($stmt = mysqli_prepare($link, $sql)){
                         }
                     ?>
                 </td>
-                <?php if($_SESSION["permissao"] == 'Administrador' || $_SESSION["permissao"] == 'Almoxarife'): ?>
+                <?php if($_SESSION["permissao"] == 'Administrador'): ?>
                     <td>
-                        <a href="add_produto.php?id=<?php echo $row['id']; ?>" title="Editar"><i class="fas fa-edit"></i></a>
+                        <a href="produto_edit.php?id=<?php echo $row['id']; ?>" title="Editar"><i class="fas fa-edit"></i></a>
+                        <a href="produto_delete.php?id=<?php echo $row['id']; ?>" title="Excluir" onclick="return confirm('Tem certeza que deseja excluir este produto?');"><i class="fas fa-trash"></i></a>
                     </td>
                 <?php endif; ?>
             </tr>
             <?php endwhile; ?>
         <?php else: ?>
             <tr>
-                <td colspan="<?php echo ($_SESSION["permissao"] == 'Administrador' || $_SESSION["permissao"] == 'Almoxarife') ? '8' : '7'; ?>">Nenhum produto encontrado.</td>
+                <td colspan="<?php echo ($_SESSION["permissao"] == 'Administrador') ? '8' : '7'; ?>">Nenhum produto encontrado.</td>
             </tr>
         <?php endif; ?>
     </tbody>
@@ -178,95 +166,7 @@ if($stmt = mysqli_prepare($link, $sql)){
     <?php endif; ?>
 </div>
 
-<?php if($_SESSION["permissao"] == 'Administrador' || $_SESSION["permissao"] == 'Almoxarife' || $_SESSION["permissao"] == 'Visualizador'): ?>
-<div class="almoxarifado-header" style="margin-top: 30px;">
-    <h2>Minhas Requisições</h2>
-</div>
-
-<?php
-// Buscar requisições do usuário logado
-$sql_requisicoes = "
-    SELECT 
-        r.id, 
-        r.codigo_requisicao,
-        r.data_requisicao, 
-        r.status,
-        l.nome as local_nome
-    FROM almoxarifado_requisicoes r
-    LEFT JOIN locais l ON r.local_id = l.id
-    WHERE r.usuario_id = ?
-    ORDER BY r.data_requisicao DESC
-    LIMIT 10
-";
-
-$requisicoes = [];
-if($stmt_requisicoes = mysqli_prepare($link, $sql_requisicoes)){
-    mysqli_stmt_bind_param($stmt_requisicoes, "i", $_SESSION['id']);
-    if(mysqli_stmt_execute($stmt_requisicoes)){
-        $result_requisicoes = mysqli_stmt_get_result($stmt_requisicoes);
-        while($row = mysqli_fetch_assoc($result_requisicoes)){
-            $requisicoes[] = $row;
-        }
-    }
-    mysqli_stmt_close($stmt_requisicoes);
-}
-?>
-
-<table class="almoxarifado-table">
-    <thead>
-        <tr>
-            <th>Código</th>
-            <th>Data</th>
-            <th>Local</th>
-            <th>Status</th>
-            <th>Ações</th>
-        </tr>
-    </thead>
-    <tbody>
-        <?php if (count($requisicoes) > 0): ?>
-            <?php foreach($requisicoes as $req): ?>
-            <tr>
-                <td><?php echo 'REQ-' . str_pad($req['id'], 6, '0', STR_PAD_LEFT); ?></td>
-                <td><?php echo date('d/m/Y H:i', strtotime($req['data_requisicao'])); ?></td>
-                <td><?php echo htmlspecialchars($req['local_nome'] ?? 'Não especificado'); ?></td>
-                <td>
-                    <?php 
-                        $status = $req['status'];
-                        $status_class = '';
-                        switch($status) {
-                            case 'pendente':
-                                $status_class = 'badge-warning';
-                                break;
-                            case 'aprovada':
-                                $status_class = 'badge-success';
-                                break;
-                            case 'rejeitada':
-                                $status_class = 'badge-danger';
-                                break;
-                            case 'concluida':
-                                $status_class = 'badge-info';
-                                break;
-                            default:
-                                $status_class = 'badge-secondary';
-                        }
-                    ?>
-                    <span class="badge <?php echo $status_class; ?>"><?php echo ucfirst($status); ?></span>
-                </td>
-                <td>
-                    <a href="detalhes_requisicao.php?id=<?php echo $req['id']; ?>" class="btn btn-sm btn-primary">Ver Detalhes</a>
-                </td>
-            </tr>
-            <?php endforeach; ?>
-        <?php else: ?>
-            <tr>
-                <td colspan="5">Nenhuma requisição encontrada.</td>
-            </tr>
-        <?php endif; ?>
-    </tbody>
-</table>
-<?php endif; ?>
-
 <?php
 mysqli_close($link);
-require_once '../includes/footer.php';
+require_once 'includes/footer.php';
 ?>

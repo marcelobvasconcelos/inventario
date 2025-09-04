@@ -577,8 +577,6 @@ foreach ($notificacoes_movimentacao_raw as $nm) {
 <style>
 .notification-item {
     position: relative;
-    margin-left: 3px; /* Deslocamento para a direita para melhor estética */
-    margin-right: 3px; /* Para manter o equilíbrio */
 }
 
 .bulk-select-checkbox {
@@ -590,12 +588,11 @@ foreach ($notificacoes_movimentacao_raw as $nm) {
     transform: translateY(-50%);
     z-index: 10;
     cursor: pointer;
-    margin-top: -1px; /* Ajuste fino para alinhamento vertical */
 }
 
 .card-header.notification-summary {
     cursor: pointer;
-    padding: 12px 15px 12px 40px; /* Ajuste de padding para melhor alinhamento vertical */
+    padding-left: 30px;
 }
 
 .notification-details {
@@ -610,223 +607,306 @@ foreach ($notificacoes_movimentacao_raw as $nm) {
             <a href="notificacoes_admin.php" class="btn btn-primary btn-sm">Voltar para Notificações</a>
         </div>
     <?php else: ?>
-        <h2>Gerenciar Notificações de Inventário <i class="fas fa-shield-alt" style="color: #124a80;"></i></h2>
-        <p>Visualize o status das notificações de movimentação e as justificativas dos usuários.</p>
+        <!-- Sistema de abas para diferentes tipos de notificações -->
+        <ul class="nav nav-tabs" id="notificacoesAdminTab" role="tablist">
+            <li class="nav-item">
+                <a class="nav-link active" id="inventario-admin-tab" data-toggle="tab" href="#inventario-admin" role="tab" aria-controls="inventario-admin" aria-selected="true">Notificações de Inventário</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" id="almoxarifado-admin-tab" data-toggle="tab" href="#almoxarifado-admin" role="tab" aria-controls="almoxarifado-admin" aria-selected="false">Almoxarifado</a>
+            </li>
+        </ul>
+        
+        <div class="tab-content" id="notificacoesAdminTabContent">
+            <!-- Aba de Notificações de Inventário -->
+            <div class="tab-pane fade show active" id="inventario-admin" role="tabpanel" aria-labelledby="inventario-admin-tab">
+                <h2 class="mt-3">Gerenciar Notificações de Inventário <i class="fas fa-shield-alt" style="color: #124a80;"></i></h2>
+                <p>Visualize o status das notificações de movimentação e as justificativas dos usuários.</p>
 
-        <div class="mb-3">
-            <label for="filtroStatus">Filtrar por Status:</label>
-            <select id="filtroStatus" class="form-control" onchange="window.location.href='notificacoes_admin.php?status=' + this.value">
-                <option value="Todos" <?php echo ($filtro_status == 'Todos') ? 'selected' : ''; ?>>Todos</option>
-                <option value="Pendente" <?php echo ($filtro_status == 'Pendente') ? 'selected' : ''; ?>>Pendentes</option>
-                <option value="Confirmado" <?php echo ($filtro_status == 'Confirmado') ? 'selected' : ''; ?>>Confirmados</option>
-                <option value="Nao Confirmado" <?php echo ($filtro_status == 'Nao Confirmado') ? 'selected' : ''; ?>>Não Confirmados</option>
-            </select>
-        </div>
-        
-        <!-- Botões de Ação em Lote -->
-        <div id="bulk-action-buttons" class="mb-3" style="display: none;">
-            <button id="bulkResponderBtn" class="btn btn-primary btn-sm">
-                <i class="fas fa-reply"></i> Responder ao Usuário
-            </button>
-            <button id="bulkDesfazerBtn" class="btn btn-warning btn-sm">
-                <i class="fas fa-undo"></i> Desfazer Movimentação
-            </button>
-            <button id="bulkAtribuirBtn" class="btn btn-info btn-sm">
-                <i class="fas fa-user-plus"></i> Escolher Novo Responsável
-            </button>
-        </div>
-        
-        <!-- Formulário de Resposta em Lote -->
-        <div id="bulk-resposta-form" class="card mt-3" style="display: none;">
-            <div class="card-header">
-                <h5>Responder aos Usuários Selecionados</h5>
-            </div>
-            <div class="card-body">
-                <div class="form-group">
-                    <label for="bulk-admin-reply">Sua Resposta:</label>
-                    <textarea id="bulk-admin-reply" class="form-control" rows="3" placeholder="Informe a justificativa..."></textarea>
-                </div>
-                <button id="submitBulkReply" class="btn btn-success">Enviar Respostas</button>
-                <button id="cancelBulkReply" class="btn btn-secondary">Cancelar</button>
-            </div>
-        </div>
-        
-        <!-- Formulário de Atribuição em Lote -->
-        <div id="bulk-atribuir-form" class="card mt-3" style="display: none;">
-            <div class="card-header">
-                <h5>Escolher Novo Responsável para Itens Selecionados</h5>
-            </div>
-            <div class="card-body">
-                <div class="form-group">
-                    <label for="bulk-novo-responsavel">Selecione o novo responsável:</label>
-                    <select id="bulk-novo-responsavel" class="form-control">
-                        <option value="">Selecione...</option>
-                        <?php foreach ($usuarios_aprovados as $usr): ?>
-                            <option value="<?php echo $usr['id']; ?>"><?php echo htmlspecialchars($usr['nome']); ?></option>
-                        <?php endforeach; ?>
+                <div class="mb-3">
+                    <label for="filtroStatus">Filtrar por Status:</label>
+                    <select id="filtroStatus" class="form-control" onchange="window.location.href='notificacoes_admin.php?status=' + this.value">
+                        <option value="Todos" <?php echo ($filtro_status == 'Todos') ? 'selected' : ''; ?>>Todos</option>
+                        <option value="Pendente" <?php echo ($filtro_status == 'Pendente') ? 'selected' : ''; ?>>Pendentes</option>
+                        <option value="Confirmado" <?php echo ($filtro_status == 'Confirmado') ? 'selected' : ''; ?>>Confirmados</option>
+                        <option value="Nao Confirmado" <?php echo ($filtro_status == 'Nao Confirmado') ? 'selected' : ''; ?>>Não Confirmados</option>
                     </select>
                 </div>
-                <button id="submitBulkAtribuir" class="btn btn-success">Atribuir e Notificar</button>
-                <button id="cancelBulkAtribuir" class="btn btn-secondary">Cancelar</button>
-            </div>
-        </div>
-    <?php endif; ?>
-
-    <div id="feedback-message" class="alert" style="display:none;"></div>
-
-    <?php if (empty($notificacoes)): ?>
-        <div class="alert alert-info">Nenhuma notificação encontrada com o filtro selecionado.</div>
-    <?php else: ?>
-        <div class="notification-inbox">
-            <?php foreach ($notificacoes as $notificacao): ?>
-                <div class="notification-item card mb-2" data-notif-id="<?php echo $notificacao['id']; ?>" style="position: relative;">
-                    <?php if ($notificacao['status'] == 'Nao Confirmado' || $notificacao['status'] == 'Em Disputa'): ?>
-                        <input type="checkbox" class="bulk-select-checkbox mr-2" data-notif-id="<?php echo $notificacao['id']; ?>" style="width: 18px; height: 18px; position: absolute; left: 10px; top: 50%; transform: translateY(-50%); z-index: 10;">
-                    <?php endif; ?>
-                    <div class="card-header notification-summary" style="cursor: pointer; padding-left: 30px;">
-                        <div class="d-flex justify-content-between align-items-center">
-                            <div>
-                                <i class="fas <?php 
-                                    if ($notificacao['status'] == 'Pendente' || $notificacao['status'] == 'Em Disputa') echo 'fa-envelope';
-                                    else if ($notificacao['status'] == 'Confirmado' || $notificacao['status'] == 'Movimento Desfeito') echo 'fa-envelope-open';
-                                    else echo 'fa-envelope'; // Fallback
-                                ?>"></i>
-                                <strong><?php echo htmlspecialchars($notificacao['usuario_nome']); ?></strong>
-                                <strong class="ml-2"><?php echo $notificacao['assunto_titulo']; ?>:</strong>
-                                <span class="assunto-resumo"><?php echo htmlspecialchars($notificacao['assunto_resumo']); ?></span>
-                            </div>
-                            <div>
-                                <span class="badge badge-<?php 
-                                    if($notificacao['status'] == 'Pendente') echo 'warning';
-                                    else if($notificacao['status'] == 'Confirmado') echo 'success';
-                                    else if($notificacao['status'] == 'Nao Confirmado') echo 'danger';
-                                    else if($notificacao['status'] == 'Em Disputa') echo 'danger'; // Disputa em vermelho
-                                    else if($notificacao['status'] == 'Movimento Desfeito') echo 'info'; // Movimento desfeito em azul
-                                    else echo 'secondary'; // Fallback
-                                ?>">
-                                    <?php echo htmlspecialchars($notificacao['status']); ?>
-                                </span>
-                                <small class="text-muted ml-2"><?php echo date('d/m/Y H:i', strtotime($notificacao['data_envio'])); ?></small>
-                            </div>
-                        </div>
+                
+                <!-- Botões de Ação em Lote -->
+                <div id="bulk-action-buttons" class="mb-3" style="display: none;">
+                    <button id="bulkResponderBtn" class="btn btn-primary btn-sm">
+                        <i class="fas fa-reply"></i> Responder ao Usuário
+                    </button>
+                    <button id="bulkDesfazerBtn" class="btn btn-warning btn-sm">
+                        <i class="fas fa-undo"></i> Desfazer Movimentação
+                    </button>
+                    <button id="bulkAtribuirBtn" class="btn btn-info btn-sm">
+                        <i class="fas fa-user-plus"></i> Escolher Novo Responsável
+                    </button>
+                </div>
+                
+                <!-- Formulário de Resposta em Lote -->
+                <div id="bulk-resposta-form" class="card mt-3" style="display: none;">
+                    <div class="card-header">
+                        <h5>Responder aos Usuários Selecionados</h5>
                     </div>
-                    <div class="card-body notification-details" <?php echo ($notificacao_unica_id > 0) ? '' : 'style="display: none;"'; ?>>
-
-                        <p><strong>Mensagem Geral:</strong> <?php echo nl2br(htmlspecialchars($notificacao['mensagem'])); ?></p>
-
-                        <!-- Histórico de Conversa -->
-                        <?php
-                        // Buscar histórico de respostas para esta notificação
-                        $sql_historico = "SELECT * FROM notificacoes_respostas_historico WHERE notificacao_movimentacao_id = ? ORDER BY data_resposta ASC";
-                        $stmt_historico = $pdo->prepare($sql_historico);
-                        $stmt_historico->execute([$notificacao['id']]);
-                        $historico_respostas = $stmt_historico->fetchAll(PDO::FETCH_ASSOC);
-                        ?>
-                        <div class="card mt-3 mb-3">
-                            <div class="card-header"><strong>Histórico da Conversa</strong></div>
-                            <div class="card-body" style="max-height:350px; overflow-y:auto; background:#f8f9fa;">
-                                <style>
-                                .chat-bubble { max-width: 70%; padding: 10px 15px; border-radius: 15px; margin-bottom: 8px; position: relative; }
-                                .chat-admin { background: #e3f0fa; color: #124a80; align-self: flex-end; margin-left:auto; }
-                                .chat-user { background: #e9ecef; color: #333; align-self: flex-start; margin-right:auto; }
-                                .chat-meta { font-size: 0.85em; color: #888; margin-bottom: 2px; }
-                                .chat-container { display: flex; flex-direction: column; }
-                                </style>
-                                <div class="chat-container">
-                                <?php if (empty($historico_respostas)): ?>
-                                    <div class="text-muted">Nenhuma mensagem registrada ainda.</div>
-                                <?php else: ?>
-                                    <?php foreach ($historico_respostas as $msg): ?>
-                                        <div class="chat-bubble chat-<?php echo $msg['tipo_remetente'] === 'admin' ? 'admin' : 'user'; ?>">
-                                            <div class="chat-meta">
-                                                <strong><?php echo $msg['tipo_remetente'] === 'admin' ? 'Administrador' : 'Usuário'; ?></strong>
-                                                &bull; <?php echo date('d/m/Y H:i', strtotime($msg['data_resposta'])); ?>
-                                            </div>
-                                            <div><?php echo nl2br(htmlspecialchars($msg['conteudo_resposta'])); ?></div>
-                                        </div>
-                                    <?php endforeach; ?>
-                                <?php endif; ?>
-                                </div>
-                            </div>
+                    <div class="card-body">
+                        <div class="form-group">
+                            <label for="bulk-admin-reply">Sua Resposta:</label>
+                            <textarea id="bulk-admin-reply" class="form-control" rows="3" placeholder="Informe a justificativa..."></textarea>
                         </div>
-
-                        <h6 class="mt-4">Detalhes dos Itens Associados:</h6>
-                        <?php if (!empty($notificacao['detalhes_itens'])): ?>
-                            <?php foreach ($notificacao['detalhes_itens'] as $item): ?>
-                                <div class="item-detail-card card mb-2" data-item-id="<?php echo $item['id']; ?>">
-                                    <div class="card-body">
-                                        <h7 class="card-title">Item: <?php echo htmlspecialchars($item['nome']); ?> (Patrimônio: <?php echo htmlspecialchars($item['patrimonio_novo']); ?>)</h7>
-                                        <ul>
-                                            <li><strong>ID:</strong> <?php echo htmlspecialchars($item['id']); ?></li>
-                                            <li><strong>Patrimônio Secundário:</strong> <?php echo htmlspecialchars($item['patrimonio_secundario']); ?></li>
-                                            <li><strong>Local:</strong> <?php echo htmlspecialchars($item['local_nome']); ?></li>
-                                            <li><strong>Responsável Atual:</strong> <?php echo htmlspecialchars($item['responsavel_nome']); ?></li>
-                                            <li><strong>Estado:</strong> <?php echo nl2br(htmlspecialchars($item['observacao'])); ?></li>
-                                            <li><strong>Status Confirmação:</strong> 
-                                                <span class="badge badge-<?php 
-                                                    if($item['status_confirmacao'] == 'Pendente') echo 'warning';
-                                                    else if($item['status_confirmacao'] == 'Confirmado') echo 'success';
-                                                    else echo 'danger';
-                                                ?>">
-                                                    <?php echo htmlspecialchars($item['status_confirmacao']); ?>
-                                                </span>
-                                            </li>
-                                        </ul>
-                                        <?php if (!empty($item['admin_reply'])): ?>
-                                            <div class="alert alert-info mt-2">
-                                                <strong>Sua Resposta Anterior (Item):</strong> <?php echo nl2br(htmlspecialchars($item['admin_reply'])); ?><br>
-                                                <small>Respondido em: <?php echo date('d/m/Y H:i', strtotime($item['data_admin_reply'])); ?></small>
-                                            </div>
-                                        <?php endif; ?>
-                                        <?php if ($item['status_confirmacao'] == 'Nao Confirmado' || $item['status_confirmacao'] == 'Em Disputa'): ?>
-                                            <div class="admin-item-actions mt-2">
-                                                <?php if (empty($item['usuario_anterior_id'])): ?>
-                                                    <button type="button" class="btn btn-warning btn-sm" onclick="toggleAssignForm(<?php echo $notificacao['id']; ?>, <?php echo $item['id']; ?>)">Escolher outro responsável</button>
-                                                    <div id="admin_assign_form_<?php echo $notificacao['id']; ?>_<?php echo $item['id']; ?>" style="display:none; margin-top:10px;">
-                                                        <form class="admin-item-action-form" data-notif-id="<?php echo $notificacao['id']; ?>" data-item-id="<?php echo $item['id']; ?>">
-                                                            <input type="hidden" name="action" value="atribuir_novo_responsavel">
-                                                            <div class="form-group">
-                                                                <label>Selecione o novo responsável:</label>
-                                                                <select name="novo_responsavel_id" class="form-control" required>
-                                                                    <option value="">Selecione...</option>
-                                                                    <?php foreach ($usuarios_aprovados as $usr): ?>
-                                                                        <option value="<?php echo $usr['id']; ?>"><?php echo htmlspecialchars($usr['nome']); ?></option>
-                                                                    <?php endforeach; ?>
-                                                                </select>
-                                                            </div>
-                                                            <button type="submit" class="btn btn-success btn-sm">Enviar notificação</button>
-                                                            <button type="button" class="btn btn-secondary btn-sm" onclick="toggleAssignForm(<?php echo $notificacao['id']; ?>, <?php echo $item['id']; ?>)">Cancelar</button>
-                                                        </form>
-                                                    </div>
-                                                <?php else: ?>
-                                                    <form class="d-inline-block admin-item-action-form" data-notif-id="<?php echo $notificacao['id']; ?>" data-item-id="<?php echo $item['id']; ?>">
-                                                        <input type="hidden" name="action" value="desfazer_movimentacao_item">
-                                                        <button type="submit" class="btn btn-danger btn-sm">Desfazer Movimentação</button>
-                                                    </form>
-                                                <?php endif; ?>
-                                                <button type="button" class="btn btn-primary btn-sm ml-2" onclick="toggleAdminItemReplyForm(<?php echo $notificacao['id']; ?>, <?php echo $item['id']; ?>)">Responder</button>
-                                                <div id="admin_item_reply_form_<?php echo $notificacao['id']; ?>_<?php echo $item['id']; ?>" style="display:none; margin-top: 10px;">
-                                                    <form class="admin-item-action-form" data-notif-id="<?php echo $notificacao['id']; ?>" data-item-id="<?php echo $item['id']; ?>">
-                                                        <input type="hidden" name="action" value="responder_item_disputa">
-                                                        <div class="form-group">
-                                                            <label for="admin_item_reply_<?php echo $notificacao['id']; ?>_<?php echo $item['id']; ?>">Sua Resposta para este item:</label>
-                                                            <textarea name="admin_reply" id="admin_item_reply_<?php echo $notificacao['id']; ?>_<?php echo $item['id']; ?>" class="form-control" rows="2" required><?php echo htmlspecialchars($item['admin_reply'] ?? ''); ?></textarea>
-                                                        </div>
-                                                        <button type="submit" class="btn btn-success btn-sm">Enviar Resposta</button>
-                                                        <button type="button" class="btn btn-secondary btn-sm" onclick="toggleAdminItemReplyForm(<?php echo $notificacao['id']; ?>, <?php echo $item['id']; ?>)">Cancelar</button>
-                                                    </form>
-                                                </div>
-                                            </div>
-                                        <?php endif; ?>
-                                    </div>
-                                </div>
-                            <?php endforeach; ?>
-                        <?php else: ?>
-                            <p>Nenhum item associado a esta notificação.</p>
-                        <?php endif; ?>
+                        <button id="submitBulkReply" class="btn btn-success">Enviar Respostas</button>
+                        <button id="cancelBulkReply" class="btn btn-secondary">Cancelar</button>
                     </div>
                 </div>
-            <?php endforeach; ?>
+                
+                <!-- Formulário de Atribuição em Lote -->
+                <div id="bulk-atribuir-form" class="card mt-3" style="display: none;">
+                    <div class="card-header">
+                        <h5>Escolher Novo Responsável para Itens Selecionados</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="form-group">
+                            <label for="bulk-novo-responsavel">Selecione o novo responsável:</label>
+                            <select id="bulk-novo-responsavel" class="form-control">
+                                <option value="">Selecione...</option>
+                                <?php foreach ($usuarios_aprovados as $usr): ?>
+                                    <option value="<?php echo $usr['id']; ?>"><?php echo htmlspecialchars($usr['nome']); ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                        <button id="submitBulkAtribuir" class="btn btn-success">Atribuir e Notificar</button>
+                        <button id="cancelBulkAtribuir" class="btn btn-secondary">Cancelar</button>
+                    </div>
+                </div>
+                
+                <div id="feedback-message" class="alert" style="display:none;"></div>
+
+                <?php if (empty($notificacoes)): ?>
+                    <div class="alert alert-info">Nenhuma notificação encontrada com o filtro selecionado.</div>
+                <?php else: ?>
+                    <div class="notification-inbox">
+                        <?php foreach ($notificacoes as $notificacao): ?>
+                            <div class="notification-item card mb-2" data-notif-id="<?php echo $notificacao['id']; ?>" style="position: relative;">
+                                <?php if ($notificacao['status'] == 'Nao Confirmado' || $notificacao['status'] == 'Em Disputa'): ?>
+                                    <input type="checkbox" class="bulk-select-checkbox mr-2" data-notif-id="<?php echo $notificacao['id']; ?>" style="width: 18px; height: 18px; position: absolute; left: 10px; top: 50%; transform: translateY(-50%); z-index: 10;">
+                                <?php endif; ?>
+                                <div class="card-header notification-summary" style="cursor: pointer; padding-left: 30px;">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <div>
+                                            <i class="fas <?php 
+                                                if ($notificacao['status'] == 'Pendente' || $notificacao['status'] == 'Em Disputa') echo 'fa-envelope';
+                                                else if ($notificacao['status'] == 'Confirmado' || $notificacao['status'] == 'Movimento Desfeito') echo 'fa-envelope-open';
+                                                else echo 'fa-envelope'; // Fallback
+                                            ?>"></i>
+                                            <strong><?php echo htmlspecialchars($notificacao['usuario_nome']); ?></strong>
+                                            <strong class="ml-2"><?php echo $notificacao['assunto_titulo']; ?>:</strong>
+                                            <span class="assunto-resumo"><?php echo htmlspecialchars($notificacao['assunto_resumo']); ?></span>
+                                        </div>
+                                        <div>
+                                            <span class="badge badge-<?php 
+                                                if($notificacao['status'] == 'Pendente') echo 'warning';
+                                                else if($notificacao['status'] == 'Confirmado') echo 'success';
+                                                else if($notificacao['status'] == 'Nao Confirmado') echo 'danger';
+                                                else if($notificacao['status'] == 'Em Disputa') echo 'danger'; // Disputa em vermelho
+                                                else if($notificacao['status'] == 'Movimento Desfeito') echo 'info'; // Movimento desfeito em azul
+                                                else echo 'secondary'; // Fallback
+                                            ?>">
+                                                <?php echo htmlspecialchars($notificacao['status']); ?>
+                                            </span>
+                                            <small class="text-muted ml-2"><?php echo date('d/m/Y H:i', strtotime($notificacao['data_envio'])); ?></small>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="card-body notification-details" <?php echo ($notificacao_unica_id > 0) ? '' : 'style="display: none;"'; ?>>
+
+                                    <p><strong>Mensagem Geral:</strong> <?php echo nl2br(htmlspecialchars($notificacao['mensagem'])); ?></p>
+
+                                    <!-- Histórico de Conversa -->
+                                    <?php
+                                    // Buscar histórico de respostas para esta notificação
+                                    $sql_historico = "SELECT * FROM notificacoes_respostas_historico WHERE notificacao_movimentacao_id = ? ORDER BY data_resposta ASC";
+                                    $stmt_historico = $pdo->prepare($sql_historico);
+                                    $stmt_historico->execute([$notificacao['id']]);
+                                    $historico_respostas = $stmt_historico->fetchAll(PDO::FETCH_ASSOC);
+                                    ?>
+                                    <div class="card mt-3 mb-3">
+                                        <div class="card-header"><strong>Histórico da Conversa</strong></div>
+                                        <div class="card-body" style="max-height:350px; overflow-y:auto; background:#f8f9fa;">
+                                            <style>
+                                            .chat-bubble { max-width: 70%; padding: 10px 15px; border-radius: 15px; margin-bottom: 8px; position: relative; }
+                                            .chat-admin { background: #e3f0fa; color: #124a80; align-self: flex-end; margin-left:auto; }
+                                            .chat-user { background: #e9ecef; color: #333; align-self: flex-start; margin-right:auto; }
+                                            .chat-meta { font-size: 0.85em; color: #888; margin-bottom: 2px; }
+                                            .chat-container { display: flex; flex-direction: column; }
+                                            </style>
+                                            <div class="chat-container">
+                                            <?php if (empty($historico_respostas)): ?>
+                                                <div class="text-muted">Nenhuma mensagem registrada ainda.</div>
+                                            <?php else: ?>
+                                                <?php foreach ($historico_respostas as $msg): ?>
+                                                    <div class="chat-bubble chat-<?php echo $msg['tipo_remetente'] === 'admin' ? 'admin' : 'user'; ?>">
+                                                        <div class="chat-meta">
+                                                            <strong><?php echo $msg['tipo_remetente'] === 'admin' ? 'Administrador' : 'Usuário'; ?></strong>
+                                                            &bull; <?php echo date('d/m/Y H:i', strtotime($msg['data_resposta'])); ?>
+                                                        </div>
+                                                        <div><?php echo nl2br(htmlspecialchars($msg['conteudo_resposta'])); ?></div>
+                                                    </div>
+                                                <?php endforeach; ?>
+                                            <?php endif; ?>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <h6 class="mt-4">Detalhes dos Itens Associados:</h6>
+                                    <?php if (!empty($notificacao['detalhes_itens'])): ?>
+                                        <?php foreach ($notificacao['detalhes_itens'] as $item): ?>
+                                            <div class="item-detail-card card mb-2" data-item-id="<?php echo $item['id']; ?>">
+                                                <div class="card-body">
+                                                    <h7 class="card-title">Item: <?php echo htmlspecialchars($item['nome']); ?> (Patrimônio: <?php echo htmlspecialchars($item['patrimonio_novo']); ?>)</h7>
+                                                    <ul>
+                                                        <li><strong>ID:</strong> <?php echo htmlspecialchars($item['id']); ?></li>
+                                                        <li><strong>Patrimônio Secundário:</strong> <?php echo htmlspecialchars($item['patrimonio_secundario']); ?></li>
+                                                        <li><strong>Local:</strong> <?php echo htmlspecialchars($item['local_nome']); ?></li>
+                                                        <li><strong>Responsável Atual:</strong> <?php echo htmlspecialchars($item['responsavel_nome']); ?></li>
+                                                        <li><strong>Estado:</strong> <?php echo nl2br(htmlspecialchars($item['observacao'])); ?></li>
+                                                        <li><strong>Status Confirmação:</strong> 
+                                                            <span class="badge badge-<?php 
+                                                                if($item['status_confirmacao'] == 'Pendente') echo 'warning';
+                                                                else if($item['status_confirmacao'] == 'Confirmado') echo 'success';
+                                                                else echo 'danger';
+                                                            ?>">
+                                                                <?php echo htmlspecialchars($item['status_confirmacao']); ?>
+                                                            </span>
+                                                        </li>
+                                                    </ul>
+                                                    <?php if (!empty($item['admin_reply'])): ?>
+                                                        <div class="alert alert-info mt-2">
+                                                            <strong>Sua Resposta Anterior (Item):</strong> <?php echo nl2br(htmlspecialchars($item['admin_reply'])); ?><br>
+                                                            <small>Respondido em: <?php echo date('d/m/Y H:i', strtotime($item['data_admin_reply'])); ?></small>
+                                                        </div>
+                                                    <?php endif; ?>
+                                                    <?php if ($item['status_confirmacao'] == 'Nao Confirmado' || $item['status_confirmacao'] == 'Em Disputa'): ?>
+                                                        <div class="admin-item-actions mt-2">
+                                                            <?php if (empty($item['usuario_anterior_id'])): ?>
+                                                                <button type="button" class="btn btn-warning btn-sm" onclick="toggleAssignForm(<?php echo $notificacao['id']; ?>, <?php echo $item['id']; ?>)">Escolher outro responsável</button>
+                                                                <div id="admin_assign_form_<?php echo $notificacao['id']; ?>_<?php echo $item['id']; ?>" style="display:none; margin-top:10px;">
+                                                                    <form class="admin-item-action-form" data-notif-id="<?php echo $notificacao['id']; ?>" data-item-id="<?php echo $item['id']; ?>">
+                                                                        <input type="hidden" name="action" value="atribuir_novo_responsavel">
+                                                                        <div class="form-group">
+                                                                            <label>Selecione o novo responsável:</label>
+                                                                            <select name="novo_responsavel_id" class="form-control" required>
+                                                                                <option value="">Selecione...</option>
+                                                                                <?php foreach ($usuarios_aprovados as $usr): ?>
+                                                                                    <option value="<?php echo $usr['id']; ?>"><?php echo htmlspecialchars($usr['nome']); ?></option>
+                                                                                <?php endforeach; ?>
+                                                                            </select>
+                                                                        </div>
+                                                                        <button type="submit" class="btn btn-success btn-sm">Enviar notificação</button>
+                                                                        <button type="button" class="btn btn-secondary btn-sm" onclick="toggleAssignForm(<?php echo $notificacao['id']; ?>, <?php echo $item['id']; ?>)">Cancelar</button>
+                                                                    </form>
+                                                                </div>
+                                                            <?php else: ?>
+                                                                <form class="d-inline-block admin-item-action-form" data-notif-id="<?php echo $notificacao['id']; ?>" data-item-id="<?php echo $item['id']; ?>">
+                                                                    <input type="hidden" name="action" value="desfazer_movimentacao_item">
+                                                                    <button type="submit" class="btn btn-danger btn-sm">Desfazer Movimentação</button>
+                                                                </form>
+                                                            <?php endif; ?>
+                                                            <button type="button" class="btn btn-primary btn-sm ml-2" onclick="toggleAdminItemReplyForm(<?php echo $notificacao['id']; ?>, <?php echo $item['id']; ?>)">Responder</button>
+                                                            <div id="admin_item_reply_form_<?php echo $notificacao['id']; ?>_<?php echo $item['id']; ?>" style="display:none; margin-top: 10px;">
+                                                                <form class="admin-item-action-form" data-notif-id="<?php echo $notificacao['id']; ?>" data-item-id="<?php echo $item['id']; ?>">
+                                                                    <input type="hidden" name="action" value="responder_item_disputa">
+                                                                    <div class="form-group">
+                                                                        <label for="admin_item_reply_<?php echo $notificacao['id']; ?>_<?php echo $item['id']; ?>">Sua Resposta para este item:</label>
+                                                                        <textarea name="admin_reply" id="admin_item_reply_<?php echo $notificacao['id']; ?>_<?php echo $item['id']; ?>" class="form-control" rows="2" required><?php echo htmlspecialchars($item['admin_reply'] ?? ''); ?></textarea>
+                                                                    </div>
+                                                                    <button type="submit" class="btn btn-success btn-sm">Enviar Resposta</button>
+                                                                    <button type="button" class="btn btn-secondary btn-sm" onclick="toggleAdminItemReplyForm(<?php echo $notificacao['id']; ?>, <?php echo $item['id']; ?>)">Cancelar</button>
+                                                                </form>
+                                                            </div>
+                                                        </div>
+                                                    <?php endif; ?>
+                                                </div>
+                                            </div>
+                                        <?php endforeach; ?>
+                                    <?php else: ?>
+                                        <p>Nenhum item associado a esta notificação.</p>
+                                    <?php endif; ?>
+                                </div>
+                            </div>
+                        <?php endforeach; ?>
+                    </div>
+                <?php endif; ?>
+            </div>
+            
+            <!-- Aba de Notificações do Almoxarifado -->
+            <div class="tab-pane fade" id="almoxarifado-admin" role="tabpanel" aria-labelledby="almoxarifado-admin-tab">
+                <h2 class="mt-3">Gerenciar Notificações do Almoxarifado</h2>
+                <p>Visualize as confirmações e justificativas dos usuários para os itens de almoxarifado.</p>
+                
+                <?php
+                // Buscar notificações do almoxarifado
+                $sql_almoxarifado = "
+                    SELECT
+                        n.id as notificacao_id,
+                        n.mensagem,
+                        n.status as notificacao_status,
+                        n.data_criacao,
+                        am.id as item_id,
+                        am.nome as item_nome,
+                        am.status_confirmacao as item_status_confirmacao,
+                        u.nome as usuario_nome,
+                        nar.justificativa,
+                        nar.data_resposta
+                    FROM notificacoes n
+                    JOIN notificacoes_almoxarifado_detalhes nad ON n.id = nad.notificacao_id
+                    JOIN almoxarifado_materiais am ON nad.item_id = am.id
+                    JOIN usuarios u ON n.usuario_id = u.id
+                    LEFT JOIN notificacoes_almoxarifado_respostas nar ON n.id = nar.notificacao_id AND am.id = nar.item_id
+                    WHERE n.tipo = 'atribuicao_almoxarifado'
+                    ORDER BY n.data_criacao DESC
+                ";
+
+                $stmt_almoxarifado = $pdo->query($sql_almoxarifado);
+                $notificacoes_almoxarifado = $stmt_almoxarifado->fetchAll(PDO::FETCH_ASSOC);
+                ?>
+
+                <?php if (empty($notificacoes_almoxarifado)): ?>
+                    <div class="alert alert-info">Nenhuma notificação do almoxarifado encontrada.</div>
+                <?php else: ?>
+                    <table class="table table-striped table-hover">
+                        <thead>
+                            <tr>
+                                <th>ID Not.</th>
+                                <th>Usuário</th>
+                                <th>Item</th>
+                                <th>Status</th>
+                                <th>Justificativa</th>
+                                <th>Data Notificação</th>
+                                <th>Data Resposta</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach ($notificacoes_almoxarifado as $notificacao): ?>
+                                <tr>
+                                    <td><?php echo $notificacao['notificacao_id']; ?></td>
+                                    <td><?php echo htmlspecialchars($notificacao['usuario_nome']); ?></td>
+                                    <td><?php echo htmlspecialchars($notificacao['item_nome']); ?></td>
+                                    <td><span class="badge <?php 
+                                        if($notificacao['item_status_confirmacao'] == 'Pendente') echo 'badge-warning';
+                                        else if($notificacao['item_status_confirmacao'] == 'Confirmado') echo 'badge-success';
+                                        else echo 'badge-danger';
+                                    ?>"><?php echo htmlspecialchars($notificacao['item_status_confirmacao']); ?></span></td>
+                                    <td><?php echo htmlspecialchars($notificacao['justificativa']); ?></td>
+                                    <td><?php echo date('d/m/Y H:i', strtotime($notificacao['data_criacao'])); ?></td>
+                                    <td><?php echo $notificacao['data_resposta'] ? date('d/m/Y H:i', strtotime($notificacao['data_resposta'])) : ''; ?></td>
+                                </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                <?php endif; ?>
+            </div>
         </div>
     <?php endif; ?>
 </div>

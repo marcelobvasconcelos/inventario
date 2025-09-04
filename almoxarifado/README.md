@@ -2,7 +2,7 @@
 
 ## Visão Geral
 
-Este módulo é responsável pela gestão de materiais em um almoxarifado, permitindo o cadastro de itens, controle de estoque e registro de entradas e saídas.
+Este módulo é responsável pela gestão de materiais em um almoxarifado, permitindo o cadastro de itens, controle de estoque, registro de entradas e saídas, e sistema de notificações para requisições.
 
 ## Estrutura de Arquivos
 
@@ -14,6 +14,9 @@ Este módulo é responsável pela gestão de materiais em um almoxarifado, permi
 - `item_details.php`: Página com detalhes de um material específico e seu histórico.
 - `entrada_add.php`: Formulário para registrar entrada de materiais.
 - `saida_add.php`: Formulário para registrar saída de materiais.
+- `requisicao.php`: Formulário para criar requisições de materiais.
+- `minhas_notificacoes.php`: Interface para usuários visualizarem e responderem a notificações.
+- `admin_notificacoes.php`: Interface para administradores gerenciarem requisições e notificações.
 - `database.sql`: Script SQL para criar as tabelas do módulo.
 
 ## Funcionalidades
@@ -30,7 +33,15 @@ Este módulo é responsável pela gestão de materiais em um almoxarifado, permi
 - **Saídas**: Registro de saída de materiais com informações como quantidade, setor de destino, responsável pela saída e data de saída.
 - **Movimentações**: Registro automático de todas as movimentações de estoque (entradas e saídas) com saldo anterior e saldo atual.
 
-### 3. Relatórios
+### 3. Sistema de Notificações para Requisições
+- **Nova Requisição**: Usuários podem criar requisições de materiais especificando itens e quantidades necessárias.
+- **Notificações em Tempo Real**: Sistema de notificações que alerta administradores sobre novas requisições.
+- **Aprovação/Rejeição**: Administradores podem aprovar ou rejeitar requisições com justificativa.
+- **Solicitação de Informações**: Administradores podem solicitar mais informações sobre uma requisição.
+- **Histórico de Conversas**: Registra todas as interações entre usuários e administradores sobre uma requisição.
+- **Agendamento de Entrega**: Após aprovação, usuários podem agendar a entrega dos materiais.
+
+### 4. Relatórios
 - Funcionalidade em desenvolvimento.
 
 ## Estrutura do Banco de Dados
@@ -41,7 +52,13 @@ O módulo utiliza as seguintes tabelas:
 2. `almoxarifado_entradas`: Registra as entradas de materiais.
 3. `almoxarifado_saidas`: Registra as saídas de materiais.
 4. `almoxarifado_movimentacoes`: Registra todas as movimentações de estoque.
+5. `almoxarifado_requisicoes`: Registra as requisições de materiais.
+6. `almoxarifado_requisicoes_itens`: Registra os itens de cada requisição.
+7. `almoxarifado_requisicoes_notificacoes`: Registra as notificações relacionadas às requisições.
+8. `almoxarifado_requisicoes_conversas`: Registra o histórico de conversas sobre as requisições.
+9. `almoxarifado_agendamentos`: Registra os agendamentos de entrega após aprovação de requisições.
 
 ## Permissões
 
-Apenas usuários com permissão de "Administrador" podem acessar e utilizar as funcionalidades do módulo de almoxarifado.
+- **Usuários (Administrador, Almoxarife, Visualizador, Gestor)**: Podem criar requisições e visualizar suas notificações.
+- **Administradores**: Podem gerenciar todas as requisições, aprovar/rejeitar e solicitar informações adicionais.

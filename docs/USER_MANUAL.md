@@ -1,4 +1,3 @@
-
 # Manual do Usuário do Sistema de Inventário
 
 ## [VISUALIZADOR] 1. Introdução
@@ -23,21 +22,21 @@ Para acessar o sistema, abra seu navegador web e digite o endereço fornecido pe
 *   **Login:** Na tela inicial, insira seu **Email** e **Senha** nos campos designados e clique no botão "Login".
 *   **Logout:** Para sair do sistema, clique no link "Sair" localizado no menu superior.
 
-
 ## [VISUALIZADOR] 4. Visão Geral da Interface
 
 Após o login, você verá a página inicial (Dashboard) com um menu de navegação na parte superior. **Cada usuário só visualiza as funcionalidades e seções permitidas pelo seu perfil**:
 - Administradores veem todas as opções do sistema.
 - Gestores veem apenas as funções de gestão de itens e locais sob sua responsabilidade.
 - Visualizadores têm acesso apenas à consulta de dados.
-
+- Almoxarifes têm acesso às funcionalidades do módulo de almoxarifado.
 
 ## [VISUALIZADOR] 5. Perfis de Usuário
 
 O sistema possui diferentes níveis de acesso:
 - **Administrador:** Acesso total a todas as funcionalidades do sistema, incluindo gerenciamento de usuários, itens, locais e movimentações.
 - **Gestor:** Pode gerenciar itens sob sua responsabilidade, solicitar novos locais, responder e justificar movimentações, e visualizar dados dos itens que gerencia.
-- **Visualizador:** Pode apenas visualizar os dados do inventário, sem permissão para editar, adicionar ou excluir informações.
+- **Visualizador:** Pode apenas visualizar os dados do inventário e requisitar itens do almoxarifado, sem permissão para editar, adicionar ou excluir informações.
+- **Almoxarife:** Pode gerenciar produtos, requisições e estoque do almoxarifado.
 
 > **Importante:** O sistema exibe menus, botões e funcionalidades de acordo com o perfil do usuário logado. Se você não encontrar determinada função, provavelmente ela não está disponível para seu perfil.
 
@@ -55,7 +54,6 @@ Na seção "Movimentações", você pode visualizar o histórico de movimentaç�
 ### 6.4. Meu Perfil
 Na seção "Meu Perfil", você pode visualizar seus dados e alterar sua senha.
 
-
 ## [GESTOR] 7. Funcionalidades de Gestor
 
 Como Gestor, além das funcionalidades básicas, você também pode:
@@ -71,7 +69,6 @@ Como Gestor, além das funcionalidades básicas, você também pode:
 - **Comunicação com o Administrador:** Caso recuse, inicia-se uma conversa (histórico de mensagens) entre você e o administrador, até que a situação seja resolvida.
 - **Acompanhar Histórico:** Todo o histórico de justificativas e respostas fica disponível para consulta na tela da notificação.
 
-
 ## [ADMINISTRADOR] 8. Funcionalidades de Administrador
 
 Como Administrador, você tem controle total sobre o sistema e pode:
@@ -85,7 +82,6 @@ Como Administrador, você tem controle total sobre o sistema e pode:
 *   **Adicionar, Editar e Excluir Locais:** Controle total sobre os locais de armazenamento.
 *   **Aprovar/Rejeitar Solicitações:** Gerencie as solicitações de novos locais feitas pelos Gestores.
 *   **Pesquisar Locais:** Utilize a barra de pesquisa para encontrar locais por nome.
-
 
 ### 8.3. Gerenciamento de Movimentações
 - **Registrar Movimentação:** Registre movimentações de itens individuais ou em massa entre locais e responsáveis.
@@ -103,8 +99,30 @@ Como Administrador, você tem controle total sobre o sistema e pode:
 *   **Pesquisa de Usuários:** Utilize a barra de pesquisa para encontrar usuários por nome em tempo real.
 *   **Rejeição de Usuários:** Ao excluir um usuário que tenha realizado movimentações, ele será movido para o status "Rejeitado" em vez de ser excluído permanentemente, preservando o histórico de movimentações.
 
+## [ALMOXARIFE] 9. Módulo de Almoxarifado
 
-## [VISUALIZADOR] 9. Ícones Utilizados
+O módulo de almoxarifado permite gerenciar produtos, requisições e estoque de materiais.
+
+### 9.1. Acesso ao Módulo
+O módulo de almoxarifado está disponível no menu de navegação superior para usuários com perfil de Administrador, Almoxarife, Visualizador ou Gestor.
+
+### 9.2. Gerenciamento de Produtos (Administradores e Almoxarifes)
+- **Visualizar Produtos:** Na página principal do almoxarifado, você pode ver uma lista de todos os produtos cadastrados, com suas informações principais.
+- **Adicionar Produto:** Clique no botão "Adicionar Produto" para cadastrar um novo produto no estoque.
+- **Editar Produto:** Clique no ícone de edição ao lado de um produto para atualizar suas informações.
+
+### 9.3. Requisições de Produtos (Todos os Usuários)
+- **Criar Requisição:** Clique no botão "Nova Requisição" para solicitar produtos do almoxarifado.
+- **Visualizar Requisições:** Na seção "Minhas Requisições", você pode ver o status das suas requisições.
+- **Confirmar Recebimento:** Quando uma requisição for aprovada, você poderá confirmar o recebimento dos produtos.
+- **Código da Requisição:** Cada requisição possui um código único no formato "REQ-ANO-XXXXXX" que pode ser usado para rastrear o status da requisição.
+
+### 9.4. Aprovação de Requisições (Administradores e Almoxarifes)
+- **Visualizar Requisições Pendentes:** Na seção "Gerenciar Notificações", clique na aba "Almoxarifado" para ver as requisições pendentes.
+- **Aprovar Requisições:** Clique no botão "Aprovar" para autorizar a retirada dos produtos.
+- **Rejeitar Requisições:** Clique no botão "Rejeitar" para negar a requisição, se necessário.
+
+## [VISUALIZADOR] 10. Ícones Utilizados
 
 *   **Editar:** `<i class="fas fa-edit"></i>`
 *   **Excluir:** `<i class="fas fa-trash"></i>` (Pode estar desativado se você não tiver permissão)
@@ -112,12 +130,12 @@ Como Administrador, você tem controle total sobre o sistema e pode:
 *   **Rejeitar:** `<i class="fas fa-times-circle"></i>`
 *   **Pendente:** `<i class="fas fa-hourglass-half"></i>`
 
-## [VISUALIZADOR] 10. Perguntas Frequentes (FAQ)
+## [VISUALIZADOR] 11. Perguntas Frequentes (FAQ)
 
 *   **Minha conta está "Pendente". O que devo fazer?**
     Sua conta precisa ser aprovada por um administrador. Entre em contato com ele.
 
-## [VISUALIZADOR] 11. Solução de Problemas
+## [VISUALIZADOR] 12. Solução de Problemas
 
 *   **Não consigo fazer login:** Verifique seus dados e se sua conta foi aprovada. Se esqueceu a senha:
     1. Clique no link "Esqueceu sua senha?" na página de login
@@ -126,7 +144,7 @@ Como Administrador, você tem controle total sobre o sistema e pode:
     4. A senha temporária será enviada para o seu email
     5. Ao fazer login com a senha temporária, você será solicitado a criar uma nova senha
 
-## [VISUALIZADOR] 12. Informações do Sistema
+## [VISUALIZADOR] 13. Informações do Sistema
 
 Este sistema foi desenvolvido pela [Seção de Tecnologia da Informação (STI-UAST)](https://uast.ufrpe.br/sti).
 

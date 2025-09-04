@@ -248,7 +248,26 @@ if($stmt = mysqli_prepare($link, $sql)){
                 <td><?php echo $row['patrimonio_secundario']; ?></td>
                 <td><a href="local_itens.php?id=<?php echo $row['local_id']; ?>"><?php echo $row['local']; ?></a></td>
                 <td><?php echo $row['responsavel']; ?></td>
-                <td><?php echo $row['estado']; ?></td>
+                <td class="editable-estado" data-item-id="<?php echo $row['id']; ?>" data-estado-atual="<?php echo htmlspecialchars($row['estado']); ?>">
+                    <?php if($_SESSION['permissao'] == 'Administrador'): ?>
+                        <!-- 
+                            Elementos para a edição inline do estado:
+                            - estado-value: Span que mostra o valor atual do estado
+                            - estado-select: Select para escolher o novo valor do estado
+                            - edit-icon: Ícone de edição (lápis) que aparece ao passar o mouse
+                        -->
+                        <span class="estado-value"><?php echo $row['estado']; ?></span>
+                        <select class="estado-select" style="display: none;">
+                            <option value="Em uso" <?php echo ($row['estado'] == 'Em uso') ? 'selected' : ''; ?>>Em uso</option>
+                            <option value="Ocioso" <?php echo ($row['estado'] == 'Ocioso') ? 'selected' : ''; ?>>Ocioso</option>
+                            <option value="Recuperável" <?php echo ($row['estado'] == 'Recuperável') ? 'selected' : ''; ?>>Recuperável</option>
+                            <option value="Inservível" <?php echo ($row['estado'] == 'Inservível') ? 'selected' : ''; ?>>Inservível</option>
+                        </select>
+                        <span class="edit-icon" style="display: none;">✏️</span>
+                    <?php else: ?>
+                        <?php echo $row['estado']; ?>
+                    <?php endif; ?>
+                </td>
                 <td>
                     <?php
                         $status_confirmacao = $row['status_confirmacao'];
@@ -665,6 +684,133 @@ document.addEventListener('DOMContentLoaded', function() {
             rows.forEach(row => tbody.appendChild(row));
         });
     });
+    
+    // --- Lógica de Edição Inline do Estado ---
+    // Esta seção implementa a funcionalidade que permite ao administrador
+    // editar o estado de um item diretamente na tabela, sem precisar
+    // acessar a página de edição do item.
+    <?php if($_SESSION['permissao'] == 'Administrador'): ?>
+    // Seleciona todas as células da tabela que contêm o estado do item
+    const editableEstados = document.querySelectorAll('.editable-estado');
+    
+    // Para cada célula, configura os event listeners para a edição inline
+    editableEstados.forEach(cell => {
+        // Elementos dentro da célula
+        const estadoValue = cell.querySelector('.estado-value'); // Span que mostra o valor atual
+        const estadoSelect = cell.querySelector('.estado-select'); // Select para escolher o novo valor
+        const editIcon = cell.querySelector('.edit-icon'); // Ícone de edição (lápis)
+        
+        // Mostrar o ícone de edição ao passar o mouse sobre a célula
+        // Isso fornece uma dica visual de que o campo é editável
+        cell.addEventListener('mouseenter', () => {
+            editIcon.style.display = 'inline';
+        });
+        
+        // Esconder o ícone de edição ao retirar o mouse da célula
+        // Mas apenas se não estiver em modo de edição
+        cell.addEventListener('mouseleave', () => {
+            if (estadoSelect.style.display === 'none') {
+                editIcon.style.display = 'none';
+            }
+        });
+        
+        // Clique no valor do estado para iniciar a edição
+        // Esconde o texto e mostra o select e o ícone de edição
+        estadoValue.addEventListener('click', () => {
+            estadoValue.style.display = 'none';
+            estadoSelect.style.display = 'inline';
+            editIcon.style.display = 'none';
+            estadoSelect.focus(); // Coloca o foco no select para facilitar a seleção
+        });
+        
+        // Clique fora do select para finalizar a edição
+        // Se o usuário clicar em qualquer lugar da página fora da célula de edição,
+        // a edição será finalizada
+        document.addEventListener('click', (event) => {
+            if (!cell.contains(event.target) && estadoSelect.style.display === 'inline') {
+                finishEditing(cell, estadoValue, estadoSelect);
+            }
+        });
+        
+        // Pressionar Enter no select para finalizar a edição
+        // Oferece uma alternativa ao clique fora para confirmar a edição
+        estadoSelect.addEventListener('keydown', (event) => {
+            if (event.key === 'Enter') {
+                finishEditing(cell, estadoValue, estadoSelect);
+            }
+        });
+    });
+    
+    /**
+     * Função para finalizar a edição do estado do item
+     * 
+     * Esta função coleta o novo valor selecionado, envia uma requisição AJAX
+     * para atualizar o banco de dados e atualiza a interface do usuário com
+     * o novo valor.
+     * 
+     * @param {HTMLElement} cell - A célula da tabela que está sendo editada
+     * @param {HTMLElement} estadoValue - O elemento span que mostra o valor do estado
+     * @param {HTMLElement} estadoSelect - O elemento select para escolher o novo estado
+     */
+    function finishEditing(cell, estadoValue, estadoSelect) {
+        // Obter o ID do item e o novo estado selecionado
+        const itemId = cell.getAttribute('data-item-id');
+        const novoEstado = estadoSelect.value;
+        const estadoAtual = cell.getAttribute('data-estado-atual');
+        // Obter o ícone de edição
+        const editIcon = cell.querySelector('.edit-icon');
+        
+        // Se o valor não mudou, apenas voltar ao modo de visualização
+        // Isso evita requisições desnecessárias ao servidor
+        if (novoEstado === estadoAtual) {
+            estadoValue.style.display = 'inline';
+            estadoSelect.style.display = 'none';
+            editIcon.style.display = 'none';
+            return;
+        }
+        
+        // Enviar requisição AJAX para atualizar o estado
+        // Utiliza fetch API para enviar os dados de forma assíncrona
+        fetch('api/update_estado_item.php', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            // Codifica os dados para envio no formato application/x-www-form-urlencoded
+            body: `item_id=${encodeURIComponent(itemId)}&novo_estado=${encodeURIComponent(novoEstado)}`
+        })
+        .then(response => response.json()) // Converte a resposta para JSON
+        .then(result => {
+            if (result.success) {
+                // Sucesso: Atualizar a interface com o novo valor
+                estadoValue.textContent = novoEstado;
+                cell.setAttribute('data-estado-atual', novoEstado);
+                alert('Estado atualizado com sucesso!');
+            } else {
+                // Erro: Reverter para o valor anterior e mostrar mensagem de erro
+                estadoSelect.value = estadoAtual;
+                alert('Erro ao atualizar o estado: ' + result.message);
+            }
+            
+            // Voltar ao modo de visualização
+            estadoValue.style.display = 'inline';
+            estadoSelect.style.display = 'none';
+            editIcon.style.display = 'none';
+        })
+        .catch(error => {
+            // Erro de rede ou outro erro inesperado
+            console.error('Erro:', error);
+            // Reverter para o valor anterior
+            estadoSelect.value = estadoAtual;
+            alert('Ocorreu um erro ao tentar atualizar o estado.');
+            
+            // Voltar ao modo de visualização
+            estadoValue.style.display = 'inline';
+            estadoSelect.style.display = 'none';
+            editIcon.style.display = 'none';
+        });
+    }
+    <?php endif; ?>
 });
 </script>
 

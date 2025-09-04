@@ -5,7 +5,7 @@ if (session_status() === PHP_SESSION_NONE) {
 
 define('DB_SERVER', 'localhost');
 define('DB_USERNAME', 'inventario');
-define('DB_PASSWORD', 'fA9*A@BLn_PiHsR0');
+define('DB_PASSWORD', 'fA9-A@BLn_PiHsR0');
 define('DB_NAME', 'inventario_db');
 
 /* Conexão MySQL com PDO */

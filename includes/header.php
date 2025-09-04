@@ -99,6 +99,9 @@ if (isset($_SESSION['id'])) {
                 <a href="/inventario/patrimonio_add.php" <?php echo (strpos($_SERVER['REQUEST_URI'], '/patrimonio_add.php') !== false) ? 'class="active"' : ''; ?>>Patrimônio</a>
                 <a href="/inventario/notificacoes_admin.php" <?php echo (strpos($_SERVER['REQUEST_URI'], '/notificacoes_admin.php') !== false) ? 'class="active"' : ''; ?>>Gerenciar Notificações</a>
             <?php endif; ?>
+            <?php if($_SESSION["permissao"] == 'Administrador' || $_SESSION["permissao"] == 'Almoxarife' || $_SESSION["permissao"] == 'Visualizador' || $_SESSION["permissao"] == 'Gestor'): ?>
+                <a href="/inventario/almoxarifado/" <?php echo (strpos($_SERVER['REQUEST_URI'], '/almoxarifado/') !== false) ? 'class="active"' : ''; ?>>Almoxarifado</a>
+            <?php endif; ?>
         </nav>
         <div class="user-menu">
             <a href="/inventario/notificacoes_usuario.php" class="notification-bell">
