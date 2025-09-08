@@ -1,13 +1,9 @@
 <?php
-// Definir o diretório base para facilitar os includes
-$base_path = dirname(__DIR__);
-
-require_once $base_path . '/includes/header.php';
-require_once $base_path . '/config/db.php';
-require_once 'config.php';
+require_once '../includes/header.php';
+require_once '../config/db.php';
 
 if (!isset($_SESSION["id"])) {
-    header("location: ../../login.php");
+    header("location: ../login.php");
     exit;
 }
 
@@ -105,8 +101,7 @@ $sql = "
         arn.status as notificacao_status,
         arn.data_criacao,
         ar.status_notificacao as requisicao_status,
-        ar.justificativa,
-        (SELECT c.mensagem FROM almoxarifado_requisicoes_conversas c JOIN almoxarifado_requisicoes_notificacoes n ON c.notificacao_id = n.id WHERE n.requisicao_id = ar.id ORDER BY c.data_mensagem DESC LIMIT 1) as ultima_mensagem_conversa
+        ar.justificativa
     FROM almoxarifado_requisicoes_notificacoes arn
     JOIN almoxarifado_requisicoes ar ON arn.requisicao_id = ar.id
     WHERE arn.usuario_destino_id = ?
@@ -127,14 +122,7 @@ while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
 ?>
 
 <div class="container">
-    <div class="almoxarifado-header">
     <h2>Minhas Notificações</h2>
-    <?php
-    // Define se o usuário tem visão privilegiada
-    $is_privileged_user = in_array($_SESSION['permissao'], ['Administrador', 'Almoxarife']);
-    require_once 'menu_almoxarifado.php';
-    ?>
-</div>
     
     <div id="feedback-message" class="alert" style="display:none;"></div>
     
@@ -145,43 +133,42 @@ while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
     <?php else: ?>
         <div class="notification-inbox">
             <?php foreach ($notificacoes as $notificacao): ?>
-                <div class="notification-item card mb-2" data-notificacao-id="<?php echo $notificacao['notificacao_id']; ?>">
-                    <div class="card-header notification-summary d-flex justify-content-between align-items-center">
-                        <div>
-                            <strong>Requisição #<?php echo $notificacao['requisicao_id']; ?></strong> - 
-                            <span class="badge badge-<?php 
-                                switch($notificacao['requisicao_status']) {
-                                    case 'pendente': echo 'warning'; break;
-                                    case 'em_discussao': echo 'info'; break;
-                                    case 'aprovada': echo 'success'; break;
-                                    case 'rejeitada': echo 'danger'; break;
-                                    case 'agendada': echo 'primary'; break;
-                                    case 'concluida': echo 'secondary'; break;
-                                    default: echo 'secondary';
-                                }
-                            ?>">
-                                <?php echo ucfirst(str_replace('_', ' ', $notificacao['requisicao_status'])); ?>
-                            </span>
-                            <span class="text-muted ml-3">Última mensagem: <?php echo htmlspecialchars($notificacao['ultima_mensagem_conversa'] ?? $notificacao['mensagem']); ?></span>
+                <div class="notification-item card mb-3">
+                    <div class="card-header">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <strong>Requisição #<?php echo $notificacao['requisicao_id']; ?></strong> - 
+                                <span class="badge badge-<?php 
+                                    switch($notificacao['requisicao_status']) {
+                                        case 'pendente': echo 'warning'; break;
+                                        case 'em_discussao': echo 'info'; break;
+                                        case 'aprovada': echo 'success'; break;
+                                        case 'rejeitada': echo 'danger'; break;
+                                        case 'agendada': echo 'primary'; break;
+                                        case 'concluida': echo 'secondary'; break;
+                                        default: echo 'secondary';
+                                    }
+                                ?>">
+                                    <?php echo ucfirst(str_replace('_', ' ', $notificacao['requisicao_status'])); ?>
+                                </span>
+                            </div>
+                            <small class="text-muted">
+                                <?php echo date('d/m/Y H:i', strtotime($notificacao['data_criacao'])); ?>
+                            </small>
                         </div>
-                        <small class="text-muted">
-                            <?php echo date('d/m/Y H:i', strtotime($notificacao['data_criacao'])); ?>
-                        </small>
                     </div>
-                    <div class="card-body notification-details" style="display: none;">
-                        <p><strong>Justificativa da Requisição:</strong> <?php echo htmlspecialchars($notificacao['justificativa']); ?></p>
+                    <div class="card-body">
+                        <p><strong>Última Mensagem:</strong> <?php echo htmlspecialchars($notificacao['mensagem']); ?></p>
                         
                         <?php if (!empty($notificacao['conversa'])): ?>
                         <hr>
                         <div class="conversa-historico">
                             <h6>Histórico da Conversa:</h6>
                             <?php foreach($notificacao['conversa'] as $msg): ?>
-                                <div class="chat-message-wrapper <?php echo ($msg['tipo_usuario'] == 'requisitante') ? 'align-right' : 'align-left'; ?>">
-                                    <div class="mensagem-chat <?php echo ($msg['tipo_usuario'] == 'requisitante') ? 'mensagem-requisitante' : 'mensagem-admin'; ?>">
-                                        <strong><?php echo htmlspecialchars($msg['autor_nome']); ?>:</strong>
-                                        <p><?php echo nl2br(htmlspecialchars($msg['mensagem'])); ?></p>
-                                        <small class="text-muted"><?php echo date('d/m/Y H:i', strtotime($msg['data_mensagem'])); ?></small>
-                                    </div>
+                                <div class="mensagem-chat <?php echo ($msg['tipo_usuario'] == 'requisitante') ? 'mensagem-requisitante' : 'mensagem-admin'; ?>">
+                                    <strong><?php echo htmlspecialchars($msg['autor_nome']); ?>:</strong>
+                                    <p><?php echo nl2br(htmlspecialchars($msg['mensagem'])); ?></p>
+                                    <small class="text-muted"><?php echo date('d/m/Y H:i', strtotime($msg['data_mensagem'])); ?></small>
                                 </div>
                             <?php endforeach; ?>
                         </div>
@@ -224,18 +211,6 @@ while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Lógica para expandir/colapsar detalhes da notificação
-    document.querySelectorAll('.notification-summary').forEach(summary => {
-        summary.addEventListener('click', function() {
-            const details = this.nextElementSibling; // O próximo elemento é o .notification-details
-            if (details.style.display === 'none') {
-                details.style.display = 'block';
-            } else {
-                details.style.display = 'none';
-            }
-        });
-    });
-
     document.querySelectorAll('.resposta-form').forEach(form => {
         form.addEventListener('submit', function(e) {
             e.preventDefault();
