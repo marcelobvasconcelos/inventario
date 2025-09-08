@@ -1,133 +1,205 @@
 <?php
-require_once '../includes/header.php';
-require_once '../config/db.php';
+require_once '../../includes/header.php';
+require_once '../../config/db.php';
 
 if (!isset($_SESSION["id"])) {
-    header("location: ../login.php");
+    header("location: ../../login.php");
     exit;
 }
 
 $usuario_logado_id = $_SESSION['id'];
 
-if (isset($_POST['is_ajax'])) {
+// Processar ações via AJAX
+if (isset($_POST['is_ajax']) && $_POST['is_ajax'] == 'true') {
     header('Content-Type: application/json');
-    $response = ['success' => false, 'message' => '', 'new_item_status' => ''];
-
-    if (isset($_POST['notificacao_id'], $_POST['item_id'], $_POST['action'])) {
+    $response = ['success' => false, 'message' => ''];
+    
+    if (isset($_POST['notificacao_id'], $_POST['acao'])) {
         $notificacao_id = filter_var($_POST['notificacao_id'], FILTER_VALIDATE_INT);
-        $item_id = filter_var($_POST['item_id'], FILTER_VALIDATE_INT);
-        $action = $_POST['action'];
-
-        $pdo->beginTransaction();
-        try {
-            if ($action === 'confirmar_item') {
-                $new_status = 'Confirmado';
-                $sql_update_item = "UPDATE almoxarifado_materiais SET status_confirmacao = ? WHERE id = ?";
-                $pdo->prepare($sql_update_item)->execute([$new_status, $item_id]);
-
-                $sql_update_notif = "UPDATE notificacoes SET status = 'Lida' WHERE id = ?";
-                $pdo->prepare($sql_update_notif)->execute([$notificacao_id]);
-
-                $response['message'] = 'Item confirmado com sucesso!';
-            } elseif ($action === 'nao_confirmar_item') {
-                $justificativa = trim($_POST['justificativa']);
-                if (empty($justificativa)) {
-                    throw new Exception('A justificativa é obrigatória.');
+        $acao = $_POST['acao'];
+        
+        $sql_check = "SELECT id, requisicao_id FROM almoxarifado_requisicoes_notificacoes WHERE id = ? AND usuario_destino_id = ? AND status != 'concluida'";
+        $stmt_check = $pdo->prepare($sql_check);
+        $stmt_check->execute([$notificacao_id, $usuario_logado_id]);
+        
+        if ($row_check = $stmt_check->fetch(PDO::FETCH_ASSOC)) {
+            $requisicao_id = $row_check['requisicao_id'];
+            
+            if ($acao == 'responder' && isset($_POST['mensagem'])) {
+                $mensagem = trim($_POST['mensagem']);
+                if (!empty($mensagem)) {
+                    $pdo->beginTransaction();
+                    try {
+                        $sql_update_req = "UPDATE almoxarifado_requisicoes SET status_notificacao = 'em_discussao' WHERE id = ?";
+                        $stmt_update_req = $pdo->prepare($sql_update_req);
+                        $stmt_update_req->execute([$requisicao_id]);
+                        
+                        $sql_update_notif = "UPDATE almoxarifado_requisicoes_notificacoes SET status = 'respondida' WHERE id = ?";
+                        $stmt_update_notif = $pdo->prepare($sql_update_notif);
+                        $stmt_update_notif->execute([$notificacao_id]);
+                        
+                        $sql_conversa = "INSERT INTO almoxarifado_requisicoes_conversas (notificacao_id, usuario_id, mensagem, tipo_usuario) VALUES (?, ?, ?, 'requisitante')";
+                        $stmt_conversa = $pdo->prepare($sql_conversa);
+                        $stmt_conversa->execute([$notificacao_id, $usuario_logado_id, $mensagem]);
+                        
+                        $pdo->commit();
+                        $response['success'] = true;
+                        $response['message'] = 'Resposta enviada com sucesso!';
+                    } catch (Exception $e) {
+                        $pdo->rollback();
+                        $response['message'] = 'Erro ao enviar resposta: ' . $e->getMessage();
+                    }
+                } else {
+                    $response['message'] = 'Por favor, informe uma mensagem.';
                 }
-
-                $new_status = 'Nao Confirmado';
-                $sql_update_item = "UPDATE almoxarifado_materiais SET status_confirmacao = ? WHERE id = ?";
-                $pdo->prepare($sql_update_item)->execute([$new_status, $item_id]);
-
-                $sql_insert_resposta = "INSERT INTO notificacoes_almoxarifado_respostas (notificacao_id, item_id, usuario_id, justificativa) VALUES (?, ?, ?, ?)";
-                $pdo->prepare($sql_insert_resposta)->execute([$notificacao_id, $item_id, $usuario_logado_id, $justificativa]);
-
-                $sql_update_notif = "UPDATE notificacoes SET status = 'Nao Lida' WHERE id = ?";
-                $pdo->prepare($sql_update_notif)->execute([$notificacao_id]);
-
-                $response['message'] = 'Justificativa enviada. O administrador será notificado.';
-            } else {
-                throw new Exception('Ação inválida.');
+            } elseif ($acao == 'agendar' && isset($_POST['data_agendamento'])) {
+                $data_agendamento = trim($_POST['data_agendamento']);
+                $observacoes = isset($_POST['observacoes']) ? trim($_POST['observacoes']) : '';
+                
+                if (!empty($data_agendamento)) {
+                    $pdo->beginTransaction();
+                    try {
+                        $sql_update_req = "UPDATE almoxarifado_requisicoes SET status_notificacao = 'agendada' WHERE id = ?";
+                        $stmt_update_req = $pdo->prepare($sql_update_req);
+                        $stmt_update_req->execute([$requisicao_id]);
+                        
+                        $sql_update_notif = "UPDATE almoxarifado_requisicoes_notificacoes SET status = 'concluida' WHERE id = ?";
+                        $stmt_update_notif = $pdo->prepare($sql_update_notif);
+                        $stmt_update_notif->execute([$notificacao_id]);
+                        
+                        $sql_agendamento = "INSERT INTO almoxarifado_agendamentos (requisicao_id, data_agendamento, observacoes) VALUES (?, ?, ?)";
+                        $stmt_agendamento = $pdo->prepare($sql_agendamento);
+                        $stmt_agendamento->execute([$requisicao_id, $data_agendamento, $observacoes]);
+                        
+                        $pdo->commit();
+                        $response['success'] = true;
+                        $response['message'] = 'Agendamento realizado com sucesso!';
+                    } catch (Exception $e) {
+                        $pdo->rollback();
+                        $response['message'] = 'Erro ao agendar: ' . $e->getMessage();
+                    }
+                } else {
+                    $response['message'] = 'Por favor, informe a data de agendamento.';
+                }
             }
-
-            $pdo->commit();
-            $response['success'] = true;
-            $response['new_item_status'] = $new_status;
-
-        } catch (Exception $e) {
-            $pdo->rollBack();
-            $response['message'] = "Erro: " . $e->getMessage();
+        } else {
+            $response['message'] = 'Notificação inválida.';
         }
+    } else {
+        $response['message'] = 'Dados incompletos.';
     }
+    
     echo json_encode($response);
     exit;
 }
 
-
-// Lógica para buscar notificações do almoxarifado para o usuário logado
 $sql = "
     SELECT 
-        n.id as notificacao_id,
-        n.mensagem,
-        n.status as notificacao_status,
-        n.data_criacao,
-        am.id as item_id,
-        am.nome as item_nome,
-        am.estado as item_estado,
-        am.status_confirmacao as item_status_confirmacao,
-        u.nome as admin_nome
-    FROM notificacoes n
-    JOIN notificacoes_almoxarifado_detalhes nad ON n.id = nad.notificacao_id
-    JOIN almoxarifado_materiais am ON nad.item_id = am.id
-    JOIN usuarios u ON n.administrador_id = u.id
-    WHERE n.usuario_id = ? AND n.tipo = 'atribuicao_almoxarifado'
-    ORDER BY n.data_criacao DESC
+        arn.id as notificacao_id,
+        arn.requisicao_id,
+        arn.mensagem,
+        arn.status as notificacao_status,
+        arn.data_criacao,
+        ar.status_notificacao as requisicao_status,
+        ar.justificativa
+    FROM almoxarifado_requisicoes_notificacoes arn
+    JOIN almoxarifado_requisicoes ar ON arn.requisicao_id = ar.id
+    WHERE arn.usuario_destino_id = ?
+    ORDER BY arn.data_criacao DESC
 ";
 
 $stmt = $pdo->prepare($sql);
 $stmt->execute([$usuario_logado_id]);
-$notificacoes = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
+$notificacoes = [];
+while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+    $sql_conversa = "SELECT c.mensagem, c.data_mensagem, u.nome as autor_nome, c.tipo_usuario FROM almoxarifado_requisicoes_conversas c JOIN almoxarifado_requisicoes_notificacoes n ON c.notificacao_id = n.id JOIN usuarios u ON c.usuario_id = u.id WHERE n.requisicao_id = ? ORDER BY c.data_mensagem ASC";
+    $stmt_conversa = $pdo->prepare($sql_conversa);
+    $stmt_conversa->execute([$row['requisicao_id']]);
+    $conversa = $stmt_conversa->fetchAll(PDO::FETCH_ASSOC);
+    $row['conversa'] = $conversa;
+    $notificacoes[] = $row;
+}
 ?>
 
-<div class="container mt-5">
-    <h2><i class="fas fa-bell"></i> Notificações do Almoxarifado</h2>
-    <p>Aqui você pode visualizar e confirmar os itens de almoxarifado atribuídos a você.</p>
-
+<div class="container">
+    <h2>Minhas Notificações</h2>
+    
     <div id="feedback-message" class="alert" style="display:none;"></div>
-
+    
     <?php if (empty($notificacoes)): ?>
-        <div class="alert alert-info">Você não possui notificações do almoxarifado no momento.</div>
+        <div class="alert alert-info">
+            Você não possui notificações no momento.
+        </div>
     <?php else: ?>
         <div class="notification-inbox">
             <?php foreach ($notificacoes as $notificacao): ?>
-                <div class="notification-item card mb-2">
+                <div class="notification-item card mb-3">
+                    <div class="card-header">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <strong>Requisição #<?php echo $notificacao['requisicao_id']; ?></strong> - 
+                                <span class="badge badge-<?php 
+                                    switch($notificacao['requisicao_status']) {
+                                        case 'pendente': echo 'warning'; break;
+                                        case 'em_discussao': echo 'info'; break;
+                                        case 'aprovada': echo 'success'; break;
+                                        case 'rejeitada': echo 'danger'; break;
+                                        case 'agendada': echo 'primary'; break;
+                                        case 'concluida': echo 'secondary'; break;
+                                        default: echo 'secondary';
+                                    }
+                                ?>">
+                                    <?php echo ucfirst(str_replace('_', ' ', $notificacao['requisicao_status'])); ?>
+                                </span>
+                            </div>
+                            <small class="text-muted">
+                                <?php echo date('d/m/Y H:i', strtotime($notificacao['data_criacao'])); ?>
+                            </small>
+                        </div>
+                    </div>
                     <div class="card-body">
-                        <p><strong>De:</strong> <?php echo htmlspecialchars($notificacao['admin_nome']); ?></p>
-                        <p><strong>Mensagem:</strong> <?php echo htmlspecialchars($notificacao['mensagem']); ?></p>
-                        <p><strong>Item:</strong> <?php echo htmlspecialchars($notificacao['item_nome']); ?></p>
-                        <p><strong>Estado do Item:</strong> <?php echo htmlspecialchars($notificacao['item_estado']); ?></p>
-                        <p><strong>Status:</strong> <span class="badge"><?php echo htmlspecialchars($notificacao['item_status_confirmacao']); ?></span></p>
-                        <p><small>Recebido em: <?php echo date('d/m/Y H:i', strtotime($notificacao['data_criacao'])); ?></small></p>
+                        <p><strong>Última Mensagem:</strong> <?php echo htmlspecialchars($notificacao['mensagem']); ?></p>
                         
-                        <?php if ($notificacao['item_status_confirmacao'] == 'Pendente'): ?>
-                            <div class="item-actions-container">
-                                <form class="item-action-form d-inline" data-notif-id="<?php echo $notificacao['notificacao_id']; ?>" data-item-id="<?php echo $notificacao['item_id']; ?>">
-                                    <input type="hidden" name="action" value="confirmar_item">
-                                    <button type="submit" class="btn-custom"><i class="fas fa-check"></i> Confirmar</button>
-                                </form>
-                                <button type="button" class="btn-danger ml-2" onclick="showJustificativaForm(<?php echo $notificacao['notificacao_id']; ?>, <?php echo $notificacao['item_id']; ?>)"><i class="fas fa-times"></i> Não Confirmar</button>
-                                <div id="justificativa_form_<?php echo $notificacao['notificacao_id']; ?>_<?php echo $notificacao['item_id']; ?>" style="display:none; margin-top: 10px;">
-                                    <form class="item-action-form" data-notif-id="<?php echo $notificacao['notificacao_id']; ?>" data-item-id="<?php echo $notificacao['item_id']; ?>">
-                                        <input type="hidden" name="action" value="nao_confirmar_item">
-                                        <div class="form-group">
-                                            <label for="justificativa_<?php echo $notificacao['notificacao_id']; ?>_<?php echo $notificacao['item_id']; ?>">Justificativa:</label>
-                                            <textarea name="justificativa" id="justificativa_<?php echo $notificacao['notificacao_id']; ?>_<?php echo $notificacao['item_id']; ?>" class="form-control" rows="2" required></textarea>
-                                        </div>
-                                        <button type="submit" class="btn-custom"><i class="fas fa-paper-plane"></i> Enviar Justificativa</button>
-                                        <button type="button" class="btn-danger" onclick="hideJustificativaForm(<?php echo $notificacao['notificacao_id']; ?>, <?php echo $notificacao['item_id']; ?>)"><i class="fas fa-times"></i> Cancelar</button>
-                                    </form>
+                        <?php if (!empty($notificacao['conversa'])): ?>
+                        <hr>
+                        <div class="conversa-historico">
+                            <h6>Histórico da Conversa:</h6>
+                            <?php foreach($notificacao['conversa'] as $msg): ?>
+                                <div class="mensagem-chat <?php echo ($msg['tipo_usuario'] == 'requisitante') ? 'mensagem-requisitante' : 'mensagem-admin'; ?>">
+                                    <strong><?php echo htmlspecialchars($msg['autor_nome']); ?>:</strong>
+                                    <p><?php echo nl2br(htmlspecialchars($msg['mensagem'])); ?></p>
+                                    <small class="text-muted"><?php echo date('d/m/Y H:i', strtotime($msg['data_mensagem'])); ?></small>
                                 </div>
+                            <?php endforeach; ?>
+                        </div>
+                        <?php endif; ?>
+
+                        <?php if ($notificacao['notificacao_status'] != 'concluida'): ?>
+                            <hr>
+                            <div class="notification-actions">
+                                <?php if ($notificacao['requisicao_status'] == 'aprovada'): ?>
+                                    <form class="agendamento-form" data-notificacao-id="<?php echo $notificacao['notificacao_id']; ?>">
+                                        <div class="form-group">
+                                            <label>Data de Agendamento:</label>
+                                            <input type="datetime-local" class="form-control" name="data_agendamento" required>
+                                        </div>
+                                        
+                                        <div class="form-group">
+                                            <label>Observações:</label>
+                                            <textarea class="form-control" name="observacoes" rows="2"></textarea>
+                                        </div>
+                                        
+                                        <button type="submit" class="btn btn-primary">Agendar Entrega</button>
+                                    </form>
+                                <?php elseif ($notificacao['requisicao_status'] == 'em_discussao'): ?>
+                                    <form class="resposta-form" data-notificacao-id="<?php echo $notificacao['notificacao_id']; ?>">
+                                        <div class="form-group">
+                                            <label>Mensagem para o administrador:</label>
+                                            <textarea class="form-control" name="mensagem" rows="3" required></textarea>
+                                        </div>
+                                        <button type="submit" class="btn btn-info">Enviar Resposta</button>
+                                    </form>
+                                <?php endif; ?>
                             </div>
                         <?php endif; ?>
                     </div>
@@ -136,3 +208,104 @@ $notificacoes = $stmt->fetchAll(PDO::FETCH_ASSOC);
         </div>
     <?php endif; ?>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('.resposta-form').forEach(form => {
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const notificacaoId = this.dataset.notificacaoId;
+            const mensagem = this.querySelector('textarea[name="mensagem"]').value;
+            const formData = new FormData();
+            formData.append('is_ajax', 'true');
+            formData.append('notificacao_id', notificacaoId);
+            formData.append('acao', 'responder');
+            formData.append('mensagem', mensagem);
+            fetch('notificacoes.php', { method: 'POST', body: formData })
+            .then(response => response.text())
+            .then(text => {
+                try {
+                    const data = JSON.parse(text);
+                    const feedbackMessage = document.getElementById('feedback-message');
+                    feedbackMessage.style.display = 'block';
+                    feedbackMessage.textContent = data.message;
+                    feedbackMessage.className = data.success ? 'alert alert-success' : 'alert alert-danger';
+                    if (data.success) {
+                        this.querySelector('textarea[name="mensagem"]').value = '';
+                        setTimeout(() => { location.reload(); }, 1000);
+                    }
+                } catch (e) {
+                    const messageMatch = text.match(/"message":"([^"]*)"/);
+                    if (messageMatch && messageMatch[1]) {
+                        const feedbackMessage = document.getElementById('feedback-message');
+                        feedbackMessage.style.display = 'block';
+                        feedbackMessage.textContent = messageMatch[1];
+                        feedbackMessage.className = 'alert alert-success';
+                        setTimeout(() => { location.reload(); }, 1000);
+                    } else {
+                        console.error('Não foi possível extrair a mensagem da resposta:', text);
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('Erro de rede:', error);
+                const feedbackMessage = document.getElementById('feedback-message');
+                feedbackMessage.style.display = 'block';
+                feedbackMessage.textContent = 'Ocorreu um erro de rede ao processar sua solicitação.';
+                feedbackMessage.className = 'alert alert-danger';
+            });
+        });
+    });
+    
+    document.querySelectorAll('.agendamento-form').forEach(form => {
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const notificacaoId = this.dataset.notificacaoId;
+            const dataAgendamento = this.querySelector('input[name="data_agendamento"]').value;
+            const observacoes = this.querySelector('textarea[name="observacoes"]').value;
+            const formData = new FormData();
+            formData.append('is_ajax', 'true');
+            formData.append('notificacao_id', notificacaoId);
+            formData.append('acao', 'agendar');
+            formData.append('data_agendamento', dataAgendamento);
+            formData.append('observacoes', observacoes);
+            fetch('notificacoes.php', { method: 'POST', body: formData })
+            .then(response => response.text())
+            .then(text => {
+                try {
+                    const data = JSON.parse(text);
+                    const feedbackMessage = document.getElementById('feedback-message');
+                    feedbackMessage.style.display = 'block';
+                    feedbackMessage.textContent = data.message;
+                    feedbackMessage.className = data.success ? 'alert alert-success' : 'alert alert-danger';
+                    if (data.success) {
+                        setTimeout(() => { location.reload(); }, 1000);
+                    }
+                } catch (e) {
+                    const messageMatch = text.match(/"message":"([^"]*)"/);
+                    if (messageMatch && messageMatch[1]) {
+                        const feedbackMessage = document.getElementById('feedback-message');
+                        feedbackMessage.style.display = 'block';
+                        feedbackMessage.textContent = messageMatch[1];
+                        feedbackMessage.className = 'alert alert-success';
+                        setTimeout(() => { location.reload(); }, 1000);
+                    } else {
+                        console.error('Não foi possível extrair a mensagem da resposta:', text);
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('Erro de rede:', error);
+                const feedbackMessage = document.getElementById('feedback-message');
+                feedbackMessage.style.display = 'block';
+                feedbackMessage.textContent = 'Ocorreu um erro de rede ao processar sua solicitação.';
+                feedbackMessage.className = 'alert alert-danger';
+            });
+        });
+    });
+});
+</script>
+
+<?php
+require_once '../../includes/footer.php';
+?>

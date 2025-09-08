@@ -252,10 +252,20 @@ while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
                             </div>
                         <?php elseif ($requisicao['status_notificacao'] == 'em_discussao'): ?>
                             <hr>
-                            <p>Aguardando resposta do requisitante.</p>
-                            <button type="button" class="btn btn-info" onclick="showSolicitarInfoForm(<?php echo $requisicao['requisicao_id']; ?>)">
-                                Enviar Nova Mensagem
-                            </button>
+                            <p><strong>Ações disponíveis:</strong></p>
+                            <div class="acao-buttons">
+                                <form class="acao-form d-inline" data-requisicao-id="<?php echo $requisicao['requisicao_id']; ?>" data-acao="aprovar">
+                                    <button type="submit" class="btn btn-success">Aprovar Requisição</button>
+                                </form>
+                                
+                                <button type="button" class="btn btn-info" onclick="showSolicitarInfoForm(<?php echo $requisicao['requisicao_id']; ?>)">
+                                    Enviar Nova Mensagem
+                                </button>
+                                
+                                <button type="button" class="btn btn-danger" onclick="showRejeitarForm(<?php echo $requisicao['requisicao_id']; ?>)">
+                                    Rejeitar Requisição
+                                </button>
+                            </div>
                             
                             <div id="solicitar-info-form-<?php echo $requisicao['requisicao_id']; ?>" class="mt-3" style="display:none;">
                                 <form class="solicitar-info-form" data-requisicao-id="<?php echo $requisicao['requisicao_id']; ?>">
@@ -265,6 +275,17 @@ while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
                                     </div>
                                     <button type="submit" class="btn btn-primary">Enviar Solicitação</button>
                                     <button type="button" class="btn btn-secondary" onclick="hideSolicitarInfoForm(<?php echo $requisicao['requisicao_id']; ?>)">Cancelar</button>
+                                </form>
+                            </div>
+                            
+                            <div id="rejeitar-form-<?php echo $requisicao['requisicao_id']; ?>" class="mt-3" style="display:none;">
+                                <form class="rejeitar-form" data-requisicao-id="<?php echo $requisicao['requisicao_id']; ?>">
+                                    <div class="form-group">
+                                        <label>Justificativa da rejeição:</label>
+                                        <textarea class="form-control" name="justificativa" rows="3" required></textarea>
+                                    </div>
+                                    <button type="submit" class="btn btn-danger">Rejeitar Requisição</button>
+                                    <button type="button" class="btn btn-secondary" onclick="hideRejeitarForm(<?php echo $requisicao['requisicao_id']; ?>)">Cancelar</button>
                                 </form>
                             </div>
                         <?php endif; ?>
