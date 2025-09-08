@@ -141,7 +141,8 @@ if($stmt = mysqli_prepare($link, $sql)){
     </thead>
     <tbody>
         <?php if ($result && mysqli_num_rows($result) > 0): ?>
-            <?php while($row = mysqli_fetch_assoc($result)): ?>
+            <?php while($row = mysqli_fetch_assoc($result)):
+            ?>
             <tr>
                 <td><?php echo $row['id']; ?></td>
                 <td><a href="item_details.php?id=<?php echo $row['id']; ?>"><?php echo $row['nome']; ?></a></td>

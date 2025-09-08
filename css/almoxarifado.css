@@ -451,3 +451,25 @@ body.almoxarifado {
     background-color: #28a745;
     color: white;
 }
+
+/* Estilo para o cabeçalho fixo da página de itens */
+.page-header-sticky {
+    position: sticky;
+    top: 0;
+    background-color: #f8f9fa; /* Cor de fundo correspondente ao body */
+    padding: 20px;
+    margin: -20px -20px 20px -20px; /* Ajusta o espaçamento para ocupar a largura */
+    z-index: 1000;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    border-bottom: 1px solid #dee2e6;
+}
+
+.page-header-sticky h2 {
+    margin: 0 0 15px 0;
+}
+
+/* Estilo para o campo de pesquisa sem botão */
+.search-input input[type="text"] {
+    border-radius: 5px;
+    padding: 10px 15px;
+}

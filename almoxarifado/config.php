@@ -33,7 +33,7 @@ function get_nome_usuario($usuario_id, $pdo) {
 }
 
 function get_nome_material($material_id, $pdo) {
-    $stmt = $pdo->prepare("SELECT nome FROM almoxarifado_materiais WHERE id = ?");
+    $stmt = $pdo->prepare("SELECT nome FROM materiais WHERE id = ?");
     $stmt->execute([$material_id]);
     $result = $stmt->fetch(PDO::FETCH_ASSOC);
     return $result ? $result['nome'] : 'Desconhecido';

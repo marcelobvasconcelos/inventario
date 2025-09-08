@@ -726,7 +726,7 @@ foreach ($notificacoes_movimentacao_raw as $nm) {
                                     <!-- Histórico de Conversa -->
                                     <?php
                                     // Buscar histórico de respostas para esta notificação
-                                    $sql_historico = "SELECT * FROM notificacoes_respostas_historico WHERE notificacao_movimentacao_id = ? ORDER BY data_resposta ASC";
+                                    $sql_historico = "SELECT * FROM notificacoes_respostas_historico WHERE notificacao_movimentacao_id = ? ORDER BY data_mensagem ASC";
                                     $stmt_historico = $pdo->prepare($sql_historico);
                                     $stmt_historico->execute([$notificacao['id']]);
                                     $historico_respostas = $stmt_historico->fetchAll(PDO::FETCH_ASSOC);
@@ -749,7 +749,7 @@ foreach ($notificacoes_movimentacao_raw as $nm) {
                                                     <div class="chat-bubble chat-<?php echo $msg['tipo_remetente'] === 'admin' ? 'admin' : 'user'; ?>">
                                                         <div class="chat-meta">
                                                             <strong><?php echo $msg['tipo_remetente'] === 'admin' ? 'Administrador' : 'Usuário'; ?></strong>
-                                                            &bull; <?php echo date('d/m/Y H:i', strtotime($msg['data_resposta'])); ?>
+                                                            &bull; <?php echo date('d/m/Y H:i', strtotime($msg['data_mensagem'])); ?>
                                                         </div>
                                                         <div><?php echo nl2br(htmlspecialchars($msg['conteudo_resposta'])); ?></div>
                                                     </div>

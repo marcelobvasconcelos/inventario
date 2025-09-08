@@ -38,6 +38,19 @@ $total_materiais = $stmt_materiais->fetch(PDO::FETCH_ASSOC)['total'];
 <div class="container">
     <h2>Módulo de Controle de Empenhos, Notas Fiscais e Materiais</h2>
     
+    <div class="almoxarifado-header">
+        <?php if($_SESSION["permissao"] == 'Administrador' || $_SESSION["permissao"] == 'Almoxarife' || $_SESSION["permissao"] == 'Visualizador' || $_SESSION["permissao"] == 'Gestor'): ?>
+            <a href="requisicao.php" class="btn-custom">Nova Requisição</a>
+            <a href="notificacoes.php" class="btn-custom">Minhas Notificações</a>
+        <?php endif; ?>
+        <?php if($_SESSION["permissao"] == 'Administrador' || $_SESSION["permissao"] == 'Almoxarife'): ?>
+            <a href="material_add.php" class="btn-custom">Adicionar Material</a>
+        <?php endif; ?>
+        <?php if($_SESSION["permissao"] == 'Administrador'): ?>
+            <a href="../admin_notificacoes.php" class="btn-custom">Gerenciar Requisições</a>
+        <?php endif; ?>
+    </div>
+    
     <div class="row">
         <div class="col-md-3">
             <div class="card text-white bg-primary mb-3">

@@ -100,6 +100,10 @@ if (isset($_SESSION['id'])) {
     <link rel="stylesheet" href="<?php echo $css_path; ?>css/temas.css">
     <?php if($is_almoxarifado): ?>
         <link rel="stylesheet" href="<?php echo $css_path; ?>css/almoxarifado.css">
+        <!-- Inclui o CSS personalizado para requisições -->
+        <?php if(strpos($_SERVER['REQUEST_URI'], 'requisicao.php') !== false): ?>
+            <link rel="stylesheet" href="<?php echo $css_path; ?>css/requisicao.css">
+        <?php endif; ?>
     <?php endif; ?>
     <!-- Inclui o Bootstrap CSS -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/css/bootstrap.min.css">
