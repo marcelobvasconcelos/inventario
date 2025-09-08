@@ -106,57 +106,43 @@ O módulo de almoxarifado permite gerenciar produtos, requisições e estoque de
 ### 9.1. Acesso ao Módulo
 O módulo de almoxarifado está disponível no menu de navegação superior para usuários com perfil de Administrador, Almoxarife, Visualizador ou Gestor.
 
-### 9.2. Gerenciamento de Produtos (Administradores e Almoxarifes)
-- **Visualizar Produtos:** Na página principal do almoxarifado, você pode ver uma lista de todos os produtos cadastrados, com suas informações principais.
-- **Adicionar Produto:** Clique no botão "Adicionar Produto" para cadastrar um novo produto no estoque.
-- **Editar Produto:** Clique no ícone de edição ao lado de um produto para atualizar suas informações.
+### 9.2. Gerenciamento de Materiais (Administradores e Almoxarifes)
+- **Visualizar Materiais:** Na página principal do almoxarifado, você pode ver uma lista de todos os materiais cadastrados, com suas informações principais.
+- **Adicionar Material:** Clique no botão "Adicionar Material" para cadastrar um novo material no estoque.
+- **Editar Material:** Clique no ícone de edição ao lado de um material para atualizar suas informações.
 
-### 9.3. Requisições de Produtos (Todos os Usuários)
+### 9.3. Gerenciamento de Categorias do Almoxarifado (Administradores e Almoxarifes)
+- **Cadastrar Categorias:** Registre categorias para classificação dos materiais do almoxarifado. Estas categorias são **exclusivas** deste módulo e não se misturam com as categorias do inventário geral.
+- **Editar Categorias:** Atualize as informações das categorias existentes.
+- **Visualizar Categorias:** Veja a lista de todas as categorias cadastradas para o almoxarifado.
+
+### 9.4. Requisições de Produtos (Todos os Usuários)
 - **Criar Requisição:** Clique no botão "Nova Requisição" para solicitar produtos do almoxarifado.
-- **Visualizar Requisições:** Na seção "Minhas Requisições", você pode ver o status das suas requisições.
+- **Visualizar Requisições:** Na seção "Minhas Notificações", você pode ver o status das suas requisições.
 - **Confirmar Recebimento:** Quando uma requisição for aprovada, você poderá confirmar o recebimento dos produtos.
 - **Código da Requisição:** Cada requisição possui um código único no formato "REQ-ANO-XXXXXX" que pode ser usado para rastrear o status da requisição.
 
-### 9.4. Aprovação de Requisições (Administradores e Almoxarifes)
-- **Visualizar Requisições Pendentes:** Na seção "Gerenciar Notificações", clique na aba "Almoxarifado" para ver as requisições pendentes.
+### 9.5. Aprovação de Requisições (Administradores e Almoxarifes)
+- **Visualizar Requisições Pendentes:** Na seção "Gerenciar Requisições", você pode ver as requisições pendentes.
 - **Aprovar Requisições:** Clique no botão "Aprovar" para autorizar a retirada dos produtos.
 - **Rejeitar Requisições:** Clique no botão "Rejeitar" para negar a requisição, se necessário.
 
-## [ADMINISTRADOR] 10. Módulo de Controle de Empenhos, Notas Fiscais e Materiais
+## [ADMINISTRADOR] 10. Módulo de Gestão (Empenhos)
 
-O módulo de controle de empenhos, notas fiscais e materiais permite gerenciar essas entidades e seus relacionamentos de forma organizada.
+O módulo de gestão de empenhos permite gerenciar empenhos e notas fiscais vinculadas aos materiais do almoxarifado.
 
 ### 10.1. Acesso ao Módulo
-O módulo está disponível no menu de navegação superior para usuários com perfil de Administrador.
+O módulo está disponível na página principal do Almoxarifado para usuários com perfil de Administrador.
 
-### 10.2. Gerenciamento de Categorias
-- **Cadastrar Categorias:** Registre categorias para classificação dos materiais.
-- **Editar Categorias:** Atualize as informações das categorias existentes.
-- **Visualizar Categorias:** Veja a lista de todas as categorias cadastradas.
-
-### 10.3. Gerenciamento de Empenhos
+### 10.2. Gerenciamento de Empenhos
 - **Cadastrar Empenhos:** Registre os empenhos recebidos com informações como número, data de emissão, fornecedor e CNPJ.
 - **Editar Empenhos:** Atualize as informações dos empenhos existentes.
 - **Definir Status:** Marque os empenhos como "Aberto" ou "Fechado".
 - **Visualizar Empenhos:** Veja a lista de todos os empenhos cadastrados.
 
-### 10.4. Gerenciamento de Notas Fiscais
+### 10.3. Gerenciamento de Notas Fiscais
 - **Cadastrar Notas Fiscais:** Registre as notas fiscais vinculadas aos empenhos.
 - **Visualizar Notas Fiscais:** Veja a lista de todas as notas fiscais cadastradas.
-
-### 10.5. Gerenciamento de Materiais
-- **Cadastrar Materiais:** Registre os materiais com nome, quantidade, categoria e valor unitário.
-- **Vincular a Notas Fiscais:** Associe os materiais às notas fiscais correspondentes.
-- **Cadastro Independente:** Cadastre materiais sem vincular a notas fiscais, apenas associando-os a uma categoria.
-- **Visualizar Materiais:** Veja a lista de todos os materiais cadastrados.
-
-### 10.6. Fluxo de Trabalho
-1. **Cadastrar Categorias:** Primeiro, cadastre as categorias de materiais no sistema.
-2. **Cadastrar Empenhos:** Registre os empenhos recebidos, vinculando-os às categorias apropriadas.
-3. **Cadastrar Notas Fiscais:** Para cada empenho, registre as notas fiscais correspondentes.
-4. **Cadastrar Materiais:** Finalmente, cadastre os materiais, vinculando-os às notas fiscais e categorias.
-
-Também é possível cadastrar materiais independentemente de notas fiscais, apenas vinculando-os a uma categoria.
 
 ## [VISUALIZADOR] 12. Ícones Utilizados
 
@@ -183,8 +169,6 @@ Também é possível cadastrar materiais independentemente de notas fiscais, ape
 ## [VISUALIZADOR] 15. Informações do Sistema
 
 Este sistema foi desenvolvido pela [Seção de Tecnologia da Informação (STI-UAST)](https://uast.ufrpe.br/sti).
-
----
 
 ---
 

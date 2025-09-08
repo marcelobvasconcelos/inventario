@@ -27,35 +27,36 @@ $categoria_filtro = isset($_GET['categoria']) ? $_GET['categoria'] : '';
 $status_filtro = isset($_GET['status']) && $is_privileged_user ? $_GET['status'] : '';
 
 // --- Construção da SQL ---
-$select_columns = "SELECT m.id, m.nome, c.descricao as categoria_nome";
+$select_columns = "SELECT m.id, m.codigo, m.nome, m.categoria as categoria_nome";
 if ($is_privileged_user) {
-    $select_columns .= ", m.qtd, m.valor_unit, 
+    $select_columns .= ", m.estoque_atual, m.valor_unitario, 
                          CASE 
-                             WHEN m.qtd <= 0 THEN 'sem_estoque'
-                             WHEN m.qtd < 5 THEN 'estoque_baixo'
+                             WHEN m.estoque_atual <= 0 THEN 'sem_estoque'
+                             WHEN m.estoque_atual < 5 THEN 'estoque_baixo'
                              ELSE 'estoque_normal'
                          END as situacao_estoque";
 }
 
-$sql_base = $select_columns . " FROM materiais m LEFT JOIN categorias c ON m.categoria_id = c.id";
-$sql_count_base = "SELECT COUNT(m.id) FROM materiais m LEFT JOIN categorias c ON m.categoria_id = c.id";
+$sql_base = $select_columns . " FROM almoxarifado_materiais m";
+$sql_count_base = "SELECT COUNT(m.id) FROM almoxarifado_materiais m";
 
 $conditions = [];
 $params = [];
 
 if (!empty($search_query)) {
-    $conditions[] = "(m.nome LIKE ?)";
+    $conditions[] = "(m.nome LIKE ? OR m.codigo LIKE ?)";
+    $params[] = '%' . $search_query . '%';
     $params[] = '%' . $search_query . '%';
 }
 if (!empty($categoria_filtro)) {
-    $conditions[] = "m.categoria_id = ?";
+    $conditions[] = "m.categoria = ?";
     $params[] = $categoria_filtro;
 }
 if ($is_privileged_user && !empty($status_filtro)) {
     switch($status_filtro) {
-        case 'sem_estoque': $conditions[] = "m.qtd <= 0"; break;
-        case 'estoque_baixo': $conditions[] = "m.qtd > 0 AND m.qtd < 5"; break;
-        case 'estoque_normal': $conditions[] = "m.qtd >= 5"; break;
+        case 'sem_estoque': $conditions[] = "m.estoque_atual <= 0"; break;
+        case 'estoque_baixo': $conditions[] = "m.estoque_atual > 0 AND m.estoque_atual < 5"; break;
+        case 'estoque_normal': $conditions[] = "m.estoque_atual >= 5"; break;
     }
 }
 
@@ -77,30 +78,21 @@ $materiais = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 $total_paginas = ceil($total_materiais / $itens_por_pagina);
 
-// Buscar categorias para o filtro
-$categorias = $pdo->query("SELECT id, descricao FROM categorias ORDER BY descricao ASC")->fetchAll(PDO::FETCH_ASSOC);
+// Buscar categorias do almoxarifado para o filtro
+$categorias = $pdo->query("SELECT descricao FROM almoxarifado_categorias ORDER BY descricao ASC")->fetchAll(PDO::FETCH_COLUMN);
 ?>
 
 <div class="page-header-sticky">
     <div class="almoxarifado-header">
         <h2>Estoque do Almoxarifado</h2>
-        <a href="requisicao.php" id="btn-nova-requisicao" class="btn-custom"><i class="fas fa-plus"></i> Nova Requisição</a>
-        <a href="notificacoes.php" class="btn-custom"><i class="fas fa-bell"></i> Minhas Notificações</a>
-        <?php if ($is_privileged_user): ?>
-            <a href="empenhos/material_add.php" class="btn-custom">Adicionar Material</a>
-        <?php endif; ?>
-        <?php if ($_SESSION["permissao"] == 'Administrador'): ?>
-            <a href="admin_notificacoes.php" class="btn-custom">Gerenciar Requisições</a>
-            <a href="empenhos/index.php" class="btn-custom">Gerenciar Empenhos</a>
-        <?php endif; ?>
+        <?php require_once 'menu_almoxarifado.php'; ?>
     </div>
 
     <div class="controls-container">
         <div class="search-form">
             <form action="" method="GET" id="search-form">
                 <div class="search-input">
-                    <input type="text" name="search" id="search_query_input" placeholder="Pesquisar materiais..." value="<?php echo htmlspecialchars($search_query); ?>">
-                    <!-- Botão de pesquisa removido para pesquisa automática -->
+                    <input type="text" name="search" id="search_query_input" placeholder="Pesquisar por nome ou código..." value="<?php echo htmlspecialchars($search_query); ?>">
                 </div>
             </form>
         </div>
@@ -110,8 +102,8 @@ $categorias = $pdo->query("SELECT id, descricao FROM categorias ORDER BY descric
                 <select name="categoria" onchange="this.form.submit()">
                     <option value="">Todas as categorias</option>
                     <?php foreach($categorias as $categoria): ?>
-                        <option value="<?php echo $categoria['id']; ?>" <?php echo ($categoria_filtro == $categoria['id']) ? 'selected' : ''; ?>>
-                            <?php echo htmlspecialchars($categoria['descricao']); ?>
+                        <option value="<?php echo htmlspecialchars($categoria); ?>" <?php echo ($categoria_filtro == $categoria) ? 'selected' : ''; ?>>
+                            <?php echo htmlspecialchars($categoria); ?>
                         </option>
                     <?php endforeach; ?>
                 </select>
@@ -131,65 +123,56 @@ $categorias = $pdo->query("SELECT id, descricao FROM categorias ORDER BY descric
             </form>
         </div>
     </div>
-    
-    <!-- Botão para requisição de itens selecionados -->
-    <div id="bulk-action-buttons" style="display: none; margin-top: 10px;">
-        <button type="button" id="btn-requisitar-selecionados" class="btn-custom">
-            <i class="fas fa-paper-plane"></i> Requisitar Itens Selecionados
-        </button>
-    </div>
 </div>
 
-<form id="itens-form" method="POST" action="empenhos/requisicao.php">
-    <?php if (empty($materiais)): ?>
-        <div class="alert alert-info">Nenhum material encontrado.</div>
-    <?php else: ?>
-        <table class="almoxarifado-table">
-            <thead>
-                <tr>
-                    <th style="width: 5%;"><input type="checkbox" id="select-all-checkbox"></th>
-                    <th>Nome</th>
-                    <th>Categoria</th>
-                    <?php if ($is_privileged_user): ?>
-                        <th>Quantidade</th>
-                        <th>Valor Unitário</th>
-                        <th>Status</th>
-                    <?php endif; ?>
-                    <th>Ações</th>
-                </tr>
-            </thead>
-            <tbody id="itens-table-body">
-                <?php foreach($materiais as $material): ?>
-                <tr>
-                    <td><input type="checkbox" name="item_ids[]" value="<?php echo $material['id']; ?>" class="item-checkbox"></td>
-                    <td><?php echo htmlspecialchars($material['nome']); ?></td>
-                    <td><?php echo htmlspecialchars($material['categoria_nome'] ?? 'Não categorizado'); ?></td>
-                    <?php if ($is_privileged_user): ?>
-                        <td><?php echo $material['qtd']; ?></td>
-                        <td>R$ <?php echo number_format($material['valor_unit'], 2, ',', '.'); ?></td>
-                        <td>
-                            <?php 
-                                switch($material['situacao_estoque']) {
-                                    case 'sem_estoque': echo '<span class="badge badge-danger">Sem estoque</span>'; break;
-                                    case 'estoque_baixo': echo '<span class="badge badge-warning">Estoque baixo</span>'; break;
-                                    case 'estoque_normal': echo '<span class="badge badge-success">Normal</span>'; break;
-                                }
-                            ?>
-                        </td>
-                    <?php endif; ?>
+<?php if (empty($materiais)): ?>
+    <div class="alert alert-info">Nenhum material encontrado.</div>
+<?php else: ?>
+    <table class="almoxarifado-table">
+        <thead>
+            <tr>
+                <th>Código</th>
+                <th>Nome</th>
+                <th>Categoria</th>
+                <?php if ($is_privileged_user): ?>
+                    <th>Estoque</th>
+                    <th>Valor Unit.</th>
+                    <th>Status</th>
+                <?php endif; ?>
+                <th>Ações</th>
+            </tr>
+        </thead>
+        <tbody id="itens-table-body">
+            <?php foreach($materiais as $material): ?>
+            <tr>
+                <td><?php echo htmlspecialchars($material['codigo']); ?></td>
+                <td><?php echo htmlspecialchars($material['nome']); ?></td>
+                <td><?php echo htmlspecialchars($material['categoria_nome'] ?? 'Não categorizado'); ?></td>
+                <?php if ($is_privileged_user): ?>
+                    <td><?php echo $material['estoque_atual']; ?></td>
+                    <td>R$ <?php echo number_format($material['valor_unitario'], 2, ',', '.'); ?></td>
                     <td>
-                        <?php if ($is_privileged_user): ?>
-                            <a href="empenhos/material_add.php?id=<?php echo $material['id']; ?>" title="Editar" class="btn-custom"><i class="fas fa-edit"></i></a>
-                        <?php else: ?>
-                            <button type="button" class="btn-custom btn-solicitar" data-item-id="<?php echo $material['id']; ?>">Solicitar</button>
-                        <?php endif; ?>
+                        <?php 
+                            switch($material['situacao_estoque']) {
+                                case 'sem_estoque': echo '<span class="badge badge-danger">Sem estoque</span>'; break;
+                                case 'estoque_baixo': echo '<span class="badge badge-warning">Estoque baixo</span>'; break;
+                                case 'estoque_normal': echo '<span class="badge badge-success">Normal</span>'; break;
+                            }
+                        ?>
                     </td>
-                </tr>
-                <?php endforeach; ?>
-            </tbody>
-        </table>
-    <?php endif; ?>
-</form>
+                <?php endif; ?>
+                <td>
+                    <?php if ($is_privileged_user): ?>
+                        <a href="material_edit.php?id=<?php echo $material['id']; ?>" title="Editar" class="btn-custom"><i class="fas fa-edit"></i></a>
+                    <?php else: ?>
+                        <button type="button" class="btn-custom btn-solicitar" data-item-id="<?php echo $material['id']; ?>">Solicitar</button>
+                    <?php endif; ?>
+                </td>
+            </tr>
+            <?php endforeach; ?>
+        </tbody>
+    </table>
+<?php endif; ?>
 
 <?php if ($total_paginas > 1): ?>
 <div class="pagination">
@@ -198,174 +181,12 @@ $categorias = $pdo->query("SELECT id, descricao FROM categorias ORDER BY descric
 <?php endif; ?>
 
 <script>
-// --- Lógica para Pesquisa Dinâmica (AJAX) ---
-document.addEventListener('DOMContentLoaded', function() {
-    console.log('DOM fully loaded and parsed');
-    
-    const searchInput = document.getElementById('search_query_input');
-    const tableBody = document.getElementById('itens-table-body');
-    const pagination = document.querySelector('.pagination');
-    const selectAllCheckbox = document.getElementById('select-all-checkbox');
-    const bulkActionButtons = document.getElementById('bulk-action-buttons');
-    const btnRequisitarSelecionados = document.getElementById('btn-requisitar-selecionados');
-    const btnNovaRequisicao = document.getElementById('btn-nova-requisicao');
-    
-    // Função para atualizar visibilidade dos botões de ação em massa
-    function updateBulkActionButtons() {
-        const checkedCheckboxes = document.querySelectorAll('.item-checkbox:checked');
-        if (checkedCheckboxes.length > 0) {
-            bulkActionButtons.style.display = 'block';
-        } else {
-            bulkActionButtons.style.display = 'none';
-        }
-    }
-    
-    // Evento para selecionar todos os checkboxes
-    if (selectAllCheckbox) {
-        selectAllCheckbox.addEventListener('change', function() {
-            const checkboxes = document.querySelectorAll('.item-checkbox');
-            checkboxes.forEach(checkbox => {
-                checkbox.checked = this.checked;
-            });
-            updateBulkActionButtons();
-        });
-    }
-    
-    // Evento para atualizar botões quando um checkbox é marcado/desmarcado
-    document.addEventListener('change', function(e) {
-        if (e.target.classList.contains('item-checkbox')) {
-            updateBulkActionButtons();
-        }
-    });
-    
-    // Evento para o botão de requisição de itens selecionados
-    if (btnRequisitarSelecionados) {
-        btnRequisitarSelecionados.addEventListener('click', function() {
-            const checkedCheckboxes = document.querySelectorAll('.item-checkbox:checked');
-            if (checkedCheckboxes.length > 0) {
-                const itemIds = Array.from(checkedCheckboxes).map(cb => cb.value);
-                
-                // Criar um formulário temporário para enviar os IDs
-                const form = document.createElement('form');
-                form.method = 'POST';
-                form.action = 'empenhos/requisicao.php';
-                
-                // Adicionar os IDs como campos hidden
-                itemIds.forEach(id => {
-                    const input = document.createElement('input');
-                    input.type = 'hidden';
-                    input.name = 'item_ids[]';
-                    input.value = id;
-                    form.appendChild(input);
-                });
-                
-                // Adicionar um campo para indicar que é uma requisição de itens selecionados
-                const bulkRequest = document.createElement('input');
-                bulkRequest.type = 'hidden';
-                bulkRequest.name = 'bulk_request';
-                bulkRequest.value = '1';
-                form.appendChild(bulkRequest);
-                
-                document.body.appendChild(form);
-                form.submit();
-            }
-        });
-    }
-    
-    // Eventos para os botões de solicitação individuais
-    document.addEventListener('click', function(e) {
-        if (e.target.classList.contains('btn-solicitar')) {
-            const itemId = e.target.getAttribute('data-item-id');
-            
-            // Criar um formulário temporário para enviar o ID do item
-            const form = document.createElement('form');
-            form.method = 'POST';
-            form.action = 'empenhos/requisicao.php';
-            
-            // Adicionar o ID como campo hidden
-            const input = document.createElement('input');
-            input.type = 'hidden';
-            input.name = 'item_ids[]';
-            input.value = itemId;
-            form.appendChild(input);
-            
-            document.body.appendChild(form);
-            form.submit();
-        }
-    });
-    
-    console.log('Search input element:', searchInput);
-    
-    if (searchInput) {
-        console.log('Search input element found in JavaScript');
-        
-        searchInput.addEventListener('input', function() {
-            console.log('Input event triggered');
-            const searchTerm = this.value.trim();
-            console.log('Search term:', searchTerm);
-            
-            if (searchTerm.length >= 2) {
-                console.log('Search term length >= 2, making API call');
-                // Caminho absoluto
-                const apiUrl = '/inventario/api/almoxarifado_search_materiais.php?term=' + encodeURIComponent(searchTerm);
-                console.log('Fetching data from:', apiUrl);
-                
-                fetch(apiUrl)
-                    .then(response => {
-                        console.log('Response status:', response.status);
-                        if (!response.ok) {
-                            throw new Error('Network response was not ok');
-                        }
-                        return response.json();
-                    })
-                    .then(data => {
-                        console.log('Received data:', data);
-                        tableBody.innerHTML = '';
-                        if (pagination) pagination.style.display = 'none';
-
-                        if (data.length > 0) {
-                            data.forEach(item => {
-                                const isPrivileged = <?php echo json_encode($is_privileged_user); ?>;
-                                let rowHtml = `<tr>
-                                    <td><input type="checkbox" name="item_ids[]" value="${item.id}" class="item-checkbox"></td>
-                                    <td>${item.nome}</td>
-                                    <td>${item.categoria_nome || 'Não categorizado'}</td>`;
-                                
-                                if (isPrivileged) {
-                                    rowHtml += `<td>${item.qtd}</td>
-                                                <td>R$ ${item.valor_unit}</td>
-                                                <td>${item.status_badge}</td>`;
-                                }
-
-                                rowHtml += `<td>`;
-                                if (isPrivileged) {
-                                    rowHtml += `<a href="empenhos/material_add.php?id=${item.id}" title="Editar" class="btn-custom"><i class="fas fa-edit"></i></a>`;
-                                } else {
-                                    rowHtml += `<button type="button" class="btn-custom btn-solicitar" data-item-id="${item.id}">Solicitar</button>`;
-                                }
-                                rowHtml += `</td></tr>`;
-                                tableBody.innerHTML += rowHtml;
-                            });
-                        } else {
-                            tableBody.innerHTML = `<tr><td colspan="100%">Nenhum material encontrado.</td></tr>`;
-                        }
-                        
-                        // Atualizar visibilidade dos botões de ação em massa
-                        updateBulkActionButtons();
-                    })
-                    .catch(error => {
-                        console.error('Error fetching data:', error);
-                    });
-            } else if (searchTerm.length === 0) {
-                console.log('Search term length === 0, reloading page');
-                // Recarrega a página para restaurar a lista original com paginação
-                window.location.href = window.location.pathname;
-            } else {
-                console.log('Search term length < 2, not enough characters');
-            }
-        });
-    } else {
-        console.log('Search input element NOT found in JavaScript');
+// Script para solicitar item individualmente (a ser implementado se necessário)
+document.addEventListener('click', function(e) {
+    if (e.target.classList.contains('btn-solicitar')) {
+        const itemId = e.target.getAttribute('data-item-id');
+        // Redirecionar para a página de requisição com o ID do item
+        window.location.href = `empenhos_requisicao.php?item_id=${itemId}`;
     }
 });
 </script>

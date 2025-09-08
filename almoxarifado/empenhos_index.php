@@ -1,17 +1,17 @@
 <?php
-require_once '../../includes/header.php';
-require_once '../../config/db.php';
+require_once '../includes/header.php';
+require_once '../config/db.php';
 
 // Verificar permissões - apenas administradores podem acessar
 if($_SESSION["permissao"] != 'Administrador'){
     echo "<div class='alert alert-danger'>Acesso negado. Você não tem permissão para executar esta ação.</div>";
-    require_once '../../includes/footer.php';
+    require_once '../includes/footer.php';
     exit;
 }
 
 // Buscar estatísticas
 // Total de categorias
-$sql_categorias = "SELECT COUNT(*) as total FROM categorias";
+$sql_categorias = "SELECT COUNT(*) as total FROM almoxarifado_categorias";
 $stmt_categorias = $pdo->prepare($sql_categorias);
 $stmt_categorias->execute();
 $total_categorias = $stmt_categorias->fetch(PDO::FETCH_ASSOC)['total'];
@@ -29,7 +29,7 @@ $stmt_notas->execute();
 $total_notas = $stmt_notas->fetch(PDO::FETCH_ASSOC)['total'];
 
 // Total de materiais
-$sql_materiais = "SELECT COUNT(*) as total FROM materiais";
+$sql_materiais = "SELECT COUNT(*) as total FROM almoxarifado_materiais";
 $stmt_materiais = $pdo->prepare($sql_materiais);
 $stmt_materiais->execute();
 $total_materiais = $stmt_materiais->fetch(PDO::FETCH_ASSOC)['total'];
@@ -47,7 +47,7 @@ $total_materiais = $stmt_materiais->fetch(PDO::FETCH_ASSOC)['total'];
             <a href="material_add.php" class="btn-custom">Adicionar Material</a>
         <?php endif; ?>
         <?php if($_SESSION["permissao"] == 'Administrador'): ?>
-            <a href="../admin_notificacoes.php" class="btn-custom">Gerenciar Requisições</a>
+            <a href="admin_notificacoes.php" class="btn-custom">Gerenciar Requisições</a>
         <?php endif; ?>
     </div>
     
@@ -117,5 +117,5 @@ $total_materiais = $stmt_materiais->fetch(PDO::FETCH_ASSOC)['total'];
 </div>
 
 <?php
-require_once '../../includes/footer.php';
+require_once '../includes/footer.php';
 ?>

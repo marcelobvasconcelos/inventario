@@ -1,222 +1,193 @@
 <?php
-// almoxarifado/requisicao.php - Formulário de requisição de produtos
 require_once '../includes/header.php';
-require_once '../config/db.php';
+require_once '../config/db.php'; // Garante que $pdo seja inicializado
 
-// Verificar permissões
+// Verificar permissões - apenas usuários logados podem acessar
 if (!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true) {
     header("location: ../login.php");
     exit;
 }
 
 // Verificar se o usuário tem permissão de administrador, almoxarife, visualizador ou gestor
-if ($_SESSION["permissao"] != 'Administrador' && $_SESSION["permissao"] != 'Almoxarife' && $_SESSION["permissao"] != 'Visualizador' && $_SESSION["permissao"] != 'Gestor') {
+if (!in_array($_SESSION["permissao"], ['Administrador', 'Almoxarife', 'Visualizador', 'Gestor'])) {
     header("location: index.php");
     exit;
 }
 
-// Buscar todos os produtos disponíveis
-$sql_produtos = "SELECT id, nome, estoque_atual, unidade_medida FROM almoxarifado_produtos WHERE estoque_atual > 0 ORDER BY nome";
-$produtos = [];
-if($stmt_produtos = mysqli_prepare($link, $sql_produtos)){
-    if(mysqli_stmt_execute($stmt_produtos)){
-        $result_produtos = mysqli_stmt_get_result($stmt_produtos);
-        while($row = mysqli_fetch_assoc($result_produtos)){
-            $produtos[] = $row;
-        }
-    }
-    mysqli_stmt_close($stmt_produtos);
-}
-
-// Buscar todos os locais
+// Buscar todos os locais (usando PDO)
 $sql_locais = "SELECT id, nome FROM locais ORDER BY nome";
-$locais = [];
-if($stmt_locais = mysqli_prepare($link, $sql_locais)){
-    if(mysqli_stmt_execute($stmt_locais)){
-        $result_locais = mysqli_stmt_get_result($stmt_locais);
-        while($row = mysqli_fetch_assoc($result_locais)){
-            $locais[] = $row;
-        }
-    }
-    mysqli_stmt_close($stmt_locais);
-}
+$stmt_locais = $pdo->prepare($sql_locais);
+$stmt_locais->execute();
+$locais = $stmt_locais->fetchAll(PDO::FETCH_ASSOC);
 
 // Variáveis para mensagens
-$mensagem = "";
-$mensagem_tipo = "";
+$message = "";
+$message_type = "";
 
 // Processar o formulário quando for enviado
-if($_SERVER["REQUEST_METHOD"] == "POST"){
-    // Obter dados do formulário
-    $local_id = (int)$_POST['local_id'];
-    $justificativa = trim($_POST['justificativa']);
-    
-    // Validar dados
-    if(empty($local_id)){
-        $mensagem = "Por favor, selecione um local.";
-        $mensagem_tipo = "error";
-    } elseif(empty($justificativa)){
-        $mensagem = "Por favor, informe a justificativa da requisição.";
-        $mensagem_tipo = "error";
+if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['local_id'])) {
+    $local_id = isset($_POST['local_id']) ? (int)$_POST['local_id'] : 0;
+    $justificativa = isset($_POST['justificativa']) ? trim($_POST['justificativa']) : '';
+    $materiais_selecionados = isset($_POST['material_id']) ? $_POST['material_id'] : [];
+    $quantidades = isset($_POST['quantidade']) ? $_POST['quantidade'] : [];
+
+    $erros_validacao = [];
+    if (empty($local_id)) {
+        $erros_validacao[] = "O campo 'Local de Destino' é obrigatório.";
+    }
+    if (empty($justificativa)) {
+        $erros_validacao[] = "O campo 'Justificativa' é obrigatório.";
+    }
+    if (empty($materiais_selecionados) || empty($materiais_selecionados[0])) {
+        $erros_validacao[] = "É necessário adicionar pelo menos um material à requisição.";
+    }
+
+    if (!empty($erros_validacao)) {
+        $message = implode("<br>", $erros_validacao);
+        $message_type = "danger";
     } else {
-        // Iniciar transação
-        mysqli_autocommit($link, FALSE);
-        
-        try {
-            // Inserir a requisição
-            $sql_requisicao = "INSERT INTO almoxarifado_requisicoes (usuario_id, local_id, data_requisicao, justificativa, status_notificacao) VALUES (?, ?, NOW(), ?, 'pendente')";
-            if($stmt_requisicao = mysqli_prepare($link, $sql_requisicao)){
-                mysqli_stmt_bind_param($stmt_requisicao, "iis", $_SESSION['id'], $local_id, $justificativa);
-                if(mysqli_stmt_execute($stmt_requisicao)){
-                    $requisicao_id = mysqli_insert_id($link);
-                    mysqli_stmt_close($stmt_requisicao);
-                    
-                    // Processar os itens da requisição
-                    $itens_inseridos = false;
-                    foreach($_POST['produto_id'] as $index => $produto_id){
-                        $quantidade = (int)$_POST['quantidade'][$index];
-                        
-                        // Verificar se a quantidade é maior que zero
-                        if($quantidade > 0){
-                            // Inserir item da requisição
-                            $sql_item = "INSERT INTO almoxarifado_requisicoes_itens (requisicao_id, produto_id, quantidade_solicitada) VALUES (?, ?, ?)";
-                            if($stmt_item = mysqli_prepare($link, $sql_item)){
-                                mysqli_stmt_bind_param($stmt_item, "iii", $requisicao_id, $produto_id, $quantidade);
-                                if(mysqli_stmt_execute($stmt_item)){
-                                    $itens_inseridos = true;
-                                } else {
-                                    throw new Exception("Erro ao inserir item da requisição.");
-                                }
-                                mysqli_stmt_close($stmt_item);
-                            } else {
-                                throw new Exception("Erro ao preparar statement para item da requisição.");
-                            }
-                        }
-                    }
-                    
-                    if($itens_inseridos){
-                        // Após inserir a requisição, criar notificação para os administradores
-                        // Buscar todos os usuários com permissão de administrador
-                        $sql_admins = "SELECT id FROM usuarios WHERE permissao = 'Administrador' AND status = 'aprovado'";
-                        $result_admins = mysqli_query($link, $sql_admins);
-                        
-                        if($result_admins && mysqli_num_rows($result_admins) > 0){
-                            // Criar uma notificação para cada administrador
-                            while($admin = mysqli_fetch_assoc($result_admins)){
-                                $admin_id = $admin['id'];
-                                
-                                // Mensagem da notificação
-                                $mensagem_notificacao = "Nova requisição de almoxarifado #" . $requisicao_id . " criada por " . $_SESSION['nome'] . ".";
-                                
-                                // Inserir notificação
-                                $sql_notificacao = "INSERT INTO almoxarifado_requisicoes_notificacoes 
-                                    (requisicao_id, usuario_origem_id, usuario_destino_id, tipo, mensagem, status) 
-                                    VALUES (?, ?, ?, 'nova_requisicao', ?, 'pendente')";
-                                
-                                if($stmt_notificacao = mysqli_prepare($link, $sql_notificacao)){
-                                    mysqli_stmt_bind_param($stmt_notificacao, "iiis", $requisicao_id, $_SESSION['id'], $admin_id, $mensagem_notificacao);
-                                    if(!mysqli_stmt_execute($stmt_notificacao)){
-                                        throw new Exception("Erro ao criar notificação para administrador ID: " . $admin_id);
-                                    }
-                                    mysqli_stmt_close($stmt_notificacao);
-                                } else {
-                                    throw new Exception("Erro ao preparar statement para notificação.");
-                                }
-                            }
-                        }
-                        
-                        // Commit da transação
-                        mysqli_commit($link);
-                        
-                        $mensagem = "Requisição criada com sucesso! Aguarde a aprovação do administrador.";
-                        $mensagem_tipo = "success";
-                        
-                        // Limpar os dados do formulário
-                        $_POST = array();
-                    } else {
-                        throw new Exception("Nenhum item válido foi adicionado à requisição.");
-                    }
+        // Validar materiais e quantidades
+        $itens_validos = [];
+        $erros = [];
+
+        for ($i = 0; $i < count($materiais_selecionados); $i++) {
+            $material_id = (int)$materiais_selecionados[$i];
+            $quantidade = isset($quantidades[$i]) ? (int)$quantidades[$i] : 0;
+
+            if ($material_id > 0 && $quantidade > 0) {
+                // Verificar estoque na tabela correta (almoxarifado_materiais)
+                $sql_estoque = "SELECT nome, estoque_atual FROM almoxarifado_materiais WHERE id = ?";
+                $stmt_estoque = $pdo->prepare($sql_estoque);
+                $stmt_estoque->execute([$material_id]);
+                $material = $stmt_estoque->fetch(PDO::FETCH_ASSOC);
+
+                if ($material && $quantidade <= $material['estoque_atual']) {
+                    $itens_validos[] = [
+                        'material_id' => $material_id,
+                        'quantidade' => $quantidade,
+                        'nome' => $material['nome']
+                    ];
                 } else {
-                    throw new Exception("Erro ao criar requisição.");
+                    $erros[] = "Quantidade solicitada para " . ($material ? htmlspecialchars($material['nome']) : "material desconhecido") . " excede o estoque disponível.";
                 }
-            } else {
-                throw new Exception("Erro ao preparar statement para requisição.");
             }
-        } catch(Exception $e) {
-            // Rollback da transação em caso de erro
-            mysqli_rollback($link);
-            $mensagem = "Erro ao criar requisição: " . $e->getMessage();
-            $mensagem_tipo = "error";
         }
-        
-        // Reativar o autocommit
-        mysqli_autocommit($link, TRUE);
+
+        if (!empty($erros)) {
+            $message = "Erros encontrados:<br>" . implode("<br>", $erros);
+            $message_type = "danger";
+        } elseif (empty($itens_validos)) {
+            $message = "Nenhum item válido foi adicionado à requisição.";
+            $message_type = "danger";
+        } else {
+            // Iniciar transação
+            $pdo->beginTransaction();
+
+            try {
+                // Criar requisição
+                $sql_requisicao = "INSERT INTO almoxarifado_requisicoes (usuario_id, local_id, data_requisicao, justificativa) 
+                                   VALUES (?, ?, NOW(), ?)";
+                $stmt_requisicao = $pdo->prepare($sql_requisicao);
+                $stmt_requisicao->execute([$_SESSION['id'], $local_id, $justificativa]);
+                $requisicao_id = $pdo->lastInsertId();
+
+                // Adicionar itens à requisição
+                foreach ($itens_validos as $item) {
+                    $sql_item = "INSERT INTO almoxarifado_requisicoes_itens (requisicao_id, material_id, quantidade_solicitada) 
+                                 VALUES (?, ?, ?)";
+                    $stmt_item = $pdo->prepare($sql_item);
+                    $stmt_item->execute([$requisicao_id, $item['material_id'], $item['quantidade']]);
+                }
+
+                // Buscar administradores e almoxarifes para notificar
+                $sql_users = "SELECT u.id FROM usuarios u JOIN perfis p ON u.permissao_id = p.id WHERE p.nome IN ('Administrador', 'Almoxarife')";
+                $stmt_users = $pdo->prepare($sql_users);
+                $stmt_users->execute();
+                $users_to_notify = $stmt_users->fetchAll(PDO::FETCH_ASSOC);
+
+                if (!empty($users_to_notify)) {
+                    foreach ($users_to_notify as $user) {
+                        $user_id = $user['id'];
+                        $mensagem_notificacao = "Nova requisição de materiais #{$requisicao_id} criada por {$_SESSION['nome']}.";
+                        $sql_notificacao = "INSERT INTO almoxarifado_requisicoes_notificacoes 
+                            (requisicao_id, usuario_origem_id, usuario_destino_id, tipo, mensagem, status) 
+                            VALUES (?, ?, ?, 'nova_requisicao', ?, 'pendente')";
+                        $stmt_notificacao = $pdo->prepare($sql_notificacao);
+                        $stmt_notificacao->execute([$requisicao_id, $_SESSION['id'], $user_id, $mensagem_notificacao]);
+                    }
+                }
+
+                $pdo->commit();
+                $message = "Requisição criada com sucesso! Aguarde a aprovação.";
+                $message_type = "success";
+                $_POST = array(); // Limpar formulário
+            } catch (Exception $e) {
+                $pdo->rollback();
+                $message = "Erro ao criar requisição: " . $e->getMessage();
+                $message_type = "danger";
+            }
+        }
     }
 }
 ?>
 
 <div class="almoxarifado-header">
     <h2>Nova Requisição</h2>
+    <?php
+    $is_privileged_user = in_array($_SESSION['permissao'], ['Administrador', 'Almoxarife']);
+    require_once 'menu_almoxarifado.php';
+    ?>
 </div>
 
-<?php if(!empty($mensagem)): ?>
-    <div class="alert alert-<?php echo $mensagem_tipo; ?>">
-        <?php echo $mensagem; ?>
+<?php if (!empty($message)): ?>
+    <div class="alert alert-<?php echo $message_type; ?>">
+        <?php echo $message; ?>
     </div>
 <?php endif; ?>
 
 <form action="<?php echo htmlspecialchars($_SERVER["PHP_SELF"]); ?>" method="post">
     <div class="almoxarifado-form-section">
         <h3>Dados da Requisição</h3>
-        
         <div class="form-group">
-            <label>Local de Destino</label>
-            <select name="local_id" class="form-control">
-                <option value="">Selecione um local</option>
-                <?php foreach($locais as $local): ?>
-                    <option value="<?php echo $local['id']; ?>" <?php echo (isset($_POST['local_id']) && $_POST['local_id'] == $local['id']) ? 'selected' : ''; ?>>
-                        <?php echo htmlspecialchars($local['nome']); ?>
-                    </option>
-                <?php endforeach; ?>
-            </select>
-        </div>
-        
-        <div class="form-group">
-            <label>Justificativa</label>
-            <textarea name="justificativa" class="form-control" rows="4"><?php echo isset($_POST['justificativa']) ? htmlspecialchars($_POST['justificativa']) : ''; ?></textarea>
-        </div>
-    </div>
-    
-    <div class="almoxarifado-form-section">
-        <h3>Itens da Requisição</h3>
-        
-        <div id="itens-requisicao">
-            <div class="item-requisicao">
-                <div class="form-group">
-                    <label>Produto</label>
-                    <select name="produto_id[]" class="form-control produto-select">
-                        <option value="">Selecione um produto</option>
-                        <?php foreach($produtos as $produto): ?>
-                            <option value="<?php echo $produto['id']; ?>" data-estoque="<?php echo $produto['estoque_atual']; ?>">
-                                <?php echo htmlspecialchars($produto['nome']); ?> (Estoque: <?php echo $produto['estoque_atual']; ?> <?php echo $produto['unidade_medida']; ?>)
-                            </option>
-                        <?php endforeach; ?>
-                    </select>
-                </div>
-                
-                <div class="form-group">
-                    <label>Quantidade</label>
-                    <input type="number" name="quantidade[]" class="form-control quantidade-input" min="1" value="<?php echo isset($_POST['quantidade'][0]) ? (int)$_POST['quantidade'][0] : ''; ?>">
-                    <small class="form-text text-muted estoque-info" style="display: none;">Estoque disponível: <span class="estoque-valor"></span></small>
-                </div>
-                
-                <button type="button" class="btn btn-danger remover-item" style="display: none;">Remover Item</button>
+            <label for="local_autocomplete">Local de Destino</label>
+            <div class="autocomplete-container">
+                <input type="text" id="local_autocomplete" class="autocomplete-input" placeholder="Digite o nome do local...">
+                <input type="hidden" name="local_id" id="local_id">
+                <div class="autocomplete-suggestions" id="local_suggestions"></div>
             </div>
         </div>
-        
-        <button type="button" class="btn btn-secondary" id="adicionar-item">Adicionar Mais Itens</button>
+        <div class="form-group">
+            <label for="justificativa">Justificativa</label>
+            <textarea name="justificativa" id="justificativa" class="form-control" rows="2"><?php echo isset($_POST['justificativa']) ? htmlspecialchars($_POST['justificativa']) : ''; ?></textarea>
+        </div>
     </div>
-    
+
+    <div class="almoxarifado-form-section">
+        <h3>Itens da Requisição</h3>
+        <div id="itens-requisicao">
+            <!-- O primeiro item é adicionado aqui para o caso de não haver itens pré-selecionados -->
+            <div class="item-requisicao">
+                <div class="requisicao-grid">
+                    <div class="form-group">
+                        <label>Material</label>
+                        <div class="autocomplete-container">
+                            <input type="text" class="autocomplete-input material-autocomplete" placeholder="Digite o nome do material...">
+                            <input type="hidden" name="material_id[]" class="material-id">
+                            <div class="autocomplete-suggestions material-suggestions"></div>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Quantidade</label>
+                        <input type="number" name="quantidade[]" class="form-control quantidade-input" min="1">
+                        <small class="estoque-info" style="display: none;">Estoque: <span class="estoque-valor"></span></small>
+                    </div>
+                </div>
+                <button type="button" class="remover-item" style="display: none;">Remover</button>
+            </div>
+        </div>
+        <button type="button" class="btn btn-secondary" id="adicionar-item">Adicionar Item</button>
+    </div>
+
     <div class="form-group">
         <input type="submit" class="btn-custom" value="Enviar Requisição">
         <a href="index.php" class="btn btn-secondary">Cancelar</a>
@@ -225,112 +196,140 @@ if($_SERVER["REQUEST_METHOD"] == "POST"){
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Função para adicionar novo item
+    // Função genérica para criar um campo de autocomplete
+    function createAutocomplete(input, suggestionsContainer, apiUrl, onSelectCallback) {
+        let timeout;
+        input.addEventListener('input', function() {
+            const term = this.value.trim();
+            clearTimeout(timeout);
+            if (term.length < 2) {
+                suggestionsContainer.style.display = 'none';
+                return;
+            }
+            timeout = setTimeout(() => {
+                const fullApiUrl = `/inventario/api/${apiUrl}?term=${encodeURIComponent(term)}`;
+                fetch(fullApiUrl)
+                    .then(response => response.json())
+                    .then(data => {
+                        suggestionsContainer.innerHTML = '';
+                        if (data.length > 0) {
+                            suggestionsContainer.style.display = 'block';
+                            data.forEach(item => {
+                                const suggestion = document.createElement('div');
+                                suggestion.className = 'autocomplete-suggestion';
+                                let details = item.categoria ? `Categoria: ${item.categoria}` : '';
+                                if (item.estoque_atual !== undefined) {
+                                    details += ` | Estoque: ${item.estoque_atual}`;
+                                }
+                                suggestion.innerHTML = `<div class="suggestion-title">${item.nome}</div><div class="suggestion-subtitle">${details}</div>`;
+                                suggestion.addEventListener('click', () => {
+                                    input.value = item.nome;
+                                    suggestionsContainer.style.display = 'none';
+                                    if (onSelectCallback) onSelectCallback(item);
+                                });
+                                suggestionsContainer.appendChild(suggestion);
+                            });
+                        } else {
+                            suggestionsContainer.style.display = 'none';
+                        }
+                    })
+                    .catch(error => console.error('Erro ao buscar sugestões:', error));
+            }, 300);
+        });
+        document.addEventListener('click', e => {
+            if (!input.contains(e.target) && !suggestionsContainer.contains(e.target)) {
+                suggestionsContainer.style.display = 'none';
+            }
+        });
+    }
+
+    // Inicializar autocomplete para locais
+    const localInput = document.getElementById('local_autocomplete');
+    const localSuggestions = document.getElementById('local_suggestions');
+    const localHiddenInput = document.getElementById('local_id');
+    if (localInput) {
+        createAutocomplete(localInput, localSuggestions, 'search_locais.php', item => {
+            localHiddenInput.value = item.id;
+        });
+    }
+
+    // Função para configurar o autocomplete de um item de material
+    function setupMaterialAutocomplete(itemElement) {
+        const materialInput = itemElement.querySelector('.material-autocomplete');
+        const materialSuggestions = itemElement.querySelector('.material-suggestions');
+        const materialHiddenInput = itemElement.querySelector('.material-id');
+        const estoqueInfo = itemElement.querySelector('.estoque-info');
+        const estoqueValor = itemElement.querySelector('.estoque-valor');
+        const quantidadeInput = itemElement.querySelector('.quantidade-input');
+
+        createAutocomplete(materialInput, materialSuggestions, 'almoxarifado_search_materiais.php', item => {
+            materialHiddenInput.value = item.id;
+            estoqueValor.textContent = item.estoque_atual;
+            estoqueInfo.style.display = 'block';
+            quantidadeInput.max = item.estoque_atual;
+        });
+
+        quantidadeInput.addEventListener('input', function() {
+            const quantidade = parseInt(this.value) || 0;
+            const estoque = parseInt(this.max);
+            if (quantidade > estoque) {
+                alert(`A quantidade não pode ser maior que o estoque (${estoque}).`);
+                this.value = estoque;
+            }
+        });
+    }
+
+    // Configurar o primeiro item
+    setupMaterialAutocomplete(document.querySelector('.item-requisicao'));
+
+    // Adicionar novo item
     document.getElementById('adicionar-item').addEventListener('click', function() {
-        var itensContainer = document.getElementById('itens-requisicao');
-        var novoItem = document.createElement('div');
+        const itensContainer = document.getElementById('itens-requisicao');
+        const novoItem = document.createElement('div');
         novoItem.className = 'item-requisicao';
         novoItem.innerHTML = `
             <hr>
-            <div class="form-group">
-                <label>Produto</label>
-                <select name="produto_id[]" class="form-control produto-select">
-                    <option value="">Selecione um produto</option>
-                    <?php foreach($produtos as $produto): ?>
-                        <option value="<?php echo $produto['id']; ?>" data-estoque="<?php echo $produto['estoque_atual']; ?>">
-                            <?php echo htmlspecialchars($produto['nome']); ?> (Estoque: <?php echo $produto['estoque_atual']; ?> <?php echo $produto['unidade_medida']; ?>)
-                        </option>
-                    <?php endforeach; ?>
-                </select>
+            <div class="requisicao-grid">
+                <div class="form-group">
+                    <label>Material</label>
+                    <div class="autocomplete-container">
+                        <input type="text" class="autocomplete-input material-autocomplete" placeholder="Digite o nome do material...">
+                        <input type="hidden" name="material_id[]" class="material-id">
+                        <div class="autocomplete-suggestions material-suggestions"></div>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Quantidade</label>
+                    <input type="number" name="quantidade[]" class="form-control quantidade-input" min="1">
+                    <small class="estoque-info" style="display: none;">Estoque: <span class="estoque-valor"></span></small>
+                </div>
             </div>
-            
-            <div class="form-group">
-                <label>Quantidade</label>
-                <input type="number" name="quantidade[]" class="form-control quantidade-input" min="1">
-                <small class="form-text text-muted estoque-info" style="display: none;">Estoque disponível: <span class="estoque-valor"></span></small>
-            </div>
-            
-            <button type="button" class="btn btn-danger remover-item">Remover Item</button>
+            <button type="button" class="remover-item">Remover</button>
         `;
         itensContainer.appendChild(novoItem);
+        setupMaterialAutocomplete(novoItem);
         
-        // Adicionar evento para o novo select
-        var novoSelect = novoItem.querySelector('.produto-select');
-        novoSelect.addEventListener('change', function() {
-            mostrarEstoque(this);
+        const btnRemover = novoItem.querySelector('.remover-item');
+        btnRemover.style.display = 'inline-block';
+        btnRemover.addEventListener('click', function() {
+            novoItem.remove();
         });
-        
-        // Adicionar evento para o novo input de quantidade
-        var novoInputQuantidade = novoItem.querySelector('.quantidade-input');
-        novoInputQuantidade.addEventListener('input', function() {
-            validarQuantidade(this);
-        });
-        
-        // Adicionar evento para o botão de remover
-        var botaoRemover = novoItem.querySelector('.remover-item');
-        botaoRemover.addEventListener('click', function() {
-            removerItem(this);
-        });
-        botaoRemover.style.display = 'inline-block';
     });
-    
-    // Função para mostrar estoque disponível
-    function mostrarEstoque(select) {
-        var estoqueInfo = select.closest('.item-requisicao').querySelector('.estoque-info');
-        var estoqueValor = select.closest('.item-requisicao').querySelector('.estoque-valor');
-        
-        if(select.value) {
-            var estoque = select.options[select.selectedIndex].getAttribute('data-estoque');
-            estoqueValor.textContent = estoque;
-            estoqueInfo.style.display = 'block';
-        } else {
-            estoqueInfo.style.display = 'none';
-        }
-    }
-    
-    // Função para validar quantidade
-    function validarQuantidade(input) {
-        var select = input.closest('.item-requisicao').querySelector('.produto-select');
-        if(select.value && input.value) {
-            var estoque = parseInt(select.options[select.selectedIndex].getAttribute('data-estoque'));
-            var quantidade = parseInt(input.value);
-            
-            if(quantidade > estoque) {
-                alert('A quantidade solicitada não pode ser maior que o estoque disponível (' + estoque + ').');
-                input.value = estoque;
+
+    // Configurar botão de remover para o primeiro item (se houver mais de um)
+    const primeiroRemover = document.querySelector('.remover-item');
+    if (primeiroRemover) {
+        primeiroRemover.addEventListener('click', function() {
+            if (document.querySelectorAll('.item-requisicao').length > 1) {
+                this.closest('.item-requisicao').remove();
+            } else {
+                alert("Você não pode remover o último item.");
             }
-        }
+        });
     }
-    
-    // Função para remover item
-    function removerItem(botao) {
-        var item = botao.closest('.item-requisicao');
-        item.remove();
-    }
-    
-    // Adicionar eventos para os selects e inputs existentes
-    document.querySelectorAll('.produto-select').forEach(function(select) {
-        select.addEventListener('change', function() {
-            mostrarEstoque(this);
-        });
-    });
-    
-    document.querySelectorAll('.quantidade-input').forEach(function(input) {
-        input.addEventListener('input', function() {
-            validarQuantidade(this);
-        });
-    });
-    
-    document.querySelectorAll('.remover-item').forEach(function(botao) {
-        botao.addEventListener('click', function() {
-            removerItem(this);
-        });
-        botao.style.display = 'inline-block';
-    });
 });
 </script>
 
 <?php
-mysqli_close($link);
 require_once '../includes/footer.php';
 ?>

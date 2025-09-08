@@ -17,7 +17,6 @@
         *   Tela do Admin: `almoxarifado/admin_notificacoes.php`.
         *   Tela do Usuário: `almoxarifado/notificacoes.php`.
         *   Este sistema lida com o fluxo de aprovação, discussão e agendamento de requisições de materiais.
-*   **Diretório `empenhos/`:** Esta pasta deve ser usada **apenas** para funcionalidades de cadastro (ex: `material_add.php`). O fluxo de requisições e notificações não deve ficar aqui.
 
 **3. "Pegadinhas" do Banco de Dados (Essencial)**
 *   As tabelas de histórico de conversa têm nomes de coluna de data **diferentes**. Isso causa erros fatais se não for observado.
@@ -28,3 +27,15 @@
 **4. Padrões de Código e Problemas Recorrentes**
 *   **Erro de Resposta AJAX:** O sistema tem um problema recorrente onde um erro fatal no PHP faz com que o servidor retorne uma página HTML completa em vez de uma resposta JSON.
     *   **Solução Aplicada:** O JavaScript nos arquivos de notificação foi modificado para receber a resposta como `response.text()` e depois tentar extrair a mensagem de sucesso. **Não reverta isso para `response.json()`** sem antes encontrar e corrigir a causa raiz do erro fatal no PHP.
+
+**5. Refatorações Importantes (Setembro 2025)**
+*   **Unificação do Módulo de Almoxarifado:**
+    *   A pasta `almoxarifado/empenhos/` foi removida e todos os seus arquivos (`categoria_add.php`, `empenho_add.php`, etc.) foram movidos para a raiz do diretório `almoxarifado/`.
+    *   Os arquivos conflitantes (`index.php`, `requisicao.php`) foram renomeados para `empenhos_index.php` e `empenhos_requisicao.php`.
+    *   Todos os caminhos de `include` e links `href` nos arquivos movidos foram corrigidos.
+*   **Separação das Categorias:**
+    *   Foi criada uma nova tabela, `almoxarifado_categorias`, para gerenciar exclusivamente as categorias de itens do almoxarifado.
+    *   A tabela `categorias` antiga agora serve apenas ao sistema de inventário principal.
+    *   Todos os scripts do módulo `almoxarifado` foram refatorados para usar a nova tabela `almoxarifado_categorias`.
+*   **Componente de Menu:**
+    *   Foi criado o arquivo `almoxarifado/menu_almoxarifado.php` para centralizar o menu de navegação secundário do módulo, que agora é incluído em todas as páginas relevantes.

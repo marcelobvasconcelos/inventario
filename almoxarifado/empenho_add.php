@@ -1,11 +1,11 @@
 <?php
-require_once '../../includes/header.php';
-require_once '../../config/db.php';
+require_once '../includes/header.php';
+require_once '../config/db.php';
 
 // Verificar permissões - apenas administradores podem acessar
 if($_SESSION["permissao"] != 'Administrador'){
     echo "<div class='alert alert-danger'>Acesso negado. Você não tem permissão para executar esta ação.</div>";
-    require_once '../../includes/footer.php';
+    require_once '../includes/footer.php';
     exit;
 }
 
@@ -117,7 +117,7 @@ $empenhos = $stmt_empenhos->fetchAll(PDO::FETCH_ASSOC);
                 </div>
                 
                 <button type="submit" name="cadastrar_empenho" class="btn btn-primary">Cadastrar Empenho</button>
-                <a href="index.php" class="btn btn-secondary">Voltar</a>
+                <a href="empenhos_index.php" class="btn btn-secondary">Voltar</a>
             </form>
         </div>
     </div>
@@ -167,5 +167,5 @@ $empenhos = $stmt_empenhos->fetchAll(PDO::FETCH_ASSOC);
 </div>
 
 <?php
-require_once '../../includes/footer.php';
+require_once '../includes/footer.php';
 ?>

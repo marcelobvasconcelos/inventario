@@ -1,11 +1,11 @@
 <?php
-require_once '../../includes/header.php';
-require_once '../../config/db.php';
+require_once '../includes/header.php';
+require_once '../config/db.php';
 
 // Verificar permissões - apenas administradores podem acessar
 if($_SESSION["permissao"] != 'Administrador'){
     echo "<div class='alert alert-danger'>Acesso negado. Você não tem permissão para executar esta ação.</div>";
-    require_once '../../includes/footer.php';
+    require_once '../includes/footer.php';
     exit;
 }
 
@@ -127,5 +127,5 @@ if($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['editar_empenho'])){
 </div>
 
 <?php
-require_once '../../includes/footer.php';
+require_once '../includes/footer.php';
 ?>
