@@ -49,23 +49,23 @@ $notas_fiscais = [
 // Materiais e suas entradas
 $materiais_e_entradas = [
     [
-        'material' => ['codigo' => 'MAT-001', 'nome' => 'Caneta Esferográfica Azul', 'descricao' => 'Caixa com 50 unidades', 'unidade_medida' => 'Caixa', 'categoria' => 'Material de Escritório', 'valor_unitario' => 25.50],
+        'material' => ['codigo' => 'MAT-001', 'nome' => 'Caneta Esferográfica Azul', 'descricao' => 'Caixa com 50 unidades', 'unidade_medida' => 'Caixa', 'categoria' => 'Material de Escritório', 'valor_unitario' => 25.50, 'quantidade_maxima_requisicao' => 10],
         'entrada' => ['quantidade' => 20, 'nota_fiscal' => 'NF-00101']
     ],
     [
-        'material' => ['codigo' => 'MAT-002', 'nome' => 'Resma de Papel A4', 'descricao' => 'Pacote com 500 folhas, 75g/m²', 'unidade_medida' => 'Resma', 'categoria' => 'Material de Escritório', 'valor_unitario' => 22.00],
+        'material' => ['codigo' => 'MAT-002', 'nome' => 'Resma de Papel A4', 'descricao' => 'Pacote com 500 folhas, 75g/m²', 'unidade_medida' => 'Resma', 'categoria' => 'Material de Escritório', 'valor_unitario' => 22.00, 'quantidade_maxima_requisicao' => 5],
         'entrada' => ['quantidade' => 50, 'nota_fiscal' => 'NF-00101']
     ],
     [
-        'material' => ['codigo' => 'ELE-101', 'nome' => 'Resistor 10k Ohm', 'descricao' => 'Pacote com 100 unidades', 'unidade_medida' => 'Pacote', 'categoria' => 'Componentes Eletrônicos', 'valor_unitario' => 15.00],
+        'material' => ['codigo' => 'ELE-101', 'nome' => 'Resistor 10k Ohm', 'descricao' => 'Pacote com 100 unidades', 'unidade_medida' => 'Pacote', 'categoria' => 'Componentes Eletrônicos', 'valor_unitario' => 15.00, 'quantidade_maxima_requisicao' => 50],
         'entrada' => ['quantidade' => 100, 'nota_fiscal' => 'NF-7754']
     ],
     [
-        'material' => ['codigo' => 'ELE-205', 'nome' => 'Arduino Uno R3', 'descricao' => 'Placa de desenvolvimento', 'unidade_medida' => 'Unidade', 'categoria' => 'Componentes Eletrônicos', 'valor_unitario' => 85.75],
+        'material' => ['codigo' => 'ELE-205', 'nome' => 'Arduino Uno R3', 'descricao' => 'Placa de desenvolvimento', 'unidade_medida' => 'Unidade', 'categoria' => 'Componentes Eletrônicos', 'valor_unitario' => 85.75, 'quantidade_maxima_requisicao' => 2],
         'entrada' => ['quantidade' => 30, 'nota_fiscal' => 'NF-7754']
     ],
     [
-        'material' => ['codigo' => 'LMP-01', 'nome' => 'Água Sanitária 5L', 'descricao' => 'Galao de 5 litros', 'unidade_medida' => 'Galão', 'categoria' => 'Material de Limpeza', 'valor_unitario' => 12.50],
+        'material' => ['codigo' => 'LMP-01', 'nome' => 'Água Sanitária 5L', 'descricao' => 'Galao de 5 litros', 'unidade_medida' => 'Galão', 'categoria' => 'Material de Limpeza', 'valor_unitario' => 12.50, 'quantidade_maxima_requisicao' => 5],
         'entrada' => ['quantidade' => 30, 'nota_fiscal' => 'NF-9889']
     ]
 ];
@@ -107,7 +107,7 @@ try {
 
     // 4. Inserir Materiais em almoxarifado_materiais e registrar Entradas
     echo "--- Inserindo Materiais e Entradas ---\n";
-    $sql_mat = "INSERT INTO almoxarifado_materiais (codigo, nome, descricao, unidade_medida, categoria, valor_unitario, estoque_atual, status) VALUES (:codigo, :nome, :descricao, :unidade_medida, :categoria, :valor_unitario, :estoque_atual, 'ativo')";
+    $sql_mat = "INSERT INTO almoxarifado_materiais (codigo, nome, descricao, unidade_medida, categoria, valor_unitario, estoque_atual, status, quantidade_maxima_requisicao) VALUES (:codigo, :nome, :descricao, :unidade_medida, :categoria, :valor_unitario, :estoque_atual, 'ativo', :quantidade_maxima_requisicao)";
     $stmt_mat = $pdo->prepare($sql_mat);
 
     $sql_ent = "INSERT INTO almoxarifado_entradas (material_id, quantidade, valor_unitario, fornecedor, nota_fiscal, data_entrada, usuario_id) VALUES (?, ?, ?, ?, ?, ?, ?)";

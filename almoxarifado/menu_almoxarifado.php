@@ -2,6 +2,7 @@
 // Componente de menu reutilizável para o módulo de almoxarifado.
 // A página que incluir este arquivo deve definir as variáveis de permissão.
 ?>
+<a href="dashboard.php" class="btn-custom"><i class="fas fa-chart-line"></i> Dashboard</a>
 <a href="requisicao.php" class="btn-custom"><i class="fas fa-plus"></i> Nova Requisição</a>
 <a href="notificacoes.php" class="btn-custom"><i class="fas fa-bell"></i> Minhas Notificações</a>
 <?php if (isset($is_privileged_user) && $is_privileged_user): ?>

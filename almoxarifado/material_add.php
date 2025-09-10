@@ -13,43 +13,51 @@ $message = '';
 $error = '';
 
 // Inicializar variáveis do formulário
-$codigo = '';
 $nome = '';
 $descricao = '';
 $unidade_medida = '';
 $estoque_atual = 0;
 $valor_unitario = 0;
 $categoria_selecionada = '';
+$quantidade_maxima_requisicao = null;
 
 // Processar formulário de cadastro
 if($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['cadastrar_material'])){
-    $codigo = trim($_POST["codigo"]);
     $nome = trim($_POST["nome"]);
     $descricao = trim($_POST["descricao"]);
     $unidade_medida = trim($_POST["unidade_medida"]);
     $estoque_atual = trim($_POST["estoque_atual"]);
     $valor_unitario = trim($_POST["valor_unitario"]);
+    $quantidade_maxima_requisicao = !empty($_POST["quantidade_maxima_requisicao"]) ? (int)trim($_POST["quantidade_maxima_requisicao"]) : null;
     $categoria_selecionada = trim($_POST["categoria"]);
 
-    if(empty($codigo) || empty($nome) || empty($unidade_medida) || empty($categoria_selecionada)){
-        $error = "Código, Nome, Unidade de Medida e Categoria são obrigatórios.";
+    if(empty($nome) || empty($unidade_medida) || empty($categoria_selecionada)){
+        $error = "Nome, Unidade de Medida e Categoria são obrigatórios.";
     } else {
-        // Verificar se o código já existe
+        // Gerar código automaticamente (MAT- + próximo ID)
+        $sql_next_id = "SELECT AUTO_INCREMENT FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'almoxarifado_materiais'";
+        $stmt_next_id = $pdo->prepare($sql_next_id);
+        $stmt_next_id->execute();
+        $next_id = $stmt_next_id->fetchColumn();
+        $codigo = 'MAT-' . str_pad($next_id, 4, '0', STR_PAD_LEFT);
+
+        // Verificar se o código já existe (medida de segurança)
         $sql_check = "SELECT id FROM almoxarifado_materiais WHERE codigo = ?";
         $stmt_check = $pdo->prepare($sql_check);
         $stmt_check->execute([$codigo]);
         
         if($stmt_check->rowCount() > 0){
-            $error = "Já existe um material com este código.";
+            $error = "Erro ao gerar código único para o material.";
         } else {
-            $sql_insert = "INSERT INTO almoxarifado_materiais (codigo, nome, descricao, unidade_medida, estoque_atual, valor_unitario, categoria, status) VALUES (?, ?, ?, ?, ?, ?, ?, 'ativo')";
+            $sql_insert = "INSERT INTO almoxarifado_materiais (codigo, nome, descricao, unidade_medida, estoque_atual, valor_unitario, quantidade_maxima_requisicao, categoria, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'ativo')";
             $stmt_insert = $pdo->prepare($sql_insert);
             
-            if($stmt_insert->execute([$codigo, $nome, $descricao, $unidade_medida, $estoque_atual, $valor_unitario, $categoria_selecionada])){
-                $message = "Material cadastrado com sucesso!";
+            if($stmt_insert->execute([$codigo, $nome, $descricao, $unidade_medida, $estoque_atual, $valor_unitario, $quantidade_maxima_requisicao, $categoria_selecionada])){
+                $message = "Material cadastrado com sucesso! Código gerado: " . $codigo;
                 // Limpar campos
-                $codigo = $nome = $descricao = $unidade_medida = $categoria_selecionada = '';
+                $nome = $descricao = $unidade_medida = $categoria_selecionada = '';
                 $estoque_atual = $valor_unitario = 0;
+                $quantidade_maxima_requisicao = null;
             } else {
                 $error = "Erro ao cadastrar material. Tente novamente.";
             }
@@ -95,12 +103,19 @@ $materiais = $stmt_materiais->fetchAll(PDO::FETCH_ASSOC);
             <form action="material_add.php" method="post">
                 <div class="form-row">
                     <div class="form-group col-md-6">
-                        <label for="codigo">Código:</label>
-                        <input type="text" class="form-control" id="codigo" name="codigo" value="<?php echo htmlspecialchars($codigo); ?>" required>
-                    </div>
-                    <div class="form-group col-md-6">
                         <label for="nome">Nome do Material:</label>
                         <input type="text" class="form-control" id="nome" name="nome" value="<?php echo htmlspecialchars($nome); ?>" required>
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label for="categoria">Categoria:</label>
+                        <select class="form-control" id="categoria" name="categoria" required>
+                            <option value="">Selecione uma categoria</option>
+                            <?php foreach($categorias_almoxarifado as $categoria_desc): ?>
+                                <option value="<?php echo htmlspecialchars($categoria_desc); ?>" <?php echo ($categoria_selecionada == $categoria_desc) ? 'selected' : ''; ?>>
+                                    <?php echo htmlspecialchars($categoria_desc); ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
                     </div>
                 </div>
                 <div class="form-group">
@@ -108,29 +123,25 @@ $materiais = $stmt_materiais->fetchAll(PDO::FETCH_ASSOC);
                     <textarea class="form-control" id="descricao" name="descricao" rows="2"><?php echo htmlspecialchars($descricao); ?></textarea>
                 </div>
                 <div class="form-row">
-                    <div class="form-group col-md-4">
+                    <div class="form-group col-md-6">
                         <label for="unidade_medida">Unidade de Medida:</label>
                         <input type="text" class="form-control" id="unidade_medida" name="unidade_medida" value="<?php echo htmlspecialchars($unidade_medida); ?>" required>
                     </div>
-                    <div class="form-group col-md-4">
+                    <div class="form-group col-md-6">
                         <label for="estoque_atual">Estoque Inicial:</label>
                         <input type="number" class="form-control" id="estoque_atual" name="estoque_atual" step="0.01" min="0" value="<?php echo htmlspecialchars($estoque_atual); ?>" required>
                     </div>
-                    <div class="form-group col-md-4">
+                </div>
+                <div class="form-row">
+                    <div class="form-group col-md-6">
                         <label for="valor_unitario">Valor Unitário:</label>
                         <input type="number" class="form-control" id="valor_unitario" name="valor_unitario" step="0.01" min="0" value="<?php echo htmlspecialchars($valor_unitario); ?>" required>
                     </div>
-                </div>
-                <div class="form-group">
-                    <label for="categoria">Categoria:</label>
-                    <select class="form-control" id="categoria" name="categoria" required>
-                        <option value="">Selecione uma categoria</option>
-                        <?php foreach($categorias_almoxarifado as $categoria_desc): ?>
-                            <option value="<?php echo htmlspecialchars($categoria_desc); ?>" <?php echo ($categoria_selecionada == $categoria_desc) ? 'selected' : ''; ?>>
-                                <?php echo htmlspecialchars($categoria_desc); ?>
-                            </option>
-                        <?php endforeach; ?>
-                    </select>
+                    <div class="form-group col-md-6">
+                        <label for="quantidade_maxima_requisicao">Qtd. Máxima por Requisição:</label>
+                        <input type="number" class="form-control" id="quantidade_maxima_requisicao" name="quantidade_maxima_requisicao" min="1" value="<?php echo htmlspecialchars($quantidade_maxima_requisicao); ?>">
+                        <small class="form-text text-muted">Deixe em branco para não haver limite.</small>
+                    </div>
                 </div>
                 <button type="submit" name="cadastrar_material" class="btn btn-primary">Cadastrar Material</button>
                 <a href="empenhos_index.php" class="btn btn-secondary">Voltar</a>

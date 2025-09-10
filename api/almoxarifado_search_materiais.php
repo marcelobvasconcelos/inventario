@@ -11,7 +11,7 @@ if (empty(trim($term, '%'))) {
 
 try {
     // SQL corrigida com o nome da tabela e colunas corretas do almoxarifado
-    $sql = "SELECT id, nome, estoque_atual, categoria 
+    $sql = "SELECT id, nome, estoque_atual, categoria, quantidade_maxima_requisicao
             FROM almoxarifado_materiais
             WHERE nome LIKE ? AND estoque_atual > 0 AND status = 'ativo'
             ORDER BY nome ASC

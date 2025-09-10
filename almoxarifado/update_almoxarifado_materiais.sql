@@ -16,3 +16,6 @@ ADD CONSTRAINT `fk_almoxarifado_responsavel`
   REFERENCES `usuarios` (`id`)
   ON DELETE SET NULL
   ON UPDATE CASCADE;
+  
+ALTER TABLE `almoxarifado_materiais`
+   3 ADD COLUMN `quantidade_maxima_requisicao` INT(11) DEFAULT NULL;

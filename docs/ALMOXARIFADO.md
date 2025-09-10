@@ -12,6 +12,7 @@ O módulo de almoxarifado é uma extensão do sistema de inventário que permite
 - `unidade_medida`: Unidade de medida (ex: kg, litros, unidades)
 - `estoque_atual`: Quantidade atual em estoque
 - `estoque_minimo`: Quantidade mínima recomendada em estoque
+- `quantidade_maxima_requisicao`: Quantidade máxima permitida por requisição (sem justificativa)
 
 ### almoxarifado_requisicoes
 - `id`: Identificador único da requisição
@@ -19,7 +20,7 @@ O módulo de almoxarifado é uma extensão do sistema de inventário que permite
 - `local_id`: ID do local de destino (opcional)
 - `data_requisicao`: Data e hora da requisição
 - `status`: Status da requisição (pendente, aprovada, rejeitada, concluida)
-- `justificativa`: Justificativa da requisição
+- `justificativa`: Justificativa da requisição (obrigatória apenas se algum item ultrapassar a quantidade máxima)
 
 ### almoxarifado_requisicoes_itens
 - `id`: Identificador único do item da requisição
@@ -75,12 +76,15 @@ O módulo de almoxarifado é uma extensão do sistema de inventário que permite
 2. **Gerenciamento de Produtos**:
    - Acesse "Almoxarifado" no menu
    - Clique em "Adicionar Produto" para cadastrar novos produtos
+   - Durante o cadastro, informe a "Quantidade Máxima por Requisição" para o item
    - Use a pesquisa para encontrar produtos específicos
 
 3. **Criação de Requisições**:
    - Na página principal do almoxarifado, clique em "Nova Requisição"
-   - Selecione o local de destino e informe a justificativa
+   - Selecione o local de destino
    - Adicione os produtos desejados e suas quantidades
+   - O sistema informará a quantidade máxima permitida para cada item
+   - O campo "Justificativa" só será obrigatório se algum item solicitado ultrapassar a quantidade máxima permitida
    - Envie a requisição
 
 4. **Aprovação de Requisições** (para administradores e almoxarifes):

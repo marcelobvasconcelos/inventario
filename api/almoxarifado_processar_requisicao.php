@@ -38,7 +38,48 @@ if (empty($itens)) {
     exit;
 }
 
+// Verificar se algum item ultrapassa a quantidade máxima
+$exige_justificativa = false;
+$itens_com_excesso = [];
+
 try {
+    foreach ($itens as $item) {
+        $produto_id = (int)$item['produto_id'];
+        $quantidade = (int)$item['quantidade'];
+        
+        // Validar quantidade
+        if ($quantidade <= 0) {
+            throw new Exception("Quantidade inválida para o produto ID $produto_id");
+        }
+        
+        // Buscar a quantidade máxima por requisição para este material
+        $stmt_max = $pdo->prepare("SELECT nome, quantidade_maxima_requisicao, estoque_atual FROM almoxarifado_materiais WHERE id = ?");
+        $stmt_max->execute([$produto_id]);
+        $material_info = $stmt_max->fetch(PDO::FETCH_ASSOC);
+        
+        if (!$material_info) {
+            throw new Exception("Produto ID $produto_id não encontrado");
+        }
+        
+        // Verificar estoque
+        if ($quantidade > $material_info['estoque_atual']) {
+            throw new Exception("Quantidade solicitada para " . $material_info['nome'] . " excede o estoque disponível.");
+        }
+        
+        // Verificar quantidade máxima
+        if ($material_info['quantidade_maxima_requisicao'] !== null && $quantidade > $material_info['quantidade_maxima_requisicao']) {
+            $exige_justificativa = true;
+            $itens_com_excesso[] = $material_info['nome'];
+        }
+    }
+    
+    // Se algum item ultrapassar a quantidade máxima, a justificativa é obrigatória
+    if ($exige_justificativa && empty($justificativa)) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'message' => 'Justificativa obrigatória para itens que ultrapassam a quantidade máxima permitida: ' . implode(', ', $itens_com_excesso)]);
+        exit;
+    }
+    
     // Iniciar transação
     $pdo->beginTransaction();
     
@@ -53,11 +94,6 @@ try {
     foreach ($itens as $item) {
         $produto_id = (int)$item['produto_id'];
         $quantidade = (int)$item['quantidade'];
-        
-        // Validar quantidade
-        if ($quantidade <= 0) {
-            throw new Exception("Quantidade inválida para o produto ID $produto_id");
-        }
         
         $stmt_item->execute([$requisicao_id, $produto_id, $quantidade]);
     }

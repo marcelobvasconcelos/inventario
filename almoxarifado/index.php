@@ -27,7 +27,7 @@ $categoria_filtro = isset($_GET['categoria']) ? $_GET['categoria'] : '';
 $status_filtro = isset($_GET['status']) && $is_privileged_user ? $_GET['status'] : '';
 
 // --- Construção da SQL ---
-$select_columns = "SELECT m.id, m.codigo, m.nome, m.categoria as categoria_nome";
+$select_columns = "SELECT m.id, m.codigo, m.nome, m.categoria as categoria_nome, m.quantidade_maxima_requisicao";
 if ($is_privileged_user) {
     $select_columns .= ", m.estoque_atual, m.valor_unitario, 
                          CASE 
@@ -79,7 +79,7 @@ $materiais = $stmt->fetchAll(PDO::FETCH_ASSOC);
 $total_paginas = ceil($total_materiais / $itens_por_pagina);
 
 // Buscar categorias do almoxarifado para o filtro
-$categorias = $pdo->query("SELECT descricao FROM almoxarifado_categorias ORDER BY descricao ASC")->fetchAll(PDO::FETCH_COLUMN);
+$categorias = $pdo->query("SELECT CONCAT(id, ' - ', descricao) as categoria FROM almoxarifado_categorias ORDER BY id ASC")->fetchAll(PDO::FETCH_COLUMN);
 ?>
 
 <div class="page-header-sticky">
@@ -90,37 +90,31 @@ $categorias = $pdo->query("SELECT descricao FROM almoxarifado_categorias ORDER B
 
     <div class="controls-container">
         <div class="search-form">
-            <form action="" method="GET" id="search-form">
-                <div class="search-input">
-                    <input type="text" name="search" id="search_query_input" placeholder="Pesquisar por nome ou código..." value="<?php echo htmlspecialchars($search_query); ?>">
-                </div>
-            </form>
+            <div class="search-input">
+                <input type="text" id="search_query_input" placeholder="Pesquisar por nome ou código..." value="<?php echo htmlspecialchars($search_query); ?>">
+            </div>
         </div>
         
         <div class="filter-controls">
-            <form action="" method="GET">
-                <select name="categoria" onchange="this.form.submit()">
-                    <option value="">Todas as categorias</option>
-                    <?php foreach($categorias as $categoria): ?>
-                        <option value="<?php echo htmlspecialchars($categoria); ?>" <?php echo ($categoria_filtro == $categoria) ? 'selected' : ''; ?>>
-                            <?php echo htmlspecialchars($categoria); ?>
-                        </option>
-                    <?php endforeach; ?>
-                </select>
-                
-                <?php if ($is_privileged_user): ?>
-                <select name="status" onchange="this.form.submit()">
-                    <option value="">Todos os status</option>
-                    <option value="sem_estoque" <?php echo ($status_filtro == 'sem_estoque') ? 'selected' : ''; ?>>Sem estoque</option>
-                    <option value="estoque_baixo" <?php echo ($status_filtro == 'estoque_baixo') ? 'selected' : ''; ?>>Estoque baixo</option>
-                    <option value="estoque_normal" <?php echo ($status_filtro == 'estoque_normal') ? 'selected' : ''; ?>>Estoque normal</option>
-                </select>
-                <?php endif; ?>
-                
-                <?php if(!empty($search_query) || !empty($categoria_filtro) || !empty($status_filtro)): ?>
-                    <a href="index.php" class="btn-custom">Limpar filtros</a>
-                <?php endif; ?>
-            </form>
+            <select id="categoria_filter">
+                <option value="">Todas as categorias</option>
+                <?php foreach($categorias as $categoria): ?>
+                    <option value="<?php echo htmlspecialchars($categoria); ?>" <?php echo ($categoria_filtro == $categoria) ? 'selected' : ''; ?>>
+                        <?php echo htmlspecialchars($categoria); ?>
+                    </option>
+                <?php endforeach; ?>
+            </select>
+
+            <?php if ($is_privileged_user): ?>
+            <select id="status_filter">
+                <option value="">Todos os status</option>
+                <option value="sem_estoque" <?php echo ($status_filtro == 'sem_estoque') ? 'selected' : ''; ?>>Sem estoque</option>
+                <option value="estoque_baixo" <?php echo ($status_filtro == 'estoque_baixo') ? 'selected' : ''; ?>>Estoque baixo</option>
+                <option value="estoque_normal" <?php echo ($status_filtro == 'estoque_normal') ? 'selected' : ''; ?>>Estoque normal</option>
+            </select>
+            <?php endif; ?>
+
+            <button id="clear_filters" class="btn-custom" style="display: none;">Limpar filtros</button>
         </div>
     </div>
 </div>
@@ -134,6 +128,7 @@ $categorias = $pdo->query("SELECT descricao FROM almoxarifado_categorias ORDER B
                 <th>Código</th>
                 <th>Nome</th>
                 <th>Categoria</th>
+                <th>Qtd. Máx. Requisição</th>
                 <?php if ($is_privileged_user): ?>
                     <th>Estoque</th>
                     <th>Valor Unit.</th>
@@ -148,6 +143,7 @@ $categorias = $pdo->query("SELECT descricao FROM almoxarifado_categorias ORDER B
                 <td><?php echo htmlspecialchars($material['codigo']); ?></td>
                 <td><?php echo htmlspecialchars($material['nome']); ?></td>
                 <td><?php echo htmlspecialchars($material['categoria_nome'] ?? 'Não categorizado'); ?></td>
+                <td><?php echo htmlspecialchars($material['quantidade_maxima_requisicao'] ?? 'N/A'); ?></td>
                 <?php if ($is_privileged_user): ?>
                     <td><?php echo $material['estoque_atual']; ?></td>
                     <td>R$ <?php echo number_format($material['valor_unitario'], 2, ',', '.'); ?></td>
@@ -162,12 +158,15 @@ $categorias = $pdo->query("SELECT descricao FROM almoxarifado_categorias ORDER B
                     </td>
                 <?php endif; ?>
                 <td>
-                    <?php if ($is_privileged_user): ?>
-                        <a href="material_edit.php?id=<?php echo $material['id']; ?>" title="Editar" class="btn-custom"><i class="fas fa-edit"></i></a>
-                    <?php else: ?>
-                        <button type="button" class="btn-custom btn-solicitar" data-item-id="<?php echo $material['id']; ?>">Solicitar</button>
-                    <?php endif; ?>
-                </td>
+                     <?php if ($is_privileged_user): ?>
+                         <a href="material_edit.php?id=<?php echo $material['id']; ?>" title="Editar" class="btn-custom"><i class="fas fa-edit"></i></a>
+                         <?php if ($_SESSION['permissao'] == 'Administrador'): ?>
+                             <a href="material_delete.php?id=<?php echo $material['id']; ?>" title="Excluir" class="btn-custom btn-danger" onclick="return confirm('Tem certeza que deseja excluir este material?')"><i class="fas fa-trash"></i></a>
+                         <?php endif; ?>
+                     <?php else: ?>
+                         <button type="button" class="btn-custom btn-solicitar" data-item-id="<?php echo $material['id']; ?>">Solicitar</button>
+                     <?php endif; ?>
+                 </td>
             </tr>
             <?php endforeach; ?>
         </tbody>
@@ -181,13 +180,160 @@ $categorias = $pdo->query("SELECT descricao FROM almoxarifado_categorias ORDER B
 <?php endif; ?>
 
 <script>
-// Script para solicitar item individualmente (a ser implementado se necessário)
-document.addEventListener('click', function(e) {
-    if (e.target.classList.contains('btn-solicitar')) {
-        const itemId = e.target.getAttribute('data-item-id');
-        // Redirecionar para a página de requisição com o ID do item
-        window.location.href = `empenhos_requisicao.php?item_id=${itemId}`;
+let currentPage = 1;
+let isPrivilegedUser = <?php echo $is_privileged_user ? 'true' : 'false'; ?>;
+
+function loadMateriais(page = 1) {
+    const searchQuery = document.getElementById('search_query_input').value;
+    const categoria = document.getElementById('categoria_filter').value;
+    const status = document.getElementById('status_filter') ? document.getElementById('status_filter').value : '';
+
+    const params = new URLSearchParams({
+        q: searchQuery,
+        categoria: categoria,
+        status: status,
+        pagina: page
+    });
+
+    fetch('/inventario/api/search_materiais.php?' + params, { credentials: 'include' })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                updateTable(data.materiais);
+                updatePagination(data.paginas, data.pagina_atual);
+                currentPage = data.pagina_atual;
+
+                // Mostrar/esconder botão de limpar filtros
+                const clearBtn = document.getElementById('clear_filters');
+                if (searchQuery || categoria || status) {
+                    clearBtn.style.display = 'inline-block';
+                } else {
+                    clearBtn.style.display = 'none';
+                }
+            } else {
+                console.error('Erro na busca:', data.error);
+                // Não limpar a tabela, manter os dados carregados pelo PHP
+            }
+        })
+        .catch(error => {
+            console.error('Erro de rede:', error);
+            // Não limpar a tabela, manter os dados carregados pelo PHP
+        });
+}
+
+function updateTable(materiais) {
+    const tbody = document.getElementById('itens-table-body');
+    tbody.innerHTML = '';
+
+    if (materiais.length === 0) {
+        const tr = document.createElement('tr');
+        tr.innerHTML = '<td colspan="8" class="text-center">Nenhum material encontrado.</td>';
+        tbody.appendChild(tr);
+        return;
     }
+
+    materiais.forEach(material => {
+        const tr = document.createElement('tr');
+
+        let html = `
+            <td>${material.codigo}</td>
+            <td>${material.nome}</td>
+            <td>${material.categoria_nome || 'Não categorizado'}</td>
+            <td>${material.quantidade_maxima_requisicao || 'N/A'}</td>
+        `;
+
+        if (isPrivilegedUser) {
+            html += `
+                <td>${material.estoque_atual}</td>
+                <td>R$ ${parseFloat(material.valor_unitario).toFixed(2).replace('.', ',')}</td>
+                <td>
+            `;
+
+            switch(material.situacao_estoque) {
+                case 'sem_estoque':
+                    html += '<span class="badge badge-danger">Sem estoque</span>';
+                    break;
+                case 'estoque_baixo':
+                    html += '<span class="badge badge-warning">Estoque baixo</span>';
+                    break;
+                case 'estoque_normal':
+                    html += '<span class="badge badge-success">Normal</span>';
+                    break;
+            }
+
+            html += '</td>';
+        }
+
+        html += '<td>';
+
+        if (isPrivilegedUser) {
+            html += `<a href="material_edit.php?id=${material.id}" title="Editar" class="btn-custom"><i class="fas fa-edit"></i></a>`;
+
+            <?php if ($_SESSION['permissao'] == 'Administrador'): ?>
+            html += `<a href="material_delete.php?id=${material.id}" title="Excluir" class="btn-custom btn-danger" onclick="return confirm('Tem certeza que deseja excluir este material?')"><i class="fas fa-trash"></i></a>`;
+            <?php endif; ?>
+        } else {
+            html += `<button type="button" class="btn-custom btn-solicitar" data-item-id="${material.id}">Solicitar</button>`;
+        }
+
+        html += '</td>';
+
+        tr.innerHTML = html;
+        tbody.appendChild(tr);
+    });
+}
+
+function updatePagination(totalPages, currentPage) {
+    // Implementar paginação se necessário
+    // Por enquanto, manter simples
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Carregar materiais iniciais
+    loadMateriais();
+
+    // Event listeners para busca
+    let searchTimeout;
+    document.getElementById('search_query_input').addEventListener('input', function() {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(() => {
+            currentPage = 1;
+            loadMateriais(1);
+        }, 300);
+    });
+
+    // Event listeners para filtros
+    document.getElementById('categoria_filter').addEventListener('change', function() {
+        currentPage = 1;
+        loadMateriais(1);
+    });
+
+    const statusFilter = document.getElementById('status_filter');
+    if (statusFilter) {
+        statusFilter.addEventListener('change', function() {
+            currentPage = 1;
+            loadMateriais(1);
+        });
+    }
+
+    // Botão limpar filtros
+    document.getElementById('clear_filters').addEventListener('click', function() {
+        document.getElementById('search_query_input').value = '';
+        document.getElementById('categoria_filter').value = '';
+        if (statusFilter) {
+            statusFilter.value = '';
+        }
+        currentPage = 1;
+        loadMateriais(1);
+    });
+
+    // Event listener para botões de solicitar
+    document.addEventListener('click', function(e) {
+        if (e.target.classList.contains('btn-solicitar')) {
+            const itemId = e.target.getAttribute('data-item-id');
+            window.location.href = `requisicao.php?item_id=${itemId}`;
+        }
+    });
 });
 </script>
 
