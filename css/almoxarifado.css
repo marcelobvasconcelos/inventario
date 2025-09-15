@@ -277,7 +277,7 @@ body.almoxarifado {
 .almoxarifado form select,
 .almoxarifado form textarea {
     width: 100%;
-    padding: 10px;
+    padding: 2px;
     border: 1px solid #ced4da;
     border-radius: 4px;
     font-size: 16px;
@@ -472,4 +472,23 @@ body.almoxarifado {
 .search-input input[type="text"] {
     border-radius: 5px;
     padding: 10px 15px;
+}
+
+/* Estilos para botões extra pequenos */
+.btn-xs {
+    padding: 2px 5px;
+    font-size: 12px;
+    border-radius: 3px;
+    line-height: 1.5;
+}
+
+/* Estilos para ícones de ação - reduzindo o tamanho do ícone de lixeira */
+.action-icon.delete-icon {
+    font-size: 1.2em; /* Reduzido de 1.5em para 1.2em */
+    color: #dc3545;
+}
+
+.action-icon.delete-icon:hover {
+    color: #c82333;
+    background-color: rgba(220, 53, 69, 0.1);
 }
