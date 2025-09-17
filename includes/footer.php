@@ -3,7 +3,7 @@
     <script>
     // Função para atualizar o badge do sino de notificações
     function atualizarBadgeNotificacoes() {
-        fetch('/inventario/api/get_notificacoes_pendentes.php')
+        fetch(window.location.origin + '/inventario/api/get_notificacoes_pendentes.php')
             .then(response => {
                 if (!response.ok) {
                     throw new Error('Erro na rede ou no servidor.');

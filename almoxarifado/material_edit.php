@@ -42,7 +42,6 @@ $estoque_atual = $material['estoque_atual'];
 $valor_unitario = $material['valor_unitario'];
 $quantidade_maxima_requisicao = $material['quantidade_maxima_requisicao'];
 $categoria_selecionada = $material['categoria'];
-$status = $material['status'];
 
 // Processar formulário de edição
 if($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['editar_material'])){
@@ -55,16 +54,21 @@ if($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['editar_material'])){
     $valor_unitario = trim($_POST["valor_unitario"]);
     $quantidade_maxima_requisicao = !empty($_POST["quantidade_maxima_requisicao"]) ? (int)trim($_POST["quantidade_maxima_requisicao"]) : null;
     $categoria_selecionada = trim($_POST["categoria"]);
-    $status = $_POST["status"];
+    $nota_fiscal = !empty($_POST["nota_fiscal"]) ? trim($_POST["nota_fiscal"]) : null;
+
+    // Manter o formato completo "numero - descricao"
+
+
 
     if(empty($nome) || empty($unidade_medida) || empty($categoria_selecionada)){
         $error = "Nome, Unidade de Medida e Categoria são obrigatórios.";
     } else {
         // Como o código não muda, não precisamos verificar se ele já existe
-        $sql_update = "UPDATE almoxarifado_materiais SET codigo = ?, nome = ?, descricao = ?, unidade_medida = ?, estoque_atual = ?, valor_unitario = ?, quantidade_maxima_requisicao = ?, categoria = ?, status = ? WHERE id = ?";
+        // Adicionar campo nota_fiscal na atualização
+        $sql_update = "UPDATE almoxarifado_materiais SET codigo = ?, nome = ?, descricao = ?, unidade_medida = ?, estoque_atual = ?, valor_unitario = ?, quantidade_maxima_requisicao = ?, categoria = ?, nota_fiscal = ? WHERE id = ?";
         $stmt_update = $pdo->prepare($sql_update);
         
-        if($stmt_update->execute([$codigo, $nome, $descricao, $unidade_medida, $estoque_atual, $valor_unitario, $quantidade_maxima_requisicao, $categoria_selecionada, $status, $id])){
+        if($stmt_update->execute([$codigo, $nome, $descricao, $unidade_medida, $estoque_atual, $valor_unitario, $quantidade_maxima_requisicao, $categoria_selecionada, $nota_fiscal, $id])){
             $message = "Material atualizado com sucesso!";
             // Atualizar os valores das variáveis para refletir no formulário
             $material['nome'] = $nome;
@@ -74,7 +78,6 @@ if($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['editar_material'])){
             $material['valor_unitario'] = $valor_unitario;
             $material['quantidade_maxima_requisicao'] = $quantidade_maxima_requisicao;
             $material['categoria'] = $categoria_selecionada;
-            $material['status'] = $status;
         } else {
             $error = "Erro ao atualizar material. Tente novamente.";
         }
@@ -82,7 +85,7 @@ if($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['editar_material'])){
 }
 
 // Buscar todas as categorias do almoxarifado para o select
-$sql_categorias = "SELECT descricao FROM almoxarifado_categorias ORDER BY descricao ASC";
+$sql_categorias = "SELECT CONCAT(COALESCE(numero, CAST(id AS CHAR)), ' - ', descricao) as categoria FROM almoxarifado_categorias ORDER BY id ASC";
 $stmt_categorias = $pdo->prepare($sql_categorias);
 $stmt_categorias->execute();
 $categorias_almoxarifado = $stmt_categorias->fetchAll(PDO::FETCH_COLUMN);
@@ -147,31 +150,113 @@ $categorias_almoxarifado = $stmt_categorias->fetchAll(PDO::FETCH_COLUMN);
                     </div>
                 </div>
                 <div class="form-row">
-                    <div class="form-group col-md-6">
+                    <div class="form-group col-md-6" style="position: relative;">
                         <label for="categoria">Categoria:</label>
-                        <select class="form-control" id="categoria" name="categoria" required>
-                            <option value="">Selecione uma categoria</option>
-                            <?php foreach($categorias_almoxarifado as $categoria_desc): ?>
-                                <option value="<?php echo htmlspecialchars($categoria_desc); ?>" <?php echo ($categoria_selecionada == $categoria_desc) ? 'selected' : ''; ?>>
-                                    <?php echo htmlspecialchars($categoria_desc); ?>
+                        <input type="text" class="form-control" id="categoria" name="categoria" value="<?php echo htmlspecialchars($categoria_selecionada); ?>" required autocomplete="off">
+                        <div id="categoria-suggestions" class="suggestions-list"></div>
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label for="nota_fiscal">Nota Fiscal Vinculada:</label>
+                        <select class="form-control" id="nota_fiscal" name="nota_fiscal">
+                            <option value="">Nenhuma</option>
+                            <?php
+                            // Buscar todas as notas fiscais
+                            $sql_notas = "SELECT nota_numero FROM notas_fiscais ORDER BY nota_numero ASC";
+                            $stmt_notas = $pdo->prepare($sql_notas);
+                            $stmt_notas->execute();
+                            $notas = $stmt_notas->fetchAll(PDO::FETCH_COLUMN);
+                            
+                            foreach($notas as $nota):
+                            ?>
+                                <option value="<?php echo htmlspecialchars($nota); ?>" <?php echo ($material['nota_fiscal'] == $nota) ? 'selected' : ''; ?>>
+                                    <?php echo htmlspecialchars($nota); ?>
                                 </option>
                             <?php endforeach; ?>
                         </select>
-                    </div>
-                    <div class="form-group col-md-6">
-                        <label for="status">Status:</label>
-                        <select class="form-control" id="status" name="status" required>
-                            <option value="ativo" <?php echo ($status == 'ativo') ? 'selected' : ''; ?>>Ativo</option>
-                            <option value="inativo" <?php echo ($status == 'inativo') ? 'selected' : ''; ?>>Inativo</option>
-                        </select>
+                        <small class="form-text text-muted">Nota fiscal à qual este material está vinculado.</small>
                     </div>
                 </div>
                 <button type="submit" name="editar_material" class="btn btn-primary">Salvar Alterações</button>
-                <a href="estoque.php" class="btn btn-secondary">Voltar</a>
+                <a href="index.php" class="btn btn-secondary">Voltar</a>
             </form>
         </div>
     </div>
 </div>
+
+<style>
+.suggestions-list {
+    position: absolute;
+    background: white;
+    border: 1px solid #ccc;
+    border-top: none;
+    max-height: 200px;
+    overflow-y: auto;
+    width: 100%;
+    z-index: 1000;
+    display: none;
+}
+
+.suggestions-list div {
+    padding: 8px;
+    cursor: pointer;
+    border-bottom: 1px solid #eee;
+}
+
+.suggestions-list div:hover {
+    background: #f8f9fa;
+}
+</style>
+
+<script>
+const baseUrl = '<?php echo (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http") . "://" . $_SERVER['HTTP_HOST'] . dirname(dirname($_SERVER['REQUEST_URI'])); ?>';
+document.addEventListener('DOMContentLoaded', function() {
+    const categoriaInput = document.getElementById('categoria');
+    const suggestionsDiv = document.getElementById('categoria-suggestions');
+    let timeout;
+
+    categoriaInput.addEventListener('input', function() {
+        clearTimeout(timeout);
+        const query = this.value.trim();
+
+        if (query.length >= 3) {
+            timeout = setTimeout(() => {
+                fetch(`${baseUrl}/api/search_categorias.php?q=${encodeURIComponent(query)}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        suggestionsDiv.innerHTML = '';
+                        if (data.length > 0) {
+                            data.forEach(categoria => {
+                                const div = document.createElement('div');
+                                div.textContent = categoria;
+                                div.addEventListener('click', () => {
+                                    categoriaInput.value = categoria;
+                                    suggestionsDiv.style.display = 'none';
+                                });
+                                suggestionsDiv.appendChild(div);
+                            });
+                            suggestionsDiv.style.display = 'block';
+                        } else {
+                            suggestionsDiv.style.display = 'none';
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Erro na busca:', error);
+                        suggestionsDiv.style.display = 'none';
+                    });
+            }, 300);
+        } else {
+            suggestionsDiv.style.display = 'none';
+        }
+    });
+
+    // Hide suggestions when clicking outside
+    document.addEventListener('click', function(e) {
+        if (!categoriaInput.contains(e.target) && !suggestionsDiv.contains(e.target)) {
+            suggestionsDiv.style.display = 'none';
+        }
+    });
+});
+</script>
 
 <?php
 require_once '../includes/footer.php';

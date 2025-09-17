@@ -107,7 +107,7 @@ try {
 
     // 4. Inserir Materiais em almoxarifado_materiais e registrar Entradas
     echo "--- Inserindo Materiais e Entradas ---\n";
-    $sql_mat = "INSERT INTO almoxarifado_materiais (codigo, nome, descricao, unidade_medida, categoria, valor_unitario, estoque_atual, status, quantidade_maxima_requisicao) VALUES (:codigo, :nome, :descricao, :unidade_medida, :categoria, :valor_unitario, :estoque_atual, 'ativo', :quantidade_maxima_requisicao)";
+    $sql_mat = "INSERT INTO almoxarifado_materiais (codigo, nome, descricao, unidade_medida, categoria, valor_unitario, estoque_atual, quantidade_maxima_requisicao, nota_fiscal, data_criacao, usuario_criacao) VALUES (:codigo, :nome, :descricao, :unidade_medida, :categoria, :valor_unitario, :estoque_atual, :quantidade_maxima_requisicao, NULL, NOW(), 2)";
     $stmt_mat = $pdo->prepare($sql_mat);
 
     $sql_ent = "INSERT INTO almoxarifado_entradas (material_id, quantidade, valor_unitario, fornecedor, nota_fiscal, data_entrada, usuario_id) VALUES (?, ?, ?, ?, ?, ?, ?)";

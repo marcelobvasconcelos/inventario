@@ -205,7 +205,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['local_id'])) {
         </div>
         <div class="form-group">
             <label for="justificativa">Justificativa</label>
-            <textarea name="justificativa" id="justificativa" class="form-control" rows="2"><?php echo isset($_POST['justificativa']) ? htmlspecialchars($_POST['justificativa']) : ''; ?></textarea>
+            <textarea name="justificativa" id="justificativa" class="form-control" rows="2" placeholder="obrigatório se quantidade além do máximo permitido."><?php echo isset($_POST['justificativa']) ? htmlspecialchars($_POST['justificativa']) : ''; ?></textarea>
             <small class="form-text text-muted">A justificativa só é obrigatória se algum item ultrapassar a quantidade máxima permitida.</small>
         </div>
     </div>

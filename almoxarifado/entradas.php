@@ -112,8 +112,8 @@ if($stmt = mysqli_prepare($link, $sql)){
                 <td><?php echo htmlspecialchars($row['nota_fiscal']); ?></td>
                 <td><?php echo htmlspecialchars($row['usuario_nome']); ?></td>
                 <td>
-                    <a href="entrada_edit.php?id=<?php echo $row['id']; ?>" title="Editar"><i class="fas fa-edit"></i></a>
-                    <a href="entrada_delete.php?id=<?php echo $row['id']; ?>" title="Excluir" onclick="return confirm('Tem certeza que deseja excluir esta entrada?');"><i class="fas fa-trash"></i></a>
+                    <a href="entrada_edit.php?id=<?php echo $row['id']; ?>" title="Editar" class="action-icon edit-icon"><i class="fas fa-edit"></i></a>
+                    <a href="entrada_delete.php?id=<?php echo $row['id']; ?>" title="Excluir" class="action-icon delete-icon" onclick="return confirm('Tem certeza que deseja excluir esta entrada?');"><i class="fas fa-trash fa-xs"></i></a>
                 </td>
             </tr>
             <?php endwhile; ?>

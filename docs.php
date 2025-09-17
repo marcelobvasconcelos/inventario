@@ -2,12 +2,34 @@
 require_once 'includes/header.php';
 require_once 'vendor/autoload.php';
 
-use Parsedown;
+// Define o manual padrão
+$page = 'USER_MANUAL';
 
-$manual_path = 'docs/USER_MANUAL.md';
-$manual_content = file_get_contents($manual_path);
+// Verifica se uma página específica foi solicitada via GET
+if (isset($_GET['page']) && !empty($_GET['page'])) {
+    // Medida de segurança: remove caracteres inválidos para nomes de arquivo
+    $requested_page = preg_replace('/[^a-zA-Z0-9_\-]/', '', $_GET['page']);
+    $potential_path = __DIR__ . '/docs/' . $requested_page . '.md';
+
+    // Verifica se o arquivo solicitado realmente existe para evitar erros
+    if (file_exists($potential_path)) {
+        $page = $requested_page;
+    }
+}
+
+// Constrói o caminho final do arquivo de forma segura
+$manual_path = __DIR__ . '/docs/' . $page . '.md';
+
+// Verifica se o arquivo existe antes de tentar lê-lo
+if (file_exists($manual_path)) {
+    $manual_content = file_get_contents($manual_path);
+} else {
+    // Se o arquivo não for encontrado, define um conteúdo de erro claro
+    $manual_content = "# Manual não encontrado\nO arquivo `" . htmlspecialchars($page) . ".md` não pôde ser localizado.";
+}
 
 $parsedown = new Parsedown();
+$parsedown->setSafeMode(false); // Permite a renderização de HTML, como os ícones
 
 $filtered_content = [];
 $lines = explode("\n", $manual_content);
@@ -49,6 +71,8 @@ foreach ($lines as $line) {
 
 $final_markdown = implode("\n", $filtered_content);
 $html_content = $parsedown->text($final_markdown);
+// Decodifica as entidades HTML para garantir que os ícones (<i>) sejam renderizados
+$html_content = html_entity_decode($html_content);
 
 ?>
 

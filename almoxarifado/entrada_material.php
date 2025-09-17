@@ -33,8 +33,8 @@ $materiais = $stmt_materiais->fetchAll(PDO::FETCH_ASSOC);
 
 // Processar formulário de cadastro
 if($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['registrar_entrada'])){
-    $nota_fiscal = trim($_POST["nota_fiscal"]);
-    $data_entrada = trim($_POST["data_entrada"]);
+    $nota_fiscal = isset($_POST["nota_fiscal"]) ? trim($_POST["nota_fiscal"]) : '';
+    $data_entrada = isset($_POST["data_entrada"]) ? trim($_POST["data_entrada"]) : '';
     $itens = isset($_POST["itens"]) ? $_POST["itens"] : [];
     
     // Validação
@@ -46,33 +46,17 @@ if($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['registrar_entrada'])){
         $error = "Por favor, adicione pelo menos um item.";
     } else {
         // Verificar se a nota fiscal existe
-        // Primeiro verificar se a coluna 'saldo' existe na tabela
-        $colunas_existentes = array();
-        try {
-            $stmt_colunas = $pdo->prepare("SHOW COLUMNS FROM notas_fiscais LIKE 'saldo'");
-            $stmt_colunas->execute();
-            $colunas_existentes = $stmt_colunas->fetchAll(PDO::FETCH_ASSOC);
-        } catch (Exception $e) {
-            // Ignorar erros na verificação de colunas
-        }
+        $sql_verifica_nota = "SELECT nota_numero, nota_valor, saldo, empenho_numero FROM notas_fiscais WHERE nota_numero = ?";
+        $stmt_verifica_nota = $pdo->prepare($sql_verifica_nota);
+        $stmt_verifica_nota->execute([$nota_fiscal]);
+        $nota_fiscal_info = $stmt_verifica_nota->fetch(PDO::FETCH_ASSOC);
         
-        // Montar a query com base na existência da coluna 'saldo'
-        if (count($colunas_existentes) > 0) {
-            // Coluna 'saldo' existe
-            $sql_verifica_nota = "SELECT nota_numero, nota_valor, saldo FROM notas_fiscais WHERE nota_numero = ?";
-            $stmt_verifica_nota = $pdo->prepare($sql_verifica_nota);
-            $stmt_verifica_nota->execute([$nota_fiscal]);
-            $nota_fiscal_info = $stmt_verifica_nota->fetch(PDO::FETCH_ASSOC);
-        } else {
-            // Coluna 'saldo' não existe
-            $sql_verifica_nota = "SELECT nota_numero, nota_valor FROM notas_fiscais WHERE nota_numero = ?";
-            $stmt_verifica_nota = $pdo->prepare($sql_verifica_nota);
-            $stmt_verifica_nota->execute([$nota_fiscal]);
-            $nota_fiscal_info = $stmt_verifica_nota->fetch(PDO::FETCH_ASSOC);
-            // Adicionar a coluna 'saldo' ao array para manter a compatibilidade
-            if ($nota_fiscal_info) {
-                $nota_fiscal_info['saldo'] = $nota_fiscal_info['nota_valor'];
-            }
+        // Se o saldo for NULL, inicializar com o valor da nota
+        if ($nota_fiscal_info && $nota_fiscal_info['saldo'] === null) {
+            $sql_init_saldo = "UPDATE notas_fiscais SET saldo = nota_valor WHERE nota_numero = ?";
+            $stmt_init_saldo = $pdo->prepare($sql_init_saldo);
+            $stmt_init_saldo->execute([$nota_fiscal]);
+            $nota_fiscal_info['saldo'] = $nota_fiscal_info['nota_valor'];
         }
         
         if(!$nota_fiscal_info){
@@ -87,7 +71,7 @@ if($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['registrar_entrada'])){
             }
             
             // Verificar se há saldo suficiente na nota fiscal
-            $saldo_disponivel = isset($nota_fiscal_info['saldo']) ? $nota_fiscal_info['saldo'] : $nota_fiscal_info['nota_valor'];
+            $saldo_disponivel = $nota_fiscal_info['saldo'];
             
             if($saldo_disponivel < $valor_total_entradas){
                 $error = "Saldo insuficiente na nota fiscal. Saldo disponível: R$ " . number_format($saldo_disponivel, 2, ',', '.') . ". Valor total das entradas: R$ " . number_format($valor_total_entradas, 2, ',', '.');
@@ -98,9 +82,9 @@ if($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['registrar_entrada'])){
                     
                     // Processar cada item
                     foreach($itens as $index => $item) {
-                        $material_id = trim($item["material_id"]);
-                        $quantidade = trim($item["quantidade"]);
-                        $valor_unitario = trim($item["valor_unitario"]);
+                        $material_id = isset($item["material_id"]) ? trim($item["material_id"]) : '';
+                        $quantidade = isset($item["quantidade"]) ? trim($item["quantidade"]) : '';
+                        $valor_unitario = isset($item["valor_unitario"]) ? trim($item["valor_unitario"]) : '';
                         
                         // Validar item
                         if(empty($material_id)){
@@ -118,20 +102,18 @@ if($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['registrar_entrada'])){
                         $stmt_entrada->execute([$material_id, $quantidade, $valor_unitario, $nota_fiscal, $data_entrada, date('Y-m-d H:i:s'), $_SESSION['id']]);
                         $entrada_id = $pdo->lastInsertId();
                         
-                        // 2. Atualizar estoque do material
-                        $sql_estoque = "UPDATE almoxarifado_materiais SET estoque_atual = estoque_atual + ? WHERE id = ?";
+                        // 2. Atualizar estoque do material e vincular à nota fiscal
+                        $sql_estoque = "UPDATE almoxarifado_materiais SET estoque_atual = estoque_atual + ?, nota_fiscal = ? WHERE id = ?";
                         $stmt_estoque = $pdo->prepare($sql_estoque);
-                        $stmt_estoque->execute([$quantidade, $material_id]);
+                        $stmt_estoque->execute([$quantidade, $nota_fiscal, $material_id]);
                         
                         // 3. Registrar movimentação
-                        // Buscar saldo anterior
-                        $sql_saldo = "SELECT estoque_atual FROM almoxarifado_materiais WHERE id = ?";
-                        $stmt_saldo = $pdo->prepare($sql_saldo);
-                        $stmt_saldo->execute([$material_id]);
-                        $saldo_anterior = $stmt_saldo->fetchColumn();
-                        
-                        // Calcular novo saldo
-                        $saldo_atual = $saldo_anterior + $quantidade;
+                        // Buscar saldo anterior (antes da atualização)
+                        $sql_saldo_anterior = "SELECT estoque_atual FROM almoxarifado_materiais WHERE id = ?";
+                        $stmt_saldo_anterior = $pdo->prepare($sql_saldo_anterior);
+                        $stmt_saldo_anterior->execute([$material_id]);
+                        $saldo_atual = $stmt_saldo_anterior->fetchColumn(); // Já atualizado
+                        $saldo_anterior = $saldo_atual - $quantidade; // Calcular o anterior
                         
                         $sql_movimentacao = "INSERT INTO almoxarifado_movimentacoes (material_id, tipo, quantidade, saldo_anterior, saldo_atual, data_movimentacao, usuario_id, referencia_id) 
                                              VALUES (?, 'entrada', ?, ?, ?, ?, ?, ?)";
@@ -139,15 +121,13 @@ if($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['registrar_entrada'])){
                         $stmt_movimentacao->execute([$material_id, $quantidade, $saldo_anterior, $saldo_atual, date('Y-m-d H:i:s'), $_SESSION['id'], $entrada_id]);
                     }
                     
-                    // 4. Descontar do saldo da nota fiscal (apenas se a coluna existir)
-                    // Verificar se a coluna 'saldo' existe na tabela
-                    $colunas_nota_fiscal = array_keys($nota_fiscal_info);
-                    if(in_array('saldo', $colunas_nota_fiscal)) {
-                        $novo_saldo_nota = $nota_fiscal_info['saldo'] - $valor_total_entradas;
-                        $sql_atualiza_saldo_nota = "UPDATE notas_fiscais SET saldo = ? WHERE nota_numero = ?";
-                        $stmt_atualiza_saldo_nota = $pdo->prepare($sql_atualiza_saldo_nota);
-                        $stmt_atualiza_saldo_nota->execute([$novo_saldo_nota, $nota_fiscal]);
-                    }
+                    // 4. Descontar do saldo da nota fiscal
+                    $novo_saldo_nota = $nota_fiscal_info['saldo'] - $valor_total_entradas;
+                    $sql_atualiza_saldo_nota = "UPDATE notas_fiscais SET saldo = ? WHERE nota_numero = ?";
+                    $stmt_atualiza_saldo_nota = $pdo->prepare($sql_atualiza_saldo_nota);
+                    $stmt_atualiza_saldo_nota->execute([$novo_saldo_nota, $nota_fiscal]);
+                        
+
                     
                     // Confirmar transação
                     $pdo->commit();
@@ -199,7 +179,7 @@ if($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['registrar_entrada'])){
                                 <option value="">Selecione uma nota fiscal</option>
                                 <?php 
                                 // Buscar notas fiscais de empenhos abertos
-                                $sql_notas_abertas = "SELECT nf.nota_numero, nf.nota_valor, ei.fornecedor, ei.numero as empenho_numero
+                                $sql_notas_abertas = "SELECT nf.nota_numero, nf.nota_valor, nf.fornecedor, ei.numero as empenho_numero
                                                       FROM notas_fiscais nf
                                                       JOIN empenhos_insumos ei ON nf.empenho_numero = ei.numero
                                                       WHERE ei.status = 'Aberto'

@@ -65,7 +65,7 @@ if($_SERVER["REQUEST_METHOD"] == "POST"){
                                     }
                                 }
                             } elseif($status == 'pendente'){
-                                $login_err = "Sua conta está pendente de aprovação.";
+                                $login_err = "Sua conta está pendente de aprovação pelo administrador. Entre em contato com o administrador do sistema para ativar sua conta.";
                             } else {
                                 $login_err = "Sua conta foi rejeitada ou desativada.";
                             }
@@ -93,7 +93,7 @@ if($_SERVER["REQUEST_METHOD"] == "POST"){
 <head>
     <meta charset="UTF-8">
     <title>Login</title>
-    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="/inventario/css/style.css">
 </head>
 <body>
     <div class="login-wrapper">

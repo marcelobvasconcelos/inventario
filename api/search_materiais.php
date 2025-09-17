@@ -18,14 +18,16 @@ $is_privileged_user = isset($_SESSION['permissao']) && in_array($_SESSION['permi
 
 try {
     // Construir query base
-    $select_columns = "SELECT m.id, m.codigo, m.nome, m.categoria as categoria_nome, m.quantidade_maxima_requisicao";
+    $select_columns = "SELECT m.id, m.codigo, m.nome, m.categoria as categoria_nome, m.quantidade_maxima_requisicao, m.nota_fiscal";
     if ($is_privileged_user) {
-        $select_columns .= ", m.estoque_atual, m.valor_unitario,
+        $select_columns .= ", m.estoque_atual, m.valor_unitario, m.unidade_medida, m.estoque_minimo,
                              CASE
                                  WHEN m.estoque_atual <= 0 THEN 'sem_estoque'
-                                 WHEN m.estoque_atual < 5 THEN 'estoque_baixo'
+                                 WHEN m.estoque_atual < m.estoque_minimo THEN 'estoque_baixo'
                                  ELSE 'estoque_normal'
-                             END as situacao_estoque";
+                             END as situacao_estoque,
+                             (m.estoque_atual * m.valor_unitario) as valor_total_estoque,
+                             'ativo' as status";
     }
 
     $sql_base = $select_columns . " FROM almoxarifado_materiais m";
@@ -41,19 +43,23 @@ try {
     }
 
     if (!empty($categoria)) {
-        // Extrair descrição da categoria se for no formato "id - descricao"
-        if (preg_match('/^\d+ - (.+)$/', $categoria, $matches)) {
-            $categoria = $matches[1];
+        if (preg_match('/^(.+?) - (.+)$/', $categoria, $matches)) {
+            $categoria_full = $categoria;
+            $categoria_desc = $matches[2];
+            $conditions[] = "(m.categoria = ? OR m.categoria = ?)";
+            $params[] = $categoria_full;
+            $params[] = $categoria_desc;
+        } else {
+            $conditions[] = "m.categoria = ?";
+            $params[] = $categoria;
         }
-        $conditions[] = "m.categoria = ?";
-        $params[] = $categoria;
     }
 
     if ($is_privileged_user && !empty($status)) {
         switch($status) {
             case 'sem_estoque': $conditions[] = "m.estoque_atual <= 0"; break;
-            case 'estoque_baixo': $conditions[] = "m.estoque_atual > 0 AND m.estoque_atual < 5"; break;
-            case 'estoque_normal': $conditions[] = "m.estoque_atual >= 5"; break;
+            case 'estoque_baixo': $conditions[] = "m.estoque_atual > 0 AND m.estoque_atual < m.estoque_minimo"; break;
+            case 'estoque_normal': $conditions[] = "m.estoque_atual >= m.estoque_minimo"; break;
         }
     }
 

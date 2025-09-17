@@ -30,26 +30,10 @@ $itens_por_pagina = 60;
 $pagina_atual = isset($_GET['pagina']) ? (int)$_GET['pagina'] : 1;
 $offset = ($pagina_atual - 1) * $itens_por_pagina;
 
-// Variáveis de pesquisa
-$search_query = isset($_GET['search_query']) ? $_GET['search_query'] : '';
-
-// Parâmetros para as consultas
-$count_params = [$lixeira_id];
-
 // Consulta para contagem total de itens excluídos
 $sql_count = "SELECT COUNT(*) FROM itens i JOIN locais l ON i.local_id = l.id WHERE i.estado = 'Excluido' AND i.responsavel_id = ?";
-
-// Adicionar condição de pesquisa, se houver
-if (!empty($search_query)) {
-    $sql_count .= " AND (l.nome LIKE ? OR i.nome LIKE ? OR i.patrimonio_novo LIKE ? OR i.patrimonio_secundario LIKE ?)";
-    $count_params[] = '%' . $search_query . '%';
-    $count_params[] = '%' . $search_query . '%';
-    $count_params[] = '%' . $search_query . '%';
-    $count_params[] = '%' . $search_query . '%';
-}
-
 $stmt_count = $pdo->prepare($sql_count);
-$stmt_count->execute($count_params);
+$stmt_count->execute([$lixeira_id]);
 $total_itens = $stmt_count->fetchColumn();
 
 $total_paginas = ceil($total_itens / $itens_por_pagina);
@@ -58,22 +42,14 @@ $total_paginas = ceil($total_itens / $itens_por_pagina);
 $sql = "SELECT i.id, i.nome, i.patrimonio_novo, i.patrimonio_secundario, l.nome AS local, i.estado 
         FROM itens i 
         JOIN locais l ON i.local_id = l.id 
-        WHERE i.estado = 'Excluido' AND i.responsavel_id = ?";
-
-// Adicionar condição de pesquisa, se houver
-$params = [$lixeira_id];
-if (!empty($search_query)) {
-    $sql .= " AND (l.nome LIKE ? OR i.nome LIKE ? OR i.patrimonio_novo LIKE ? OR i.patrimonio_secundario LIKE ?)";
-    $params[] = '%' . $search_query . '%';
-    $params[] = '%' . $search_query . '%';
-    $params[] = '%' . $search_query . '%';
-    $params[] = '%' . $search_query . '%';
-}
-
-$sql .= " ORDER BY i.id DESC LIMIT " . $itens_por_pagina . " OFFSET " . $offset;
+        WHERE i.estado = 'Excluido' AND i.responsavel_id = ? 
+        ORDER BY i.id DESC LIMIT ? OFFSET ?";
 
 $stmt = $pdo->prepare($sql);
-$stmt->execute($params);
+$stmt->bindValue(1, $lixeira_id, PDO::PARAM_INT);
+$stmt->bindValue(2, $itens_por_pagina, PDO::PARAM_INT);
+$stmt->bindValue(3, $offset, PDO::PARAM_INT);
+$stmt->execute();
 $result = $stmt->fetchAll(PDO::FETCH_ASSOC);
 ?>
 
@@ -82,14 +58,6 @@ $result = $stmt->fetchAll(PDO::FETCH_ASSOC);
 <div class="controls-container">
     <div class="main-actions">
         <a href="itens.php" class="btn-custom">← Voltar para Itens</a>
-    </div>
-    
-    <div class="search-form">
-        <form action="" method="GET">
-            <div class="search-input">
-                <input type="text" name="search_query" placeholder="Pesquisar por nome do item, patrimônio, setor..." value="<?php echo isset($_GET['search_query']) ? htmlspecialchars($_GET['search_query']) : ''; ?>">
-            </div>
-        </form>
     </div>
 </div>
 
@@ -135,31 +103,21 @@ $result = $stmt->fetchAll(PDO::FETCH_ASSOC);
     </table>
 
     <!-- Paginação -->
-<?php if ($total_paginas > 1): ?>
-<div class="pagination">
-    <?php 
-    // Constrói os parâmetros para manter a pesquisa na paginação
-    $query_params = [];
-    if (!empty($search_query)) {
-        $query_params['search_query'] = $search_query;
-    }
-    
-    $base_url = '?' . http_build_query($query_params);
-    ?>
-    
-    <?php if ($pagina_atual > 1): ?>
-        <a href="<?php echo $base_url . '&pagina=' . ($pagina_atual - 1); ?>">Anterior</a>
-    <?php endif; ?>
+    <?php if ($total_paginas > 1): ?>
+    <div class="pagination">
+        <?php if ($pagina_atual > 1): ?>
+            <a href="?pagina=<?php echo $pagina_atual - 1; ?>">Anterior</a>
+        <?php endif; ?>
 
-    <?php for ($i = 1; $i <= $total_paginas; $i++): ?>
-        <a href="<?php echo $base_url . '&pagina=' . $i; ?>" class="<?php echo ($i == $pagina_atual) ? 'active' : ''; ?>"><?php echo $i; ?></a>
-    <?php endfor; ?>
+        <?php for ($i = 1; $i <= $total_paginas; $i++): ?>
+            <a href="?pagina=<?php echo $i; ?>" class="<?php echo ($i == $pagina_atual) ? 'active' : ''; ?>"><?php echo $i; ?></a>
+        <?php endfor; ?>
 
-    <?php if ($pagina_atual < $total_paginas): ?>
-        <a href="<?php echo $base_url . '&pagina=' . ($pagina_atual + 1); ?>">Próxima</a>
+        <?php if ($pagina_atual < $total_paginas): ?>
+            <a href="?pagina=<?php echo $pagina_atual + 1; ?>">Próxima</a>
+        <?php endif; ?>
+    </div>
     <?php endif; ?>
-</div>
-<?php endif; ?>
 
     <!-- Modal de Restauração Individual -->
     <div id="restaurarModal" class="modal">
@@ -223,29 +181,6 @@ $result = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Implementação da pesquisa automática
-    const searchInput = document.querySelector('input[name="search_query"]');
-    if (searchInput) {
-        let timeout = null;
-        
-        searchInput.addEventListener('input', function() {
-            clearTimeout(timeout);
-            const searchTerm = this.value;
-            
-            // Aguarda 300ms após o usuário parar de digitar antes de enviar a requisição
-            timeout = setTimeout(function() {
-                if (searchTerm.length >= 3) {
-                    // Aqui você poderia implementar uma pesquisa em tempo real via AJAX
-                    // Por enquanto, vamos apenas submeter o formulário automaticamente
-                    searchInput.form.submit();
-                } else if (searchTerm.length === 0) {
-                    // Se o campo estiver vazio, submete o formulário para limpar a pesquisa
-                    searchInput.form.submit();
-                }
-            }, 300);
-        });
-    }
-    
     // Modal de restauração individual
     const modal = document.getElementById('restaurarModal');
     const closeBtn = modal.querySelector('.close-button');

@@ -20,7 +20,7 @@ $material_id = $quantidade = $setor_destino = $responsavel_saida = $data_saida =
 $material_id_err = $quantidade_err = $data_saida_err = "";
 
 // Busca os materiais disponíveis com estoque maior que zero
-$sql_materiais = "SELECT id, codigo, nome, estoque_atual FROM almoxarifado_materiais WHERE status = 'ativo' AND estoque_atual > 0 ORDER BY nome ASC";
+$sql_materiais = "SELECT id, codigo, nome, estoque_atual FROM almoxarifado_materiais WHERE estoque_atual > 0 ORDER BY nome ASC";
 $materiais_result = mysqli_query($link, $sql_materiais);
 
 // Processa o formulário quando ele é submetido (método POST)
@@ -89,21 +89,19 @@ if($_SERVER["REQUEST_METHOD"] == "POST"){
                         
                         if(mysqli_stmt_execute($stmt_atualiza_estoque)){
                             // Registra a movimentação
-                            // Primeiro, busca o saldo anterior
-                            $sql_saldo_anterior = "SELECT estoque_atual FROM almoxarifado_materiais WHERE id = ?";
-                            if($stmt_saldo = mysqli_prepare($link, $sql_saldo_anterior)){
+                            // Primeiro, busca o saldo atual (já atualizado)
+                            $sql_saldo_atual = "SELECT estoque_atual FROM almoxarifado_materiais WHERE id = ?";
+                            if($stmt_saldo = mysqli_prepare($link, $sql_saldo_atual)){
                                 mysqli_stmt_bind_param($stmt_saldo, "i", $material_id);
                                 mysqli_stmt_execute($stmt_saldo);
                                 $result_saldo = mysqli_stmt_get_result($stmt_saldo);
                                 $row_saldo = mysqli_fetch_assoc($result_saldo);
-                                $saldo_anterior = $row_saldo['estoque_atual'];
+                                $saldo_atual = $row_saldo['estoque_atual']; // Já atualizado
+                                $saldo_anterior = $saldo_atual + $quantidade; // Calcular o anterior
                                 mysqli_stmt_close($stmt_saldo);
                             } else {
-                                throw new Exception("Erro ao buscar saldo anterior: " . mysqli_error($link));
+                                throw new Exception("Erro ao buscar saldo atual: " . mysqli_error($link));
                             }
-                            
-                            // Calcula o novo saldo (saldo anterior - quantidade da saída)
-                            $saldo_atual = $saldo_anterior;
                             
                             $sql_movimentacao = "INSERT INTO almoxarifado_movimentacoes (material_id, tipo, quantidade, saldo_anterior, saldo_atual, data_movimentacao, usuario_id, referencia_id) VALUES (?, 'saida', ?, ?, ?, NOW(), ?, ?)";
                             

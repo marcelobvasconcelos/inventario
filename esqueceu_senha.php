@@ -72,7 +72,7 @@ if($_SERVER["REQUEST_METHOD"] == "POST" && !isset($_POST['solicitacao_enviada'])
 <head>
     <meta charset="UTF-8">
     <title>Recuperar Senha</title>
-    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="/inventario/css/style.css">
 </head>
 <body>
     <div class="login-wrapper">

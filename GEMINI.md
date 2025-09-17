@@ -15,7 +15,6 @@ Este documento contém diretrizes e informações importantes para a IA ao inter
 3.  **Convenções:** Mantenha-se alinhado com as convenções de código existentes no projeto (formatação, estrutura, etc.).
 4.  **Documentação:** Mantenha a documentação do projeto atualizada, especialmente o `docs/FILE_STRUCTURE.md` e o `docs/USER_MANUAL.md`.
 5.  **Testes:** Sempre que possível e relevante, mencione a importância de testar as funcionalidades após as alterações.
-6.  **GitHub:** Sempre use a ferramenta `@gemini-cli/github` para interagir com o repositório.
 
 # Regras para Edição de Código PHP
 

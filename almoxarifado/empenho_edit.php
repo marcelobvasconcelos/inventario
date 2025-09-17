@@ -35,27 +35,47 @@ if(!$empenho){
 // Processar formulário de edição
 if($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['editar_empenho'])){
     $data_emissao = trim($_POST["data_emissao"]);
-    $fornecedor = trim($_POST["fornecedor"]);
-    $cnpj = trim($_POST["cnpj"]);
+    $valor = trim($_POST["valor"]);
     $status = trim($_POST["status"]);
-    
+
     // Validação
-    if(empty($data_emissao) || empty($fornecedor) || empty($cnpj) || empty($status)){
-        $error = "Todos os campos são obrigatórios.";
+    if(empty($data_emissao) || empty($valor) || empty($status)){
+        $error = "Data de emissão, valor e status são obrigatórios.";
+    } elseif(!is_numeric($valor) || $valor <= 0){
+        $error = "Valor deve ser um número positivo.";
     } else {
-        // Atualizar empenho
-        $sql_update = "UPDATE empenhos_insumos SET data_emissao = ?, fornecedor = ?, cnpj = ?, status = ? WHERE numero = ?";
-        $stmt_update = $pdo->prepare($sql_update);
+        // Verificar se há notas fiscais vinculadas e calcular valor utilizado
+        $sql_utilizado = "SELECT COALESCE(SUM(nota_valor), 0) as valor_utilizado 
+                         FROM notas_fiscais WHERE empenho_numero = ?";
+        $stmt_utilizado = $pdo->prepare($sql_utilizado);
+        $stmt_utilizado->execute([$numero]);
+        $valor_utilizado = $stmt_utilizado->fetchColumn();
         
-        if($stmt_update->execute([$data_emissao, $fornecedor, $cnpj, $status, $numero])){
-            $message = "Empenho atualizado com sucesso!";
-            // Atualizar os dados do empenho
-            $empenho['data_emissao'] = $data_emissao;
-            $empenho['fornecedor'] = $fornecedor;
-            $empenho['cnpj'] = $cnpj;
-            $empenho['status'] = $status;
+        // Verificar se o novo valor não é menor que o valor já utilizado
+        if($valor < $valor_utilizado){
+            $error = "Não é possível atualizar o empenho. O novo valor (R$ " . number_format($valor, 2, ',', '.') . ") é menor que o valor já utilizado em notas fiscais (R$ " . number_format($valor_utilizado, 2, ',', '.') . ").";
         } else {
-            $error = "Erro ao atualizar empenho. Tente novamente.";
+            $pdo->beginTransaction();
+            try {
+                // Calcular novo saldo
+                $novo_saldo = $valor - $valor_utilizado;
+                
+                // Atualizar empenho com novo saldo
+                $sql_update = "UPDATE empenhos_insumos SET data_emissao = ?, valor = ?, saldo = ?, status = ? WHERE numero = ?";
+                $stmt_update = $pdo->prepare($sql_update);
+                $stmt_update->execute([$data_emissao, $valor, $novo_saldo, $status, $numero]);
+                
+                $pdo->commit();
+                $message = "Empenho atualizado com sucesso! Saldo recalculado.";
+                // Atualizar os dados do empenho
+                $empenho['data_emissao'] = $data_emissao;
+                $empenho['valor'] = $valor;
+                $empenho['saldo'] = $novo_saldo;
+                $empenho['status'] = $status;
+            } catch (Exception $e) {
+                $pdo->rollback();
+                $error = "Erro ao atualizar empenho. Tente novamente. Detalhes: " . $e->getMessage();
+            }
         }
     }
 }
@@ -95,19 +115,10 @@ if($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['editar_empenho'])){
                 <div class="row">
                     <div class="col-md-6">
                         <div class="form-group">
-                            <label for="fornecedor">Fornecedor:</label>
-                            <input type="text" class="form-control" id="fornecedor" name="fornecedor" value="<?php echo isset($fornecedor) ? htmlspecialchars($fornecedor) : htmlspecialchars($empenho['fornecedor']); ?>" required>
+                            <label for="valor">Valor do Empenho:</label>
+                            <input type="number" class="form-control" id="valor" name="valor" step="0.01" min="0" value="<?php echo isset($valor) ? htmlspecialchars($valor) : htmlspecialchars($empenho['valor'] ?? ''); ?>" required>
                         </div>
                     </div>
-                    <div class="col-md-6">
-                        <div class="form-group">
-                            <label for="cnpj">CNPJ:</label>
-                            <input type="text" class="form-control" id="cnpj" name="cnpj" value="<?php echo isset($cnpj) ? htmlspecialchars($cnpj) : htmlspecialchars($empenho['cnpj']); ?>" required>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="row">
                     <div class="col-md-6">
                         <div class="form-group">
                             <label for="status">Status:</label>

@@ -14,6 +14,20 @@ $error = '';
 $numero = '';
 $descricao = '';
 
+// Verificar mensagens de retorno
+if(isset($_GET['success'])){
+    if($_GET['success'] == 'categoria_excluida'){
+        $message = 'Categoria excluída com sucesso!';
+    }
+}
+if(isset($_GET['error'])){
+    if($_GET['error'] == 'categoria_em_uso'){
+        $error = 'Não é possível excluir esta categoria pois ela está sendo usada por materiais.';
+    } elseif($_GET['error'] == 'erro_exclusao'){
+        $error = 'Erro ao excluir categoria. Tente novamente.';
+    }
+}
+
 // Processar formulário de cadastro
 if($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['cadastrar_categoria'])){
     $numero = trim($_POST["numero"]);
@@ -53,7 +67,16 @@ $categorias = $stmt_categorias->fetchAll(PDO::FETCH_ASSOC);
 ?>
 
 <div class="container">
-    <h2>Gerenciamento de Categorias do Almoxarifado</h2>
+    <div class="almoxarifado-header">
+        <h2>Gerenciamento de Categorias do Almoxarifado</h2>
+        <?php
+        // Apenas administradores podem acessar, então o usuário é privilegiado.
+        $is_privileged_user = true;
+        require_once 'menu_almoxarifado.php';
+        ?>
+    </div>
+    
+    <?php require_once 'menu_empenhos.php'; ?>
     
     <?php if($message): ?>
         <div class="alert alert-success"><?php echo htmlspecialchars($message); ?></div>
@@ -105,7 +128,12 @@ $categorias = $stmt_categorias->fetchAll(PDO::FETCH_ASSOC);
                                     <td><?php echo htmlspecialchars($categoria['numero']); ?></td>
                                     <td><?php echo htmlspecialchars($categoria['descricao']); ?></td>
                                     <td>
-                                        <a href="categoria_edit.php?id=<?php echo $categoria['id']; ?>" class="btn btn-sm btn-warning">Editar</a>
+                                        <a href="categoria_edit.php?id=<?php echo $categoria['id']; ?>" class="btn btn-sm btn-warning" title="Editar">
+                                            <i class="fas fa-edit"></i>
+                                        </a>
+                                        <a href="categoria_delete.php?id=<?php echo $categoria['id']; ?>" class="btn btn-sm btn-danger" title="Excluir" onclick="return confirm('Tem certeza que deseja excluir esta categoria?')">
+                                            <i class="fas fa-trash"></i>
+                                        </a>
                                     </td>
                                 </tr>
                             <?php endforeach; ?>

@@ -16,33 +16,33 @@ $error = '';
 if($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['cadastrar_empenho'])){
     $numero = trim($_POST["numero"]);
     $data_emissao = trim($_POST["data_emissao"]);
-    $fornecedor = trim($_POST["fornecedor"]);
-    $cnpj = trim($_POST["cnpj"]);
+    $valor = trim($_POST["valor"]);
     $status = trim($_POST["status"]);
-    
+
     // Validação
-    if(empty($numero) || empty($data_emissao) || empty($fornecedor) || empty($cnpj) || empty($status)){
-        $error = "Todos os campos são obrigatórios.";
+    if(empty($numero) || empty($data_emissao) || empty($valor) || empty($status)){
+        $error = "Número, data de emissão, valor e status são obrigatórios.";
+    } elseif(!is_numeric($valor) || $valor <= 0){
+        $error = "Valor deve ser um número positivo.";
     } else {
         // Verificar se já existe um empenho com o mesmo número
         $sql_check = "SELECT numero FROM empenhos_insumos WHERE numero = ?";
         $stmt_check = $pdo->prepare($sql_check);
         $stmt_check->execute([$numero]);
-        
+
         if($stmt_check->rowCount() > 0){
             $error = "Já existe um empenho com este número.";
         } else {
-            // Inserir novo empenho
-            $sql_insert = "INSERT INTO empenhos_insumos (numero, data_emissao, fornecedor, cnpj, status) VALUES (?, ?, ?, ?, ?)";
+            // Inserir novo empenho (sem fornecedor e cnpj)
+            $sql_insert = "INSERT INTO empenhos_insumos (numero, data_emissao, valor, saldo, status) VALUES (?, ?, ?, ?, ?)";
             $stmt_insert = $pdo->prepare($sql_insert);
-            
-            if($stmt_insert->execute([$numero, $data_emissao, $fornecedor, $cnpj, $status])){
+
+            if($stmt_insert->execute([$numero, $data_emissao, $valor, $valor, $status])){
                 $message = "Empenho cadastrado com sucesso!";
                 // Limpar campos
                 $numero = '';
                 $data_emissao = '';
-                $fornecedor = '';
-                $cnpj = '';
+                $valor = '';
                 $status = 'Aberto';
             } else {
                 $error = "Erro ao cadastrar empenho. Tente novamente.";
@@ -59,8 +59,16 @@ $empenhos = $stmt_empenhos->fetchAll(PDO::FETCH_ASSOC);
 ?>
 
 <div class="container">
-    <h2>Gerenciamento de Empenhos</h2>
+    <div class="almoxarifado-header">
+        <h2>Gerenciamento de Empenhos</h2>
+        <?php
+        $is_privileged_user = true;
+        require_once 'menu_almoxarifado.php';
+        ?>
+    </div>
     
+    <?php require_once 'menu_empenhos.php'; ?>
+
     <?php if($message): ?>
         <div class="alert alert-success"><?php echo $message; ?></div>
     <?php endif; ?>
@@ -92,19 +100,10 @@ $empenhos = $stmt_empenhos->fetchAll(PDO::FETCH_ASSOC);
                 <div class="row">
                     <div class="col-md-6">
                         <div class="form-group">
-                            <label for="fornecedor">Fornecedor:</label>
-                            <input type="text" class="form-control" id="fornecedor" name="fornecedor" value="<?php echo isset($fornecedor) ? htmlspecialchars($fornecedor) : ''; ?>" required>
+                            <label for="valor">Valor do Empenho:</label>
+                            <input type="number" class="form-control" id="valor" name="valor" step="0.01" min="0" value="<?php echo isset($valor) ? htmlspecialchars($valor) : ''; ?>" required>
                         </div>
                     </div>
-                    <div class="col-md-6">
-                        <div class="form-group">
-                            <label for="cnpj">CNPJ:</label>
-                            <input type="text" class="form-control" id="cnpj" name="cnpj" value="<?php echo isset($cnpj) ? htmlspecialchars($cnpj) : ''; ?>" required>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="row">
                     <div class="col-md-6">
                         <div class="form-group">
                             <label for="status">Status:</label>
@@ -134,8 +133,8 @@ $empenhos = $stmt_empenhos->fetchAll(PDO::FETCH_ASSOC);
                             <tr>
                                 <th>Número</th>
                                 <th>Data de Emissão</th>
-                                <th>Fornecedor</th>
-                                <th>CNPJ</th>
+                                <th>Valor</th>
+                                <th>Saldo</th>
                                 <th>Status</th>
                                 <th>Ações</th>
                             </tr>
@@ -145,8 +144,8 @@ $empenhos = $stmt_empenhos->fetchAll(PDO::FETCH_ASSOC);
                                 <tr>
                                     <td><?php echo htmlspecialchars($empenho['numero']); ?></td>
                                     <td><?php echo date('d/m/Y', strtotime($empenho['data_emissao'])); ?></td>
-                                    <td><?php echo htmlspecialchars($empenho['fornecedor']); ?></td>
-                                    <td><?php echo htmlspecialchars($empenho['cnpj']); ?></td>
+                                    <td>R$ <?php echo number_format($empenho['valor'] ?? 0, 2, ',', '.'); ?></td>
+                                    <td>R$ <?php echo number_format($empenho['saldo'] ?? 0, 2, ',', '.'); ?></td>
                                     <td>
                                         <span class="badge badge-<?php echo $empenho['status'] == 'Aberto' ? 'success' : 'secondary'; ?>">
                                             <?php echo htmlspecialchars($empenho['status']); ?>

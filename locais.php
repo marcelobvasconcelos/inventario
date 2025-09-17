@@ -189,11 +189,11 @@ if($stmt = mysqli_prepare($link, $sql_fetch)){
                 </td>
                 <td>
                     <?php if ($row['status'] == 'pendente'): ?>
-                        <a href="local_approve.php?id=<?php echo $row['id']; ?>" title="Aprovar" onclick="return confirm('Tem certeza que deseja aprovar este local?');"><i class="fas fa-check-circle"></i></a>
-                        <a href="local_reject.php?id=<?php echo $row['id']; ?>" title="Rejeitar" onclick="return confirm('Tem certeza que deseja rejeitar este local?');"><i class="fas fa-times-circle"></i></a>
+                        <a href="local_approve.php?id=<?php echo $row['id']; ?>" title="Aprovar" class="action-icon approve-icon" onclick="return confirm('Tem certeza que deseja aprovar este local?');"><i class="fas fa-check-circle"></i></a>
+                        <a href="local_reject.php?id=<?php echo $row['id']; ?>" title="Rejeitar" class="action-icon reject-icon" onclick="return confirm('Tem certeza que deseja rejeitar este local?');"><i class="fas fa-times-circle"></i></a>
                     <?php else: ?>
-                        <a href="local_edit.php?id=<?php echo $row['id']; ?>" title="Editar"><i class="fas fa-edit"></i></a>
-                        <a href="local_delete.php?id=<?php echo $row['id']; ?>" title="Excluir" onclick="return confirm('Tem certeza que deseja excluir este local?');"><i class="fas fa-trash"></i></a>
+                        <a href="local_edit.php?id=<?php echo $row['id']; ?>" title="Editar" class="action-icon edit-icon"><i class="fas fa-edit"></i></a>
+                        <a href="local_delete.php?id=<?php echo $row['id']; ?>" title="Excluir" class="action-icon delete-icon" onclick="return confirm('Tem certeza que deseja excluir este local?');"><i class="fas fa-trash"></i></a>
                     <?php endif; ?>
                 </td>
                 <?php endif; ?>

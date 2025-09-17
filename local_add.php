@@ -8,8 +8,6 @@ if($_SESSION["permissao"] != 'Administrador'){
     exit;
 }
 
-$erro = ""; // Variável para armazenar mensagens de erro
-
 if($_SERVER["REQUEST_METHOD"] == "POST"){
     $sql = "INSERT INTO locais (nome) VALUES (?)";
 
@@ -20,25 +18,18 @@ if($_SERVER["REQUEST_METHOD"] == "POST"){
             header("location: locais.php");
             exit();
         } else{
-            $erro = "Erro ao executar a declaração: " . mysqli_stmt_error($stmt);
+            echo "Oops! Algo deu errado. Por favor, tente novamente mais tarde.";
         }
-        mysqli_stmt_close($stmt);
-    } else {
-        $erro = "Erro ao preparar a declaração: " . mysqli_error($link);
     }
 }
 ?>
 
 <h2>Adicionar Novo Local</h2>
 
-<?php if(!empty($erro)): ?>
-    <div class="alert alert-danger"><?php echo $erro; ?></div>
-<?php endif; ?>
-
 <form action="" method="post">
     <div>
         <label>Nome do Local</label>
-        <input type="text" name="nome" required>
+        <input type="text" name="nome">
     </div>
     <div>
         <input type="submit" value="Adicionar">

@@ -45,6 +45,15 @@ if (isset($_SESSION['id'])) {
     $stmt_count->execute([$_SESSION['id']]);
     $notif_count = $stmt_count->fetchColumn();
     
+    // Busca requisições com status 'discussao' ou 'aprovada'
+    $sql_req_count = "SELECT COUNT(id) FROM almoxarifado_requisicoes WHERE usuario_id = ? AND status IN ('discussao', 'aprovada')";
+    $stmt_req_count = $pdo->prepare($sql_req_count);
+    $stmt_req_count->execute([$_SESSION['id']]);
+    $req_count = $stmt_req_count->fetchColumn();
+    
+    // Total de notificações (itens + requisições)
+    $total_notif_count = $notif_count + $req_count;
+    
     // Conta o número de rascunhos (apenas para administradores)
     if ($_SESSION["permissao"] == 'Administrador') {
         $sql_draft_count = "SELECT COUNT(id) FROM rascunhos_itens";
@@ -114,6 +123,11 @@ if (isset($_SESSION['id'])) {
         .icone-tema {
             color: var(--cor-icones, var(--cor-primaria));
         }
+        
+        /* Estilo para ícones de ação - reduzindo o tamanho do ícone de lixeira */
+        .action-icon.delete-icon {
+            font-size: 1.2em; /* Reduzido de 1.5em para 1.2em */
+        }
     </style>
 </head>
 <body<?php echo $is_almoxarifado ? ' class="almoxarifado"' : ''; ?>>
@@ -136,15 +150,15 @@ if (isset($_SESSION['id'])) {
         <div class="user-menu">
             <a href="/inventario/notificacoes_usuario.php" class="notification-bell">
                 <i class="fas fa-bell"></i>
-                <?php if($notif_count > 0): ?>
-                    <span class="notification-badge"><?php echo $notif_count; ?></span>
+                <?php if($total_notif_count > 0): ?>
+                    <span class="notification-badge"><?php echo $total_notif_count; ?></span>
                 <?php endif; ?>
             </a>
             <div class="user-menu-dropdown">
                 <button class="user-menu-button">Bem-vindo, <?php echo $_SESSION['nome']; ?> <i class="fas fa-caret-down"></i></button>
                 <div class="user-menu-content">
                     <a href="/inventario/usuario_perfil.php">Editar Perfil</a>
-                    <a href="/inventario/notificacoes_usuario.php">Minhas Notificações</a>
+                    <a href="/inventario/notificacoes_usuario.php">Minhas Notificações <?php if($total_notif_count > 0): ?><span class="badge badge-warning ml-1"><?php echo $total_notif_count; ?></span><?php endif; ?></a>
                     <?php if($_SESSION["permissao"] == 'Administrador'): ?>
                         <a href="/inventario/configuracoes_pdf.php">Configurações PDF</a>
                     <?php endif; ?>

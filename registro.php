@@ -90,7 +90,7 @@ if($_SERVER["REQUEST_METHOD"] == "POST"){
 <head>
     <meta charset="UTF-8">
     <title>Registrar</title>
-    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="/inventario/css/style.css">
 </head>
 <body>
     <div class="registro-wrapper">

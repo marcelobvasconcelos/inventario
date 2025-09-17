@@ -18,7 +18,7 @@ $materiais = [
 // Inserir materiais
 echo "Inserindo materiais na tabela almoxarifado_materiais...\n";
 
-$sql = "INSERT INTO almoxarifado_materiais (codigo, nome, descricao, unidade_medida, estoque_atual, valor_unitario, categoria, status) VALUES (:codigo, :nome, :descricao, :unidade_medida, :estoque_atual, :valor_unitario, :categoria, 'ativo')";
+$sql = "INSERT INTO almoxarifado_materiais (codigo, nome, descricao, unidade_medida, estoque_atual, valor_unitario, categoria, nota_fiscal, data_criacao, usuario_criacao) VALUES (:codigo, :nome, :descricao, :unidade_medida, :estoque_atual, :valor_unitario, :categoria, NULL, NOW(), 2)";
 
 foreach ($materiais as $material) {
     // Verificar se o material (pelo código) já existe

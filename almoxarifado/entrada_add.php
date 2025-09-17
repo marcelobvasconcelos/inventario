@@ -20,7 +20,7 @@ $material_id = $quantidade = $valor_unitario = $fornecedor = $nota_fiscal = $dat
 $material_id_err = $quantidade_err = $valor_unitario_err = $data_entrada_err = "";
 
 // Busca os materiais disponíveis
-$sql_materiais = "SELECT id, codigo, nome FROM almoxarifado_materiais WHERE status = 'ativo' ORDER BY nome ASC";
+$sql_materiais = "SELECT id, codigo, nome FROM almoxarifado_materiais ORDER BY nome ASC";
 $materiais_result = mysqli_query($link, $sql_materiais);
 
 // Processa o formulário quando ele é submetido (método POST)
@@ -101,7 +101,7 @@ if($_SERVER["REQUEST_METHOD"] == "POST"){
                             }
                             
                             // Calcula o novo saldo (saldo anterior + quantidade da entrada)
-                            $saldo_atual = $saldo_anterior;
+                            $saldo_atual = $saldo_anterior + $quantidade;
                             
                             $sql_movimentacao = "INSERT INTO almoxarifado_movimentacoes (material_id, tipo, quantidade, saldo_anterior, saldo_atual, data_movimentacao, usuario_id, referencia_id) VALUES (?, 'entrada', ?, ?, ?, NOW(), ?, ?)";
                             

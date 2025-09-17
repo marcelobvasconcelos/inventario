@@ -309,4 +309,4 @@ if (document.readyState === 'loading') {
 }
 
 // Também tenta inicializar após um pequeno atraso para garantir que todos os elementos estejam prontos
-setTimeout(inicializarSeletorTemens, 1000);
+setTimeout(inicializarSeletorTemas, 1000);

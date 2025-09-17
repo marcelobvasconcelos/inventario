@@ -1,269 +1,208 @@
 <?php
-// item_add.php - Corrigido: fluxo POST seguro, validações e remoção de duplicidades
-
-require_once 'config/db.php'; // Inicia sessão e expõe $link/$pdo
-
-// Inicialização de variáveis (valores do formulário e erros)
-$nome = $patrimonio_novo = $patrimonio_secundario = $local_id = $estado = $observacao = '';
-$responsavel_id = '';
-$nome_err = $patrimonio_novo_err = $local_id_err = $responsavel_id_err = $estado_err = '';
-
-// Variáveis de controle para gestores
-$is_gestor_sem_local = false;
-$locais_result = false;
-$usuarios_result = false;
-
-// Verifica perfil para carregar listas e regras (Gestor/Admin)
-$usuario_logado_id = isset($_SESSION['id']) ? (int)$_SESSION['id'] : 0;
-$perfil = isset($_SESSION['permissao']) ? $_SESSION['permissao'] : '';
-
-if ($perfil === 'Gestor') {
-    // Verifica se o gestor já tem itens
-    $check_itens_sql = "SELECT COUNT(*) FROM itens WHERE responsavel_id = ?";
-    if ($stmt_check_itens = mysqli_prepare($link, $check_itens_sql)) {
-        mysqli_stmt_bind_param($stmt_check_itens, 'i', $usuario_logado_id);
-        mysqli_stmt_execute($stmt_check_itens);
-        mysqli_stmt_bind_result($stmt_check_itens, $count_itens);
-        mysqli_stmt_fetch($stmt_check_itens);
-        mysqli_stmt_close($stmt_check_itens);
-        $is_gestor_sem_local = ($count_itens == 0);
-    }
-    // Locais disponíveis conforme a regra
-    if ($is_gestor_sem_local) {
-        $locais_sql = "SELECT id, nome FROM locais ORDER BY nome ASC";
-        $locais_result = mysqli_query($link, $locais_sql);
-    } else {
-        $locais_sql = "SELECT DISTINCT l.id, l.nome FROM locais l JOIN itens i ON l.id = i.local_id WHERE i.responsavel_id = ? ORDER BY l.nome ASC";
-        if ($stmt_locais = mysqli_prepare($link, $locais_sql)) {
-            mysqli_stmt_bind_param($stmt_locais, 'i', $usuario_logado_id);
-            mysqli_stmt_execute($stmt_locais);
-            $locais_result = mysqli_stmt_get_result($stmt_locais);
-            mysqli_stmt_close($stmt_locais);
-        }
-    }
-    // Responsável pré-definido para gestor
-    $responsavel_id = $usuario_logado_id;
-} elseif ($perfil === 'Administrador') {
-    // Admin: todos os locais e usuários aprovados
-    $locais_result = mysqli_query($link, "SELECT id, nome FROM locais ORDER BY nome ASC");
-    $usuarios_result = mysqli_query($link, "SELECT id, nome FROM usuarios WHERE status = 'aprovado' ORDER BY nome ASC");
-} else {
-    // Outros perfis não devem acessar esta página (garantido novamente depois do header)
+// Inicia a sessão PHP para gerenciar o estado do usuário
+if (session_status() == PHP_SESSION_NONE) {
+    session_start();
 }
 
-// Permite pré-selecionar local via GET quando gestor sem local seleciona primeiro
-if (isset($_GET['local_id']) && $perfil === 'Gestor' && $is_gestor_sem_local) {
-    $local_id = $_GET['local_id'];
-}
-
-// Processamento do formulário antes de qualquer saída (evita headers already sent)
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    // Garantir que está logado
-    if (!isset($_SESSION['loggedin']) || $_SESSION['loggedin'] !== true) {
-        header('Location: login.php');
-        exit;
-    }
-    // Apenas Gestor/Admin
-    if ($perfil !== 'Administrador' && $perfil !== 'Gestor') {
-        header('Location: itens.php');
-        exit;
-    }
-
-    // Fluxo de seleção de local inicial para gestor sem local
-    if ($perfil === 'Gestor' && $is_gestor_sem_local && isset($_POST['selecionar_local_primeiro'])) {
-        $local_id = isset($_POST['local_id']) ? trim($_POST['local_id']) : '';
-        if (empty($local_id)) {
-            $local_id_err = 'Por favor, selecione um local.';
-        } else {
-            header('Location: item_add.php?local_id=' . urlencode($local_id));
-            exit;
-        }
-    } else {
-        // Validações básicas
-        $nome = isset($_POST['nome']) ? trim($_POST['nome']) : '';
-        if ($nome === '') {
-            $nome_err = 'Por favor, insira o nome do item.';
-        }
-
-        $patrimonio_novo = isset($_POST['patrimonio_novo']) ? trim($_POST['patrimonio_novo']) : '';
-        if ($patrimonio_novo === '') {
-            $patrimonio_novo_err = 'Por favor, insira o patrimônio.';
-        }
-
-        $patrimonio_secundario = isset($_POST['patrimonio_secundario']) ? trim($_POST['patrimonio_secundario']) : '';
-        $estado = isset($_POST['estado']) ? $_POST['estado'] : '';
-        if ($estado === '') {
-            $estado_err = 'Por favor, selecione o estado.';
-        }
-        $observacao = isset($_POST['observacao']) ? trim($_POST['observacao']) : '';
-
-        // Local
-        $local_id = isset($_POST['local_id']) ? trim($_POST['local_id']) : '';
-        if ($local_id === '') {
-            $local_id_err = 'Por favor, selecione um local.';
-        } else if ($perfil === 'Gestor' && !$is_gestor_sem_local) {
-            // Verificação de permissão do gestor para o local (apenas se ele já tem itens)
-            $check_local_sql = "SELECT COUNT(*) FROM itens WHERE responsavel_id = ? AND local_id = ?";
-            if ($stmt_check_local = mysqli_prepare($link, $check_local_sql)) {
-                mysqli_stmt_bind_param($stmt_check_local, 'ii', $usuario_logado_id, $local_id);
-                mysqli_stmt_execute($stmt_check_local);
-                mysqli_stmt_bind_result($stmt_check_local, $count_local);
-                mysqli_stmt_fetch($stmt_check_local);
-                mysqli_stmt_close($stmt_check_local);
-                if ($count_local == 0) {
-                    $local_id_err = 'Você não tem permissão para adicionar itens neste local.';
-                }
-            }
-        }
-
-        // Responsável
-        if ($perfil === 'Gestor') {
-            $responsavel_id = $usuario_logado_id; // já definido
-        } else { // Administrador
-            $responsavel_id = isset($_POST['responsavel_id']) ? trim($_POST['responsavel_id']) : '';
-            if ($responsavel_id === '') {
-                $responsavel_id_err = 'Por favor, selecione um responsável.';
-            }
-        }
-
-        // Inserção se não houver erros
-        if ($nome_err === '' && $patrimonio_novo_err === '' && $local_id_err === '' && $responsavel_id_err === '' && $estado_err === '') {
-            $status_confirmacao = ((int)$responsavel_id === $usuario_logado_id) ? 'Confirmado' : 'Pendente';
-            $sql_insert = "INSERT INTO itens (nome, patrimonio_novo, patrimonio_secundario, local_id, responsavel_id, estado, observacao, data_cadastro, status_confirmacao) VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), ?)";
-            if ($stmt = mysqli_prepare($link, $sql_insert)) {
-                mysqli_stmt_bind_param($stmt, 'sssiisss', $nome, $patrimonio_novo, $patrimonio_secundario, $local_id, $responsavel_id, $estado, $observacao, $status_confirmacao);
-                if (mysqli_stmt_execute($stmt)) {
-                    $novo_item_id = mysqli_insert_id($link);
-
-                    // Notificação de novo item via notificacoes_movimentacao (pendente para confirmação)
-                    if ($status_confirmacao === 'Pendente') {
-                        $ok = true;
-                        mysqli_begin_transaction($link);
-
-                        // 1) Criar uma movimentação inicial (cadastro) com origem = destino = local atual
-                        $sql_mov = "INSERT INTO movimentacoes (item_id, local_origem_id, local_destino_id, usuario_id, usuario_anterior_id, usuario_destino_id) VALUES (?, ?, ?, ?, NULL, ?)";
-                        $stmt_mov = mysqli_prepare($link, $sql_mov);
-                        if ($stmt_mov) {
-                            mysqli_stmt_bind_param($stmt_mov, "iiiii", $novo_item_id, $local_id, $local_id, $usuario_logado_id, $responsavel_id);
-                            if (!mysqli_stmt_execute($stmt_mov)) { $ok = false; }
-                            $movimentacao_id = mysqli_insert_id($link);
-                            mysqli_stmt_close($stmt_mov);
-                        } else { $ok = false; }
-
-                        // 2) Criar a notificação pendente atrelada à movimentação
-                        if ($ok) {
-                            $sql_nm = "INSERT INTO notificacoes_movimentacao (movimentacao_id, item_id, usuario_notificado_id, status_confirmacao) VALUES (?, ?, ?, 'Pendente')";
-                            $stmt_nm = mysqli_prepare($link, $sql_nm);
-                            if ($stmt_nm) {
-                                mysqli_stmt_bind_param($stmt_nm, "iii", $movimentacao_id, $novo_item_id, $responsavel_id);
-                                if (!mysqli_stmt_execute($stmt_nm)) { $ok = false; }
-                                mysqli_stmt_close($stmt_nm);
-                            } else { $ok = false; }
-                        }
-
-                        if ($ok) {
-                            mysqli_commit($link);
-                        } else {
-                            mysqli_rollback($link);
-                        }
-                    }
-
-                    header('Location: itens.php');
-                    exit;
-                } else {
-                    // Trata erro de duplicidade para patrimonio_novo
-                    if (mysqli_errno($link) == 1062 && strpos(mysqli_error($link), 'patrimonio_novo') !== false) {
-                        if (preg_match("/Duplicate entry '([^']+)'/", mysqli_error($link), $matches)) {
-                            $dup = isset($matches[1]) ? $matches[1] : $patrimonio_novo;
-                            $patrimonio_novo_err = 'Este patrimônio ' . htmlspecialchars($dup) . ' já está cadastrado!';
-                        } else {
-                            $patrimonio_novo_err = 'Patrimônio já cadastrado!';
-                        }
-                    } else {
-                        $nome_err = 'Oops! Algo deu errado. Por favor, tente novamente mais tarde.';
-                    }
-                }
-                mysqli_stmt_close($stmt);
-            } else {
-                $nome_err = 'Erro ao preparar a consulta de inserção: ' . mysqli_error($link);
-            }
-        }
-    }
-}
-
-// A partir daqui pode renderizar a página
+// Inclui o cabeçalho HTML padrão e a conexão com o banco de dados
 require_once 'includes/header.php';
+require_once 'config/db.php';
 
-// Verifica permissão após renderizar cabeçalho (mantém padrão do projeto)
-if ($perfil !== 'Administrador' && $perfil !== 'Gestor') {
+// Verifica se o usuário tem permissão para adicionar itens (Administrador ou Gestor)
+if($_SESSION["permissao"] != 'Administrador' && $_SESSION["permissao"] != 'Gestor'){
     echo "<div class='alert alert-danger'>Acesso negado. Você não tem permissão para executar esta ação.</div>";
     require_once 'includes/footer.php';
     exit;
 }
+
+// Inicializa variáveis para os campos do formulário e mensagens de erro
+$nome = $patrimonio_novo = $patrimonio_secundario = $local_id = $responsavel_id = $estado = $observacao = "";
+$nome_err = $patrimonio_novo_err = $local_id_err = $responsavel_id_err = $estado_err = "";
+
+// Variável de controle para gestores sem local associado
+$is_gestor_sem_local = false;
+
+// Lógica específica para usuários com permissão de 'Gestor'
+if($_SESSION["permissao"] == 'Gestor'){
+    $usuario_logado_id = $_SESSION['id'];
+    // Verifica se o gestor já tem algum item cadastrado sob sua responsabilidade
+    $check_itens_sql = "SELECT COUNT(*) FROM itens WHERE responsavel_id = ?";
+    if($stmt_check_itens = mysqli_prepare($link, $check_itens_sql)){
+        mysqli_stmt_bind_param($stmt_check_itens, "i", $usuario_logado_id);
+        mysqli_stmt_execute($stmt_check_itens);
+        mysqli_stmt_bind_result($stmt_check_itens, $count_itens);
+        mysqli_stmt_fetch($stmt_check_itens);
+        mysqli_stmt_close($stmt_check_itens);
+
+        // Se o gestor não tem itens, ele precisa selecionar um local primeiro
+        if($count_itens == 0){
+            $is_gestor_sem_local = true;
+            // Obtém todos os locais disponíveis para que ele possa escolher
+            $locais_sql = "SELECT id, nome FROM locais ORDER BY nome ASC";
+            $locais_result = mysqli_query($link, $locais_sql);
+        } else {
+            // Se o gestor já tem itens, obtém apenas os locais associados a ele
+            $locais_sql = "SELECT DISTINCT l.id, l.nome FROM locais l JOIN itens i ON l.id = i.local_id WHERE i.responsavel_id = ? ORDER BY l.nome ASC";
+            if($stmt_locais = mysqli_prepare($link, $locais_sql)){
+                mysqli_stmt_bind_param($stmt_locais, "i", $usuario_logado_id);
+                mysqli_stmt_execute($stmt_locais);
+                $locais_result = mysqli_stmt_get_result($stmt_locais);
+            } else {
+                echo "Erro ao preparar a consulta de locais: " . mysqli_error($link);
+                $locais_result = false; // Para evitar erro no loop
+            }
+        }
+    } else {
+        echo "Erro ao verificar itens do gestor: " . mysqli_error($link);
+        $locais_result = false; // Para evitar erro no loop
+    }
+} else { // Lógica para Administradores: obtém todos os locais
+    $locais_sql = "SELECT id, nome FROM locais ORDER BY nome ASC";
+    $locais_result = mysqli_query($link, $locais_sql);
+}
+
+// Obtém usuários disponíveis para serem responsáveis (apenas para Administrador)
+if($_SESSION["permissao"] == 'Administrador'){
+    $usuarios_sql = "SELECT id, nome FROM usuarios WHERE status = 'aprovado' ORDER BY nome ASC";
+    $usuarios_result = mysqli_query($link, $usuarios_sql);
+} else { // Para Gestores, o próprio gestor é o responsável
+    $responsavel_id = $_SESSION['id']; // O próprio gestor é o responsável
+    $usuarios_result = false; // Não precisa de um resultado de query para o dropdown de usuários
+}
+
+// Processa o formulário quando ele é submetido (método POST)
+if($_SERVER["REQUEST_METHOD"] == "POST"){
+    // Lógica para gestores que precisam selecionar um local primeiro
+    if($is_gestor_sem_local && isset($_POST['selecionar_local_primeiro'])){
+        $local_id = $_POST['local_id'];
+        if(empty($local_id)){
+            $local_id_err = "Por favor, selecione um local.";
+        } else {
+            // Redireciona para a própria página com o local_id selecionado na URL
+            // Isso fará com que o formulário completo seja exibido com o local pré-selecionado
+            header("location: item_add.php?local_id=" . $local_id);
+            exit();
+        }
+    } else {
+        // Validação e sanitização dos campos do formulário
+        if(empty(trim($_POST["nome"]))){
+            $nome_err = "Por favor, insira o nome do item.";
+        } else {
+            $nome = trim($_POST["nome"]);
+        }
+
+        if(empty(trim($_POST["patrimonio_novo"]))){
+            $patrimonio_novo_err = "Por favor, insira o patrimônio.";
+        } else {
+            $patrimonio_novo = trim($_POST["patrimonio_novo"]);
+        }
+
+        $patrimonio_secundario = trim($_POST["patrimonio_secundario"]);
+        $estado = $_POST["estado"];
+        $observacao = trim($_POST["observacao"]);
+
+        // Validação do local_id
+        $local_id = $_POST['local_id'];
+        if(empty($local_id)){
+            $local_id_err = "Por favor, selecione um local.";
+        } else {
+            // Validação adicional para Gestores: verificar se o local é permitido
+            if($_SESSION["permissao"] == 'Gestor' && !$is_gestor_sem_local){ // Apenas se o gestor já tem itens
+                $usuario_logado_id = $_SESSION['id'];
+                $check_local_sql = "SELECT COUNT(*) FROM itens WHERE responsavel_id = ? AND local_id = ?";
+                if($stmt_check_local = mysqli_prepare($link, $check_local_sql)){
+                    mysqli_stmt_bind_param($stmt_check_local, "ii", $usuario_logado_id, $local_id);
+                    mysqli_stmt_execute($stmt_check_local);
+                    mysqli_stmt_bind_result($stmt_check_local, $count);
+                    mysqli_stmt_fetch($stmt_check_local);
+                    mysqli_stmt_close($stmt_check_local);
+                    if($count == 0){
+                        $local_id_err = "Você não tem permissão para adicionar itens neste local.";
+                    }
+                } else {
+                    echo "Erro ao verificar permissão do local: " . mysqli_error($link);
+                }
+            }
+        }
+
+        // Define o responsavel_id com base na permissão do usuário logado
+        if($_SESSION["permissao"] == 'Gestor'){
+            $responsavel_id = $_SESSION['id'];
+        } else { // Administrador
+            $responsavel_id = $_POST['responsavel_id'];
+            if(empty($responsavel_id)){
+                $responsavel_id_err = "Por favor, selecione um responsável.";
+            }
+        }
+
+        // Se não houver erros de validação, insere o item no banco de dados
+        if(empty($nome_err) && empty($patrimonio_novo_err) && empty($local_id_err) && empty($responsavel_id_err)){
+            // Define status_confirmacao: se o responsável for o próprio usuário logado, já fica 'Confirmado'
+            $status_confirmacao = ($responsavel_id == $_SESSION['id']) ? 'Confirmado' : 'Pendente';
+            $sql = "INSERT INTO itens (nome, patrimonio_novo, patrimonio_secundario, local_id, responsavel_id, estado, observacao, data_cadastro, status_confirmacao) VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), ?)";
+
+            if($stmt = mysqli_prepare($link, $sql)){
+                mysqli_stmt_bind_param($stmt, "sssiisss", $nome, $patrimonio_novo, $patrimonio_secundario, $local_id, $responsavel_id, $estado, $observacao, $status_confirmacao);
+
+                if(mysqli_stmt_execute($stmt)){
+                    $novo_item_id = mysqli_insert_id($link);
+
+                    // Notifica o administrador sobre o novo item
+                    $admin_id = $_SESSION['id'];
+                    $mensagem_notificacao = "Novo item adicionado: " . htmlspecialchars($nome) . " (Patrimônio: " . htmlspecialchars($patrimonio_novo) . ").";
+                    $sql_notificacao = "INSERT INTO notificacoes (usuario_id, administrador_id, tipo, mensagem, status) VALUES (?, ?, ?, ?, 'Pendente')";
+                    $stmt_notificacao = $pdo->prepare($sql_notificacao);
+                    $stmt_notificacao->execute([$admin_id, $admin_id, 'cadastro', $mensagem_notificacao]);
+
+                    // Detalhe do item na notificação
+                    $notificacao_id = $pdo->lastInsertId();
+                    $sql_insert_detalhes = "INSERT INTO notificacoes_itens_detalhes (notificacao_id, item_id, status_item) VALUES (?, ?, ?)";
+                    $stmt_insert_detalhes = $pdo->prepare($sql_insert_detalhes);
+                    $stmt_insert_detalhes->execute([$notificacao_id, $novo_item_id, $status_confirmacao]);
+
+                    header("location: itens.php");
+                    exit();
+                } else{
+                    // Verifica se o erro é de entrada duplicada
+                    if (mysqli_errno($link) == 1062 && strpos(mysqli_error($link), 'patrimonio_novo') !== false) {
+                        preg_match("/Duplicate entry '([^']+)' for key 'patrimonio_novo'/", mysqli_error($link), $matches);
+                        $patrimonio_duplicado = isset($matches[1]) ? $matches[1] : '';
+                        echo "<div class='alert alert-danger'>Este patrimônio " . htmlspecialchars($patrimonio_duplicado) . " já está cadastrado!</div>";
+                    } else {
+                        echo "<div class='alert alert-danger'>Oops! Algo deu errado. Por favor, tente novamente mais tarde.</div>";
+                    }
+                }
+            } else {
+                echo "Erro ao preparar a consulta de inserção: " . mysqli_error($link);
+            }
+        }
+    }
+}
+
+// Se o local_id foi passado via GET (após o gestor selecionar o local na primeira etapa)
+if(isset($_GET['local_id']) && $_SESSION["permissao"] == 'Gestor' && $is_gestor_sem_local){
+    $local_id = $_GET['local_id'];
+}
+
 ?>
-
-<style>
-.autocomplete-container {
-    position: relative;
-    display: inline-block;
-    width: 100%;
-}
-
-.autocomplete-container input[type="text"] {
-    width: 100%;
-    padding: 8px;
-    border: 1px solid #ccc;
-    border-radius: 4px;
-    box-sizing: border-box;
-}
-
-.suggestions-list {
-    position: absolute;
-    border: 1px solid #d4d4d4;
-    border-bottom: none;
-    border-top: none;
-    z-index: 99;
-    top: 100%;
-    left: 0;
-    right: 0;
-    max-height: 200px;
-    overflow-y: auto;
-    background-color: #fff;
-    display: none;
-}
-
-.suggestions-list div {
-    padding: 10px;
-    cursor: pointer;
-    background-color: #fff;
-    border-bottom: 1px solid #d4d4d4;
-}
-
-.suggestions-list div:hover {
-    background-color: #e9e9e9;
-}
-
-.suggestions-list .search-result-item {
-    padding: 10px;
-    color: #999;
-    font-style: italic;
-}
-</style>
 
 <h2>Adicionar Novo Item</h2>
 
-<?php if ($perfil === 'Gestor' && $is_gestor_sem_local && empty($local_id)): ?>
+<?php if($is_gestor_sem_local && empty($local_id)): ?>
     <div class="alert alert-info">
-        Você ainda não possui nenhum item cadastrado. Para começar, selecione um local para associar ao seu primeiro item.
+        Você ainda não possui nenhum item cadastrado. Para começar, por favor, selecione um local para associar ao seu primeiro item.
     </div>
-    <form action="<?php echo htmlspecialchars($_SERVER['PHP_SELF']); ?>" method="post">
+    <form action="<?php echo htmlspecialchars($_SERVER["PHP_SELF"]); ?>" method="post">
         <div>
             <label>Selecione um Local</label>
-            <div class="autocomplete-container">
-                <input type="text" id="search_local" name="search_local" placeholder="Digite para buscar um local..." autocomplete="off">
-                <input type="hidden" name="local_id" id="local_id" required>
-                <div id="local_suggestions" class="suggestions-list"></div>
-            </div>
+            <select name="local_id" required>
+                <option value="">Selecione um Local</option>
+                <?php if($locais_result): ?>
+                    <?php while($local = mysqli_fetch_assoc($locais_result)): ?>
+                        <option value="<?php echo $local['id']; ?>"><?php echo $local['nome']; ?></option>
+                    <?php endwhile; ?>
+                <?php endif; ?>
+            </select>
             <span class="help-block"><?php echo $local_id_err; ?></span>
         </div>
         <div>
@@ -275,7 +214,7 @@ if ($perfil !== 'Administrador' && $perfil !== 'Gestor') {
         Não encontrou seu local? <a href="local_request.php" class="btn-custom">Solicitar Novo Local</a>
     </div>
 <?php else: ?>
-    <form action="<?php echo htmlspecialchars($_SERVER['PHP_SELF']); ?>" method="post">
+    <form action="<?php echo htmlspecialchars($_SERVER["PHP_SELF"]); ?>" method="post">
         <div>
             <label>Nome</label>
             <input type="text" name="nome" value="<?php echo htmlspecialchars($nome); ?>" required>
@@ -292,42 +231,34 @@ if ($perfil !== 'Administrador' && $perfil !== 'Gestor') {
         </div>
         <div>
             <label>Local</label>
-            <?php if ($perfil === 'Gestor' && $is_gestor_sem_local && !empty($local_id)): ?>
-                <?php
-                // Para gestor sem local, exibir o nome do local pré-selecionado
-                $local_nome = '';
-                if ($locais_result) {
-                    mysqli_data_seek($locais_result, 0);
-                    while($local = mysqli_fetch_assoc($locais_result)) {
-                        if ($local['id'] == $local_id) {
-                            $local_nome = $local['nome'];
-                            break;
-                        }
-                    }
-                }
-                ?>
-                <input type="text" value="<?php echo htmlspecialchars($local_nome); ?>" disabled>
+            <select name="local_id" required <?php echo ($is_gestor_sem_local && !empty($local_id)) ? 'disabled' : ''; ?>>
+                <option value="">Selecione um Local</option>
+                <?php if($locais_result): ?>
+                    <?php mysqli_data_seek($locais_result, 0); // Reset pointer for re-use ?>
+                    <?php while($local = mysqli_fetch_assoc($locais_result)): ?>
+                        <option value="<?php echo $local['id']; ?>" <?php echo ($local['id'] == $local_id) ? 'selected' : ''; ?>><?php echo $local['nome']; ?></option>
+                    <?php endwhile; ?>
+                <?php endif; ?>
+            </select>
+            <?php if($is_gestor_sem_local && !empty($local_id)): ?>
                 <input type="hidden" name="local_id" value="<?php echo htmlspecialchars($local_id); ?>">
-            <?php else: ?>
-                <div class="autocomplete-container">
-                    <input type="text" id="search_local" name="search_local" placeholder="Digite para buscar um local..." autocomplete="off">
-                    <input type="hidden" name="local_id" id="local_id" value="<?php echo htmlspecialchars($local_id); ?>" required>
-                    <div id="local_suggestions" class="suggestions-list"></div>
-                </div>
             <?php endif; ?>
             <span class="help-block"><?php echo $local_id_err; ?></span>
         </div>
         <div>
             <label>Responsável</label>
-            <?php if ($perfil === 'Gestor'): ?>
-                <input type="text" value="<?php echo htmlspecialchars($_SESSION['nome']); ?>" disabled>
-                <input type="hidden" name="responsavel_id" value="<?php echo (int)$_SESSION['id']; ?>">
-            <?php else: ?>
-                <div class="autocomplete-container">
-                    <input type="text" id="search_responsavel" name="search_responsavel" placeholder="Digite para buscar um responsável..." autocomplete="off">
-                    <input type="hidden" name="responsavel_id" id="responsavel_id" value="<?php echo htmlspecialchars($responsavel_id); ?>" required>
-                    <div id="responsavel_suggestions" class="suggestions-list"></div>
-                </div>
+            <?php if($_SESSION["permissao"] == 'Gestor'): ?>
+                <input type="text" value="<?php echo $_SESSION['nome']; ?>" disabled>
+                <input type="hidden" name="responsavel_id" value="<?php echo $_SESSION['id']; ?>">
+            <?php else: // Administrador ?>
+                <select name="responsavel_id" required>
+                    <option value="">Selecione um Responsável</option>
+                    <?php if($usuarios_result): ?>
+                        <?php while($usuario = mysqli_fetch_assoc($usuarios_result)): ?>
+                            <option value="<?php echo $usuario['id']; ?>" <?php echo ($usuario['id'] == $responsavel_id) ? 'selected' : ''; ?>><?php echo $usuario['nome']; ?></option>
+                        <?php endwhile; ?>
+                    <?php endif; ?>
+                </select>
                 <span class="help-block"><?php echo $responsavel_id_err; ?></span>
             <?php endif; ?>
         </div>
@@ -335,10 +266,10 @@ if ($perfil !== 'Administrador' && $perfil !== 'Gestor') {
             <label>Estado</label>
             <select name="estado" required>
                 <option value="">Selecione o Estado</option>
-                <option value="Em uso" <?php echo ($estado === 'Em uso') ? 'selected' : ''; ?>>Em uso</option>
-                <option value="Ocioso" <?php echo ($estado === 'Ocioso') ? 'selected' : ''; ?>>Ocioso</option>
-                <option value="Recuperável" <?php echo ($estado === 'Recuperável') ? 'selected' : ''; ?>>Recuperável</option>
-                <option value="Inservível" <?php echo ($estado === 'Inservível') ? 'selected' : ''; ?>>Inservível</option>
+                <option value="Em uso" <?php echo ($estado == 'Em uso') ? 'selected' : ''; ?>>Em uso</option>
+                <option value="Ocioso" <?php echo ($estado == 'Ocioso') ? 'selected' : ''; ?>>Ocioso</option>
+                <option value="Recuperável" <?php echo ($estado == 'Recuperável') ? 'selected' : ''; ?>>Recuperável</option>
+                <option value="Inservível" <?php echo ($estado == 'Inservível') ? 'selected' : ''; ?>>Inservível</option>
             </select>
             <span class="help-block"><?php echo $estado_err; ?></span>
         </div>
@@ -352,116 +283,6 @@ if ($perfil !== 'Administrador' && $perfil !== 'Gestor') {
         </div>
     </form>
 <?php endif; ?>
-
-<script>
-// Função genérica para busca com autocomplete
-function setupAutocomplete(inputEl, suggestionsEl, hiddenIdEl, searchUrl) {
-    let debounceTimeout;
-    
-    inputEl.addEventListener('input', function() {
-        clearTimeout(debounceTimeout);
-        const searchTerm = this.value;
-        suggestionsEl.innerHTML = '';
-        hiddenIdEl.value = '';
-        
-        if (searchTerm.length < 3) {
-            suggestionsEl.style.display = 'none';
-            return;
-        }
-        
-        // Debounce: Atraso de 300ms para evitar chamadas excessivas à API
-        debounceTimeout = setTimeout(() => {
-            fetch(`${searchUrl}?term=${encodeURIComponent(searchTerm)}`)
-                .then(response => response.json())
-                .then(data => {
-                    if (data.error) {
-                        console.error(data.error);
-                        return;
-                    }
-                    if (data.length > 0) {
-                        data.forEach(item => {
-                            const div = document.createElement('div');
-                            div.textContent = item.nome;
-                            div.dataset.id = item.id;
-                            div.addEventListener('click', function() {
-                                inputEl.value = this.textContent;
-                                hiddenIdEl.value = this.dataset.id;
-                                suggestionsEl.innerHTML = '';
-                                suggestionsEl.style.display = 'none';
-                            });
-                            suggestionsEl.appendChild(div);
-                        });
-                        suggestionsEl.style.display = 'block';
-                    } else {
-                        suggestionsEl.innerHTML = '<div class="search-result-item">Nenhum resultado encontrado</div>';
-                        suggestionsEl.style.display = 'block';
-                    }
-                })
-                .catch(error => console.error('Erro no autocomplete:', error));
-        }, 300);
-    });
-    
-    // Esconder sugestões se clicar fora
-    document.addEventListener('click', function(e) {
-        if (e.target !== inputEl) {
-            suggestionsEl.style.display = 'none';
-        }
-    });
-}
-
-// Configurar autocomplete para locais e responsáveis
-document.addEventListener('DOMContentLoaded', function() {
-    // Campos de local
-    const searchLocal = document.getElementById('search_local');
-    const localSuggestions = document.getElementById('local_suggestions');
-    const localId = document.getElementById('local_id');
-    
-    // Campos de responsável (apenas para administradores)
-    const searchResponsavel = document.getElementById('search_responsavel');
-    const responsavelSuggestions = document.getElementById('responsavel_suggestions');
-    const responsavelId = document.getElementById('responsavel_id');
-    
-    if (searchLocal && localSuggestions && localId) {
-        setupAutocomplete(searchLocal, localSuggestions, localId, 'api/search_locais.php');
-        
-        // Se estiver editando e já tiver um local_id, buscar o nome do local
-        if (localId.value) {
-            fetch(`api/search_locais.php?term=${encodeURIComponent(localId.value)}`)
-                .then(response => response.json())
-                .then(data => {
-                    if (data.length > 0) {
-                        // Encontrar o local com o ID exato
-                        const local = data.find(l => l.id == localId.value);
-                        if (local) {
-                            searchLocal.value = local.nome;
-                        }
-                    }
-                })
-                .catch(error => console.error('Erro ao buscar nome do local:', error));
-        }
-    }
-    
-    if (searchResponsavel && responsavelSuggestions && responsavelId) {
-        setupAutocomplete(searchResponsavel, responsavelSuggestions, responsavelId, 'api/search_usuarios.php');
-        
-        // Se estiver editando e já tiver um responsavel_id, buscar o nome do responsável
-        if (responsavelId.value) {
-            fetch(`api/search_usuarios.php?term=${encodeURIComponent(responsavelId.value)}`)
-                .then(response => response.json())
-                .then(data => {
-                    if (data.length > 0) {
-                        // Encontrar o usuário com o ID exato
-                        const usuario = data.find(u => u.id == responsavelId.value);
-                        if (usuario) {
-                            searchResponsavel.value = usuario.nome;
-                        }
-                    }
-                })
-                .catch(error => console.error('Erro ao buscar nome do responsável:', error));
-        }
-    }
-});
-</script>
 
 <?php
 mysqli_close($link);

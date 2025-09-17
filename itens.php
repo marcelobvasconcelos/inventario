@@ -284,9 +284,9 @@ if($stmt = mysqli_prepare($link, $sql)){
                 </td>
                 <td>
                     <?php if($_SESSION['permissao'] == 'Administrador' || ($_SESSION['permissao'] == 'Gestor' && $row['responsavel_id'] == $_SESSION['id'])): ?>
-                        <a href="item_edit.php?id=<?php echo $row['id']; ?>" title="Editar"><i class="fas fa-edit"></i></a>
+                        <a href="item_edit.php?id=<?php echo $row['id']; ?>" title="Editar" class="action-icon edit-icon"><i class="fas fa-edit"></i></a>
                         <?php if($_SESSION['permissao'] == 'Administrador'): ?>
-                            <a href="item_delete.php?id=<?php echo $row['id']; ?>" title="Excluir" onclick="return confirm('Tem certeza que deseja excluir este item?');"><i class="fas fa-trash"></i></a>
+                            <a href="item_delete.php?id=<?php echo $row['id']; ?>" title="Excluir" class="action-icon delete-icon" onclick="return confirm('Tem certeza que deseja excluir este item?');"><i class="fas fa-trash"></i></a>
                         <?php endif; ?>
                     </td>
                 <?php endif; ?>

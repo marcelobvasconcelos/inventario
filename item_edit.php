@@ -48,14 +48,7 @@ if($_SERVER["REQUEST_METHOD"] == "POST"){
     }
 
     if($stmt_update = mysqli_prepare($link, $sql_update)){
-        // Criar referências para os parâmetros
-        $refs = array();
-        foreach($bind_params as $key => $value) {
-            $refs[$key] = &$bind_params[$key];
-        }
-        
-        // Passar parâmetros por referência
-        call_user_func_array('mysqli_stmt_bind_param', array_merge(array($stmt_update, $bind_types), $refs));
+        call_user_func_array('mysqli_stmt_bind_param', array_merge([$stmt_update, $bind_types], $bind_params));
         
         if(mysqli_stmt_execute($stmt_update)){
             header("location: itens.php");
