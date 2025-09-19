@@ -88,12 +88,29 @@ $stmt_estatisticas = $pdo->prepare($sql_estatisticas);
 $stmt_estatisticas->execute([$material_id]);
 $estatisticas = $stmt_estatisticas->fetch(PDO::FETCH_ASSOC);
 
+// Detectar nome da coluna automaticamente
+$sql_check_column = "SHOW COLUMNS FROM almoxarifado_requisicoes_itens";
+$stmt_check = $pdo->prepare($sql_check_column);
+$stmt_check->execute();
+$columns = $stmt_check->fetchAll(PDO::FETCH_ASSOC);
+
+$column_name = 'produto_id'; // padrão
+foreach ($columns as $col) {
+    if ($col['Field'] == 'material_id') {
+        $column_name = 'material_id';
+        break;
+    } elseif ($col['Field'] == 'produto_id') {
+        $column_name = 'produto_id';
+        break;
+    }
+}
+
 // Buscar requisições pendentes para este material
 $sql_requisicoes_pendentes = "SELECT COUNT(*) as total_pendentes,
                                     SUM(CASE WHEN ar.status = 'pendente' THEN ari.quantidade_solicitada ELSE 0 END) as quantidade_pendente
                              FROM almoxarifado_requisicoes ar
                              JOIN almoxarifado_requisicoes_itens ari ON ar.id = ari.requisicao_id
-                             WHERE ari.produto_id = ? AND ar.status IN ('pendente', 'aprovada')";
+                             WHERE ari.$column_name = ? AND ar.status IN ('pendente', 'aprovada')";
 $stmt_requisicoes_pendentes = $pdo->prepare($sql_requisicoes_pendentes);
 $stmt_requisicoes_pendentes->execute([$material_id]);
 $requisicoes_pendentes = $stmt_requisicoes_pendentes->fetch(PDO::FETCH_ASSOC);
@@ -442,7 +459,7 @@ require_once '../includes/header.php';
                                  FROM almoxarifado_requisicoes ar
                                  JOIN almoxarifado_requisicoes_itens ari ON ar.id = ari.requisicao_id
                                  JOIN usuarios u ON ar.usuario_id = u.id
-                                 WHERE ari.produto_id = ? AND ar.status IN ('pendente', 'aprovada')
+                                 WHERE ari.$column_name = ? AND ar.status IN ('pendente', 'aprovada')
                                  ORDER BY ar.data_requisicao DESC";
     $stmt_requisicoes_detalhes = $pdo->prepare($sql_requisicoes_detalhes);
     $stmt_requisicoes_detalhes->execute([$material_id]);
@@ -547,7 +564,7 @@ require_once '../includes/header.php';
                                  FROM almoxarifado_requisicoes ar
                                  JOIN almoxarifado_requisicoes_itens ari ON ar.id = ari.requisicao_id
                                  JOIN usuarios u ON ar.usuario_id = u.id
-                                 WHERE ari.produto_id = ? AND ari.quantidade_entregue > 0
+                                 WHERE ari.$column_name = ? AND ari.quantidade_entregue > 0
                                  ORDER BY ar.data_requisicao DESC";
     $stmt_requisicoes_atendidas = $pdo->prepare($sql_requisicoes_atendidas);
     $stmt_requisicoes_atendidas->execute([$material_id]);

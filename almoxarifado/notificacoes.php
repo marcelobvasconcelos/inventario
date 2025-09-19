@@ -174,6 +174,23 @@ $sql = "
     LIMIT 50
 ";
 
+// Detectar nome da coluna automaticamente (uma vez só)
+$sql_check_column = "SHOW COLUMNS FROM almoxarifado_requisicoes_itens";
+$stmt_check = $pdo->prepare($sql_check_column);
+$stmt_check->execute();
+$columns = $stmt_check->fetchAll(PDO::FETCH_ASSOC);
+
+$column_name = 'produto_id'; // padrão
+foreach ($columns as $col) {
+    if ($col['Field'] == 'material_id') {
+        $column_name = 'material_id';
+        break;
+    } elseif ($col['Field'] == 'produto_id') {
+        $column_name = 'produto_id';
+        break;
+    }
+}
+
 $stmt = $pdo->prepare($sql);
 $stmt->execute([$usuario_logado_id, $usuario_logado_id, $usuario_logado_id]);
 $notificacoes = [];
@@ -181,7 +198,7 @@ while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
     // Obter os itens da requisição
     $sql_itens = "SELECT ari.quantidade_solicitada, m.nome as material_nome
                   FROM almoxarifado_requisicoes_itens ari
-                  JOIN almoxarifado_materiais m ON ari.produto_id = m.id
+                  JOIN almoxarifado_materiais m ON ari.$column_name = m.id
                   WHERE ari.requisicao_id = ?";
     $stmt_itens = $pdo->prepare($sql_itens);
     $stmt_itens->execute([$row['requisicao_id']]);

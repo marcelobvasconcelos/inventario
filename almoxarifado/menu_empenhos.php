@@ -69,8 +69,17 @@ $total_materiais = $stmt_materiais->fetch(PDO::FETCH_ASSOC)['total'];
                 <td class="text-center">
                     <div class="menu-item">
                         <span class="badge badge-warning"><?php echo $total_materiais; ?></span>
-                        <a href="material_add.php" class="btn btn-sm btn-warning ml-2" title="Gerenciar Materiais">
+                        <a href="material_add.php" class="btn btn-sm btn-warning ml-1" title="Gerenciar Materiais">
                             <i class="fas fa-cog"></i>
+                        </a>
+                        <a href="atualizar_valores_materiais.php" class="btn btn-sm btn-secondary ml-1" title="Atualizar Valores">
+                            <i class="fas fa-sync"></i>
+                        </a>
+                        <a href="debug_valores.php" class="btn btn-sm btn-info ml-1" title="Debug Valores">
+                            <i class="fas fa-bug"></i>
+                        </a>
+                        <a href="sincronizar_estoque.php" class="btn btn-sm btn-success ml-1" title="Sincronizar Estoque">
+                            <i class="fas fa-sync-alt"></i>
                         </a>
                     </div>
                 </td>

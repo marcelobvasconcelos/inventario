@@ -29,6 +29,32 @@ $locais = $stmt_locais->fetchAll(PDO::FETCH_ASSOC);
 $message = "";
 $message_type = "";
 
+// Verificar se há itens pré-selecionados vindos do index (via GET ou POST)
+$itens_pre_selecionados = [];
+
+// Via GET (nova implementação)
+if (isset($_GET['material_id']) && is_array($_GET['material_id'])) {
+    foreach ($_GET['material_id'] as $index => $material_id) {
+        $material_nome = $_GET['material_nome'][$index] ?? '';
+        if (!empty($material_id) && !empty($material_nome)) {
+            $itens_pre_selecionados[] = [
+                'id' => (int)$material_id,
+                'nome' => $material_nome
+            ];
+        }
+    }
+}
+// Via POST (compatibilidade)
+elseif (!empty($_POST['produto_id']) && !empty($_POST['material_nome']) && empty($_POST['local_id'])) {
+    for ($i = 0; $i < count($_POST['produto_id']); $i++) {
+        $itens_pre_selecionados[] = [
+            'id' => $_POST['produto_id'][$i],
+            'nome' => $_POST['material_nome'][$i]
+        ];
+    }
+    $_POST = [];
+}
+
 // --- PROCESSAMENTO DO FORMULÁRIO (MÉTODO POST) ---
 // Verifica se o formulário foi enviado.
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['local_id'])) {
@@ -75,10 +101,15 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['local_id'])) {
         $erros_validacao[] = "É necessário adicionar pelo menos um material à requisição.";
     }
 
-    // Se houver erros de validação, exibe-os.
+    // Se houver erros de validação
     if (!empty($erros_validacao)) {
-        $message = implode("<br>", $erros_validacao);
-        $message_type = "danger";
+        // Para erro de justificativa, apenas definir flag para popup
+        if ($exige_justificativa && empty($justificativa)) {
+            $show_justificativa_popup = true;
+        } else {
+            $message = implode("<br>", $erros_validacao);
+            $message_type = "danger";
+        }
     } else {
         // --- VALIDAÇÃO DE ESTOQUE E ITENS ---
         $itens_validos = [];
@@ -131,8 +162,25 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['local_id'])) {
                 $requisicao_id = $pdo->lastInsertId(); // Obtém o ID da requisição recém-criada.
 
                 // 2. Insere os itens da requisição na tabela de itens.
+                // Detectar automaticamente o nome da coluna
+                $sql_check_column = "SHOW COLUMNS FROM almoxarifado_requisicoes_itens";
+                $stmt_check = $pdo->prepare($sql_check_column);
+                $stmt_check->execute();
+                $columns = $stmt_check->fetchAll(PDO::FETCH_ASSOC);
+                
+                $column_name = 'produto_id'; // padrão
+                foreach ($columns as $col) {
+                    if ($col['Field'] == 'material_id') {
+                        $column_name = 'material_id';
+                        break;
+                    } elseif ($col['Field'] == 'produto_id') {
+                        $column_name = 'produto_id';
+                        break;
+                    }
+                }
+                
                 foreach ($itens_validos as $item) {
-                    $sql_item = "INSERT INTO almoxarifado_requisicoes_itens (requisicao_id, produto_id, quantidade_solicitada) 
+                    $sql_item = "INSERT INTO almoxarifado_requisicoes_itens (requisicao_id, $column_name, quantidade_solicitada) 
                                  VALUES (?, ?, ?)";
                     $stmt_item = $pdo->prepare($sql_item);
                     $stmt_item->execute([$requisicao_id, $item['produto_id'], $item['quantidade']]);
@@ -160,7 +208,11 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['local_id'])) {
                 $pdo->commit();
                 $message = "Requisição criada com sucesso! Aguarde a aprovação.";
                 $message_type = "success";
-                $_POST = array(); // Limpa os dados do formulário para evitar reenvio.
+                // Limpar dados apenas em caso de sucesso
+                $local_id = 0;
+                $justificativa = '';
+                $produtos_selecionados = [];
+                $quantidades = [];
 
             } catch (Exception $e) {
                 // Se ocorrer qualquer erro, reverte a transação.
@@ -198,8 +250,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['local_id'])) {
         <div class="form-group">
             <label for="local_autocomplete">Local de Destino</label>
             <div class="autocomplete-container">
-                <input type="text" id="local_autocomplete" class="autocomplete-input" placeholder="Digite o nome do local...">
-                <input type="hidden" name="local_id" id="local_id">
+                <input type="text" id="local_autocomplete" class="autocomplete-input" placeholder="Digite o nome do local..." value="<?php echo isset($_POST['local_nome']) ? htmlspecialchars($_POST['local_nome']) : ''; ?>">
+                <input type="hidden" name="local_id" id="local_id" value="<?php echo isset($_POST['local_id']) ? htmlspecialchars($_POST['local_id']) : ''; ?>">
+                <input type="hidden" name="local_nome" id="local_nome" value="<?php echo isset($_POST['local_nome']) ? htmlspecialchars($_POST['local_nome']) : ''; ?>">
                 <div class="autocomplete-suggestions" id="local_suggestions"></div>
             </div>
         </div>
@@ -220,20 +273,47 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['local_id'])) {
                     <div class="form-group">
                         <label>Material</label>
                         <div class="autocomplete-container">
-                            <input type="text" class="autocomplete-input material-autocomplete" placeholder="Digite o nome do material...">
-                            <input type="hidden" name="produto_id[]" class="produto-id">
+                            <input type="text" class="autocomplete-input material-autocomplete" placeholder="Digite o nome do material..." value="<?php echo isset($_POST['material_nome'][0]) ? htmlspecialchars($_POST['material_nome'][0]) : ''; ?>">
+                            <input type="hidden" name="produto_id[]" class="produto-id" value="<?php echo isset($_POST['produto_id'][0]) ? htmlspecialchars($_POST['produto_id'][0]) : ''; ?>">
+                            <input type="hidden" name="material_nome[]" class="material-nome" value="<?php echo isset($_POST['material_nome'][0]) ? htmlspecialchars($_POST['material_nome'][0]) : ''; ?>">
                             <div class="autocomplete-suggestions material-suggestions"></div>
                         </div>
                     </div>
                     <div class="form-group">
                         <label>Quantidade</label>
-                        <input type="number" name="quantidade[]" class="form-control quantidade-input" min="1">
+                        <input type="number" name="quantidade[]" class="form-control quantidade-input" min="1" value="<?php echo isset($_POST['quantidade'][0]) ? htmlspecialchars($_POST['quantidade'][0]) : ''; ?>">
                         <small class="estoque-info" style="display: none;">Estoque: <span class="estoque-valor"></span></small>
                         <small class="quantidade-maxima-info" style="display: none;">Máximo por requisição: <span class="quantidade-maxima-valor"></span></small>
                     </div>
                 </div>
                 <button type="button" class="remover-item" style="display: none;">Remover</button>
             </div>
+            
+            <?php if (!empty($_POST['produto_id']) && count($_POST['produto_id']) > 1): ?>
+                <?php for ($i = 1; $i < count($_POST['produto_id']); $i++): ?>
+                <div class="item-requisicao">
+                    <hr>
+                    <div class="requisicao-grid">
+                        <div class="form-group">
+                            <label>Material</label>
+                            <div class="autocomplete-container">
+                                <input type="text" class="autocomplete-input material-autocomplete" placeholder="Digite o nome do material..." value="<?php echo isset($_POST['material_nome'][$i]) ? htmlspecialchars($_POST['material_nome'][$i]) : ''; ?>">
+                                <input type="hidden" name="produto_id[]" class="produto-id" value="<?php echo htmlspecialchars($_POST['produto_id'][$i]); ?>">
+                                <input type="hidden" name="material_nome[]" class="material-nome" value="<?php echo isset($_POST['material_nome'][$i]) ? htmlspecialchars($_POST['material_nome'][$i]) : ''; ?>">
+                                <div class="autocomplete-suggestions material-suggestions"></div>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>Quantidade</label>
+                            <input type="number" name="quantidade[]" class="form-control quantidade-input" min="1" value="<?php echo htmlspecialchars($_POST['quantidade'][$i]); ?>">
+                            <small class="estoque-info" style="display: none;">Estoque: <span class="estoque-valor"></span></small>
+                            <small class="quantidade-maxima-info" style="display: none;">Máximo por requisição: <span class="quantidade-maxima-valor"></span></small>
+                        </div>
+                    </div>
+                    <button type="button" class="remover-item">Remover</button>
+                </div>
+                <?php endfor; ?>
+            <?php endif; ?>
         </div>
         <button type="button" class="btn btn-secondary" id="adicionar-item">Adicionar Item</button>
     </div>
@@ -315,6 +395,7 @@ document.addEventListener('DOMContentLoaded', function() {
     if (localInput) {
         createAutocomplete(localInput, localSuggestions, 'search_locais.php', item => {
             localHiddenInput.value = item.id; // Armazena o ID do local no campo oculto.
+            document.getElementById('local_nome').value = item.nome; // Armazena o nome do local.
         });
     }
 
@@ -334,6 +415,17 @@ document.addEventListener('DOMContentLoaded', function() {
 
         createAutocomplete(materialInput, materialSuggestions, 'almoxarifado_search_materiais.php', item => {
             produtoHiddenInput.value = item.id; // Armazena o ID do material.
+            // Adicionar campo hidden para o nome do material
+            let nomeInput = itemElement.querySelector('.material-nome');
+            if (!nomeInput) {
+                nomeInput = document.createElement('input');
+                nomeInput.type = 'hidden';
+                nomeInput.name = 'material_nome[]';
+                nomeInput.className = 'material-nome';
+                itemElement.appendChild(nomeInput);
+            }
+            nomeInput.value = item.nome;
+            
             estoqueValor.textContent = item.estoque_atual;
             estoqueInfo.style.display = 'block'; // Exibe o estoque atual.
             quantidadeInput.max = item.estoque_atual; // Define o máximo do input de quantidade.
@@ -358,8 +450,71 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Configura o autocomplete para o primeiro item que já está na página.
-    setupMaterialAutocomplete(document.querySelector('.item-requisicao'));
+    // Primeiro, configurar autocomplete para o item inicial
+    const itensContainer = document.getElementById('itens-requisicao');
+    const primeiroItem = itensContainer.querySelector('.item-requisicao');
+    setupMaterialAutocomplete(primeiroItem);
+    
+    // Preencher itens pré-selecionados
+    <?php if (!empty($itens_pre_selecionados)): ?>
+    // Preencher primeiro item
+    <?php if (isset($itens_pre_selecionados[0])): ?>
+    primeiroItem.querySelector('.material-autocomplete').value = '<?php echo addslashes($itens_pre_selecionados[0]['nome']); ?>';
+    primeiroItem.querySelector('.produto-id').value = '<?php echo $itens_pre_selecionados[0]['id']; ?>';
+    primeiroItem.querySelector('.material-nome').value = '<?php echo addslashes($itens_pre_selecionados[0]['nome']); ?>';
+    <?php endif; ?>
+    
+    // Adicionar itens adicionais
+    <?php for ($i = 1; $i < count($itens_pre_selecionados); $i++): ?>
+    const novoItem<?php echo $i; ?> = document.createElement('div');
+    novoItem<?php echo $i; ?>.className = 'item-requisicao';
+    novoItem<?php echo $i; ?>.innerHTML = `
+        <hr>
+        <div class="requisicao-grid">
+            <div class="form-group">
+                <label>Material</label>
+                <div class="autocomplete-container">
+                    <input type="text" class="autocomplete-input material-autocomplete" placeholder="Digite o nome do material..." value="<?php echo addslashes($itens_pre_selecionados[$i]['nome']); ?>">
+                    <input type="hidden" name="produto_id[]" class="produto-id" value="<?php echo $itens_pre_selecionados[$i]['id']; ?>">
+                    <input type="hidden" name="material_nome[]" class="material-nome" value="<?php echo addslashes($itens_pre_selecionados[$i]['nome']); ?>">
+                    <div class="autocomplete-suggestions material-suggestions"></div>
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Quantidade</label>
+                <input type="number" name="quantidade[]" class="form-control quantidade-input" min="1">
+                <small class="estoque-info" style="display: none;">Estoque: <span class="estoque-valor"></span></small>
+                <small class="quantidade-maxima-info" style="display: none;">Máximo por requisição: <span class="quantidade-maxima-valor"></span></small>
+            </div>
+        </div>
+        <button type="button" class="remover-item">Remover</button>
+    `;
+    itensContainer.appendChild(novoItem<?php echo $i; ?>);
+    setupMaterialAutocomplete(novoItem<?php echo $i; ?>);
+    <?php endfor; ?>
+    <?php else: ?>
+    // Se não há itens pré-selecionados, configurar apenas o primeiro item
+    setupMaterialAutocomplete(primeiroItem);
+    <?php endif; ?>
+    
+    // Configurar eventos de remover para itens existentes
+    document.querySelectorAll('.remover-item').forEach(btn => {
+        btn.addEventListener('click', function() {
+            if (document.querySelectorAll('.item-requisicao').length > 1) {
+                this.closest('.item-requisicao').remove();
+            } else {
+                alert('Você não pode remover o último item.');
+            }
+        });
+    });
+    
+    // Mostrar popup se houver erro de justificativa
+    <?php if (isset($show_justificativa_popup)): ?>
+    setTimeout(() => {
+        alert('ATENÇÃO: Alguns itens ultrapassam a quantidade máxima permitida por requisição.\n\nPor favor, preencha o campo JUSTIFICATIVA e tente novamente.');
+        document.getElementById('justificativa').focus();
+    }, 100);
+    <?php endif; ?>
 
     // Evento para o botão "Adicionar Item".
     document.getElementById('adicionar-item').addEventListener('click', function() {
@@ -375,6 +530,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     <div class="autocomplete-container">
                         <input type="text" class="autocomplete-input material-autocomplete" placeholder="Digite o nome do material...">
                         <input type="hidden" name="produto_id[]" class="produto-id">
+                        <input type="hidden" name="material_nome[]" class="material-nome">
                         <div class="autocomplete-suggestions material-suggestions"></div>
                     </div>
                 </div>
@@ -398,18 +554,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    // Configura o botão de remover para o primeiro item.
-    const primeiroRemover = document.querySelector('.remover-item');
-    if (primeiroRemover) {
-        primeiroRemover.addEventListener('click', function() {
-            // Só permite remover se houver mais de um item na lista.
-            if (document.querySelectorAll('.item-requisicao').length > 1) {
-                this.closest('.item-requisicao').remove();
-            } else {
-                alert("Você não pode remover o último item.");
-            }
-        });
-    }
+
 });
 </script>
 

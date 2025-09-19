@@ -17,13 +17,10 @@ $categoria = isset($_GET['categoria']) ? $_GET['categoria'] : '';
 
 // Processar upload do CSV
 if($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['importar_csv'])){
-    $nota_numero = trim($_POST["nota_numero"]);
     $categoria = trim($_POST["categoria"]);
 
-    // Manter a categoria no formato "id - descricao"
-
-    if(empty($nota_numero) || empty($categoria)){
-        $error = "Nota Fiscal e Categoria são obrigatórios.";
+    if(empty($categoria)){
+        $error = "Categoria é obrigatória.";
     } elseif(!isset($_FILES['csv_file']) || $_FILES['csv_file']['error'] != UPLOAD_ERR_OK){
         $error = "Arquivo CSV é obrigatório.";
     } else {
@@ -49,10 +46,11 @@ if($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['importar_csv'])){
                         continue;
                     }
 
-                    $nome = trim($data[0]);
-                    $descricao = trim($data[1]);
-                    $unidade_medida = trim($data[2]);
-                    $estoque_inicial = trim($data[3]);
+                    // Processar dados, converter codificação e limitar tamanho
+                    $nome = substr(iconv('Windows-1252', 'UTF-8//IGNORE', trim($data[0])), 0, 100);
+                    $descricao = substr(iconv('Windows-1252', 'UTF-8//IGNORE', trim($data[1])), 0, 255);
+                    $unidade_medida = substr(iconv('Windows-1252', 'UTF-8//IGNORE', trim($data[2])), 0, 20);
+                    // Ignorar estoque_inicial - materiais sempre começam com estoque zero
                     $quantidade_maxima = trim($data[4]);
 
                     if(empty($nome) || empty($unidade_medida)){
@@ -65,12 +63,10 @@ if($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['importar_csv'])){
                     $new_id = $last_id + 1;
                     $codigo = 'MAT-' . str_pad($new_id, 5, '0', STR_PAD_LEFT);
 
-                    // Inserir material
-                    // Adicionar campo nota_fiscal (pode ser NULL)
-                    $sql_insert = "INSERT INTO almoxarifado_materiais (codigo, nome, descricao, unidade_medida, estoque_atual, valor_unitario, quantidade_maxima_requisicao, categoria, nota_fiscal, data_criacao, usuario_criacao) VALUES (?, ?, ?, ?, ?, 0, ?, ?, ?, NOW(), ?)";
+                    // Inserir material com estoque zero
+                    $sql_insert = "INSERT INTO almoxarifado_materiais (codigo, nome, descricao, unidade_medida, estoque_atual, valor_unitario, quantidade_maxima_requisicao, categoria, data_criacao, usuario_criacao) VALUES (?, ?, ?, ?, 0, 0, ?, ?, NOW(), ?)";
                     $stmt_insert = $pdo->prepare($sql_insert);
-                    // Passar NULL para nota_fiscal inicialmente e o ID do usuário logado
-                    $stmt_insert->execute([$codigo, $nome, $descricao, $unidade_medida, $estoque_inicial, $quantidade_maxima, $categoria, null, $_SESSION['id']]);
+                    $stmt_insert->execute([$codigo, $nome, $descricao, $unidade_medida, $quantidade_maxima, $categoria, $_SESSION['id']]);
 
                     $success_count++;
                 }
@@ -126,40 +122,26 @@ $categorias = $stmt_categorias->fetchAll(PDO::FETCH_COLUMN);
         </div>
         <div class="card-body">
             <form action="import_materiais_csv.php" method="post" enctype="multipart/form-data">
-                <div class="row">
-                    <div class="col-md-6">
-                        <div class="form-group">
-                            <label for="nota_numero">Nota Fiscal:</label>
-                            <select class="form-control" id="nota_numero" name="nota_numero" required>
-                                <option value="">Selecione uma nota fiscal</option>
-                                <?php foreach($notas as $nota): ?>
-                                    <option value="<?php echo htmlspecialchars($nota); ?>" <?php echo ($nota_numero == $nota) ? 'selected' : ''; ?>>
-                                        <?php echo htmlspecialchars($nota); ?>
-                                    </option>
-                                <?php endforeach; ?>
-                            </select>
-                        </div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="form-group">
-                            <label for="categoria">Categoria:</label>
-                            <select class="form-control" id="categoria" name="categoria" required>
-                                <option value="">Selecione uma categoria</option>
-                                <?php foreach($categorias as $cat): ?>
-                                    <option value="<?php echo htmlspecialchars($cat); ?>" <?php echo ($categoria == $cat) ? 'selected' : ''; ?>>
-                                        <?php echo htmlspecialchars($cat); ?>
-                                    </option>
-                                <?php endforeach; ?>
-                            </select>
-                        </div>
-                    </div>
+                <div class="form-group">
+                    <label for="categoria">Categoria:</label>
+                    <select class="form-control" id="categoria" name="categoria" required>
+                        <option value="">Selecione uma categoria</option>
+                        <?php foreach($categorias as $cat): ?>
+                            <option value="<?php echo htmlspecialchars($cat); ?>" <?php echo ($categoria == $cat) ? 'selected' : ''; ?>>
+                                <?php echo htmlspecialchars($cat); ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
                 </div>
 
                 <div class="form-group">
                     <label for="csv_file">Arquivo CSV:</label>
                     <input type="file" class="form-control" id="csv_file" name="csv_file" accept=".csv" required>
                     <small class="form-text text-muted">
-                        O arquivo deve ter as colunas: nome;descrição;unidade_medida;estoque_inicial;quantidade_maxima_requisicao
+                        O arquivo deve ter as colunas: nome;descrição;unidade_medida;campo_ignorado;quantidade_maxima_requisicao<br>
+                        <strong>Limites:</strong> Nome (100 caracteres), Descrição (255 caracteres), Unidade (20 caracteres)<br>
+                        <strong>Nota:</strong> Materiais serão cadastrados com estoque zero. Use "Entrada de Material" para adicionar estoque.<br>
+                        <strong>Codificação:</strong> Use CSV padrão (ANSI/Windows-1252) ou UTF-8 sem BOM.
                     </small>
                 </div>
 

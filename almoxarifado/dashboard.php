@@ -43,13 +43,30 @@ $total_requisicoes_aprovadas_mes = $total_requisicoes_aprovadas_mes->fetchColumn
 // 7. 5 materiais mais requisitados no mês
 $materiais_mais_requisitados = [];
 if ($is_privileged_user) {
+    // Detectar nome da coluna
+    $sql_check_column = "SHOW COLUMNS FROM almoxarifado_requisicoes_itens";
+    $stmt_check = $pdo->prepare($sql_check_column);
+    $stmt_check->execute();
+    $columns = $stmt_check->fetchAll(PDO::FETCH_ASSOC);
+    
+    $column_name = 'produto_id'; // padrão
+    foreach ($columns as $col) {
+        if ($col['Field'] == 'material_id') {
+            $column_name = 'material_id';
+            break;
+        } elseif ($col['Field'] == 'produto_id') {
+            $column_name = 'produto_id';
+            break;
+        }
+    }
+    
     $sql_mais_requisitados = "
         SELECT 
             m.nome,
             SUM(ri.quantidade_solicitada) as total_quantidade
         FROM almoxarifado_requisicoes_itens ri
         JOIN almoxarifado_requisicoes r ON ri.requisicao_id = r.id
-        JOIN almoxarifado_produtos m ON ri.produto_id = m.id
+        JOIN almoxarifado_materiais m ON ri.$column_name = m.id
         WHERE r.data_requisicao >= ?
         GROUP BY m.id, m.nome
         ORDER BY total_quantidade DESC
@@ -172,99 +189,113 @@ if ($is_privileged_user) {
     </div>
     
     <!-- Linha 3: Tabelas de Dados -->
-    <div class="dashboard-row">
-        <?php if ($is_privileged_user && !empty($materiais_mais_requisitados)): ?>
-        <div class="dashboard-table-container">
-            <h3>Materiais Mais Requisitados (Mês)</h3>
-            <table class="almoxarifado-table">
-                <thead>
-                    <tr>
-                        <th>Material</th>
-                        <th>Quantidade</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <?php foreach($materiais_mais_requisitados as $material): ?>
-                    <tr>
-                        <td><?php echo htmlspecialchars($material['nome']); ?></td>
-                        <td><?php echo $material['total_quantidade']; ?></td>
-                    </tr>
-                    <?php endforeach; ?>
-                </tbody>
-            </table>
+    <div class="dashboard-tables-section">
+        <div class="tables-row">
+            <!-- Coluna Esquerda: Tabelas Menores -->
+            <div class="tables-column-left">
+                <?php if ($is_privileged_user && !empty($materiais_mais_requisitados)): ?>
+                <div class="dashboard-table-container">
+                    <h3 class="table-title">Materiais Mais Requisitados (Mês)</h3>
+                    <div class="table-responsive">
+                        <table class="almoxarifado-table">
+                            <thead>
+                                <tr>
+                                    <th>Material</th>
+                                    <th class="text-center">Qtd</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php foreach($materiais_mais_requisitados as $material): ?>
+                                <tr>
+                                    <td class="material-name"><?php echo htmlspecialchars($material['nome']); ?></td>
+                                    <td class="text-center"><?php echo $material['total_quantidade']; ?></td>
+                                </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <?php endif; ?>
+                
+                <div class="dashboard-table-container">
+                    <h3 class="table-title">Últimas Requisições</h3>
+                    <div class="table-responsive">
+                        <table class="almoxarifado-table">
+                            <thead>
+                                <tr>
+                                    <th>Código</th>
+                                    <th>Usuário</th>
+                                    <th>Data</th>
+                                    <th class="text-center">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php foreach($ultimas_requisicoes as $requisicao): ?>
+                                <tr>
+                                    <td class="req-code"><?php echo 'REQ-' . str_pad($requisicao['id'], 6, '0', STR_PAD_LEFT); ?></td>
+                                    <td class="user-name"><?php echo htmlspecialchars($requisicao['usuario_nome']); ?></td>
+                                    <td class="req-date"><?php echo date('d/m/Y', strtotime($requisicao['data_requisicao'])); ?></td>
+                                    <td class="text-center">
+                                        <?php 
+                                            $status = $requisicao['status'];
+                                            $status_class = '';
+                                            switch($status) {
+                                                case 'pendente': $status_class = 'badge-warning'; break;
+                                                case 'aprovada': $status_class = 'badge-success'; break;
+                                                case 'rejeitada': $status_class = 'badge-danger'; break;
+                                                case 'concluida': $status_class = 'badge-info'; break;
+                                                default: $status_class = 'badge-secondary';
+                                            }
+                                        ?>
+                                        <span class="badge <?php echo $status_class; ?>"><?php echo ucfirst($status); ?></span>
+                                    </td>
+                                </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Coluna Direita: Tabela Maior -->
+            <?php if ($is_privileged_user && !empty($movimentacoes_recentes)): ?>
+            <div class="tables-column-right">
+                <div class="dashboard-table-container">
+                    <h3 class="table-title">Movimentações Recentes</h3>
+                    <div class="table-responsive">
+                        <table class="almoxarifado-table">
+                            <thead>
+                                <tr>
+                                    <th>Material</th>
+                                    <th class="text-center">Tipo</th>
+                                    <th class="text-center">Quantidade</th>
+                                    <th>Data</th>
+                                    <th>Usuário</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php foreach($movimentacoes_recentes as $mov): ?>
+                                <tr>
+                                    <td class="material-name"><?php echo htmlspecialchars($mov['material_nome']); ?></td>
+                                    <td class="text-center">
+                                        <?php if($mov['tipo'] == 'entrada'): ?>
+                                            <span class="badge badge-success">Entrada</span>
+                                        <?php else: ?>
+                                            <span class="badge badge-danger">Saída</span>
+                                        <?php endif; ?>
+                                    </td>
+                                    <td class="text-center"><?php echo $mov['quantidade']; ?></td>
+                                    <td class="mov-date"><?php echo date('d/m/Y H:i', strtotime($mov['data_movimentacao'])); ?></td>
+                                    <td class="user-name"><?php echo htmlspecialchars($mov['usuario_nome']); ?></td>
+                                </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <?php endif; ?>
         </div>
-        <?php endif; ?>
-        
-        <div class="dashboard-table-container">
-            <h3>Últimas Requisições</h3>
-            <table class="almoxarifado-table">
-                <thead>
-                    <tr>
-                        <th>Código</th>
-                        <th>Usuário</th>
-                        <th>Data</th>
-                        <th>Status</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <?php foreach($ultimas_requisicoes as $requisicao): ?>
-                    <tr>
-                        <td><?php echo 'REQ-' . str_pad($requisicao['id'], 6, '0', STR_PAD_LEFT); ?></td>
-                        <td><?php echo htmlspecialchars($requisicao['usuario_nome']); ?></td>
-                        <td><?php echo date('d/m/Y H:i', strtotime($requisicao['data_requisicao'])); ?></td>
-                        <td>
-                            <?php 
-                                $status = $requisicao['status'];
-                                $status_class = '';
-                                switch($status) {
-                                    case 'pendente': $status_class = 'badge-warning'; break;
-                                    case 'aprovada': $status_class = 'badge-success'; break;
-                                    case 'rejeitada': $status_class = 'badge-danger'; break;
-                                    case 'concluida': $status_class = 'badge-info'; break;
-                                    default: $status_class = 'badge-secondary';
-                                }
-                            ?>
-                            <span class="badge <?php echo $status_class; ?>"><?php echo ucfirst($status); ?></span>
-                        </td>
-                    </tr>
-                    <?php endforeach; ?>
-                </tbody>
-            </table>
-        </div>
-        
-        <?php if ($is_privileged_user && !empty($movimentacoes_recentes)): ?>
-        <div class="dashboard-table-container">
-            <h3>Movimentações Recentes</h3>
-            <table class="almoxarifado-table">
-                <thead>
-                    <tr>
-                        <th>Material</th>
-                        <th>Tipo</th>
-                        <th>Quantidade</th>
-                        <th>Data</th>
-                        <th>Usuário</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <?php foreach($movimentacoes_recentes as $mov): ?>
-                    <tr>
-                        <td><?php echo htmlspecialchars($mov['material_nome']); ?></td>
-                        <td>
-                            <?php if($mov['tipo'] == 'entrada'): ?>
-                                <span class="badge badge-success">Entrada</span>
-                            <?php else: ?>
-                                <span class="badge badge-danger">Saída</span>
-                            <?php endif; ?>
-                        </td>
-                        <td><?php echo $mov['quantidade']; ?></td>
-                        <td><?php echo date('d/m/Y H:i', strtotime($mov['data_movimentacao'])); ?></td>
-                        <td><?php echo htmlspecialchars($mov['usuario_nome']); ?></td>
-                    </tr>
-                    <?php endforeach; ?>
-                </tbody>
-            </table>
-        </div>
-        <?php endif; ?>
     </div>
 </div>
 
@@ -320,21 +351,95 @@ if ($is_privileged_user) {
     color: #6c757d;
 }
 
-.dashboard-table-container {
+/* Nova seção de tabelas */
+.dashboard-tables-section {
+    margin-top: 20px;
+}
+
+.tables-row {
+    display: flex;
+    gap: 20px;
+    align-items: flex-start;
+}
+
+.tables-column-left {
     flex: 1;
-    min-width: 300px;
-    margin: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    min-width: 0;
+}
+
+.tables-column-right {
+    flex: 1.5;
+    min-width: 0;
+}
+
+.dashboard-table-container {
     background: #fff;
     border-radius: 8px;
     box-shadow: 0 2px 4px rgba(0,0,0,0.1);
     padding: 20px;
+    min-width: 0;
 }
 
-.dashboard-table-container h3 {
+.table-title {
     margin-top: 0;
+    margin-bottom: 15px;
     color: #333;
-    border-bottom: 1px solid #eee;
+    text-align: center;
+    font-size: 1.1em;
+    font-weight: 600;
+    border-bottom: 2px solid #28a745;
     padding-bottom: 10px;
+}
+
+.table-responsive {
+    overflow-x: auto;
+    margin: -5px;
+    padding: 5px;
+}
+
+/* Estilos específicos das colunas */
+.material-name {
+    max-width: 200px;
+    word-wrap: break-word;
+    white-space: normal;
+}
+
+.user-name {
+    max-width: 120px;
+    word-wrap: break-word;
+    white-space: normal;
+}
+
+.req-code {
+    font-family: monospace;
+    font-size: 0.9em;
+    white-space: nowrap;
+}
+
+.req-date, .mov-date {
+    white-space: nowrap;
+    font-size: 0.9em;
+}
+
+.text-center {
+    text-align: center;
+}
+
+/* Responsividade */
+@media (max-width: 1200px) {
+    .tables-row {
+        flex-direction: column;
+        gap: 20px;
+    }
+    
+    .tables-column-left,
+    .tables-column-right {
+        flex: none;
+        width: 100%;
+    }
 }
 
 @media (max-width: 768px) {
@@ -345,6 +450,19 @@ if ($is_privileged_user) {
     .dashboard-card,
     .dashboard-table-container {
         min-width: 100%;
+    }
+    
+    .dashboard-table-container {
+        padding: 15px;
+    }
+    
+    .table-title {
+        font-size: 1em;
+    }
+    
+    .material-name,
+    .user-name {
+        max-width: none;
     }
 }
 </style>

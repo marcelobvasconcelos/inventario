@@ -102,10 +102,10 @@ if($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['registrar_entrada'])){
                         $stmt_entrada->execute([$material_id, $quantidade, $valor_unitario, $nota_fiscal, $data_entrada, date('Y-m-d H:i:s'), $_SESSION['id']]);
                         $entrada_id = $pdo->lastInsertId();
                         
-                        // 2. Atualizar estoque do material e vincular à nota fiscal
-                        $sql_estoque = "UPDATE almoxarifado_materiais SET estoque_atual = estoque_atual + ?, nota_fiscal = ? WHERE id = ?";
+                        // 2. Atualizar estoque, valor unitário e vincular à nota fiscal
+                        $sql_estoque = "UPDATE almoxarifado_materiais SET estoque_atual = estoque_atual + ?, valor_unitario = ?, nota_fiscal = ? WHERE id = ?";
                         $stmt_estoque = $pdo->prepare($sql_estoque);
-                        $stmt_estoque->execute([$quantidade, $nota_fiscal, $material_id]);
+                        $stmt_estoque->execute([$quantidade, $valor_unitario, $nota_fiscal, $material_id]);
                         
                         // 3. Registrar movimentação
                         // Buscar saldo anterior (antes da atualização)
@@ -121,11 +121,23 @@ if($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['registrar_entrada'])){
                         $stmt_movimentacao->execute([$material_id, $quantidade, $saldo_anterior, $saldo_atual, date('Y-m-d H:i:s'), $_SESSION['id'], $entrada_id]);
                     }
                     
-                    // 4. Descontar do saldo da nota fiscal
+                    // 4. Descontar do saldo da nota fiscal e verificar se deve fechar empenho
                     $novo_saldo_nota = $nota_fiscal_info['saldo'] - $valor_total_entradas;
                     $sql_atualiza_saldo_nota = "UPDATE notas_fiscais SET saldo = ? WHERE nota_numero = ?";
                     $stmt_atualiza_saldo_nota = $pdo->prepare($sql_atualiza_saldo_nota);
                     $stmt_atualiza_saldo_nota->execute([$novo_saldo_nota, $nota_fiscal]);
+                    
+                    // 5. Verificar se o empenho deve ser fechado (saldo = 0)
+                    $sql_check_empenho = "SELECT saldo FROM empenhos_insumos WHERE numero = ?";
+                    $stmt_check_empenho = $pdo->prepare($sql_check_empenho);
+                    $stmt_check_empenho->execute([$nota_fiscal_info['empenho_numero']]);
+                    $saldo_empenho = $stmt_check_empenho->fetchColumn();
+                    
+                    if($saldo_empenho == 0){
+                        $sql_fechar_empenho = "UPDATE empenhos_insumos SET status = 'Fechado' WHERE numero = ?";
+                        $stmt_fechar_empenho = $pdo->prepare($sql_fechar_empenho);
+                        $stmt_fechar_empenho->execute([$nota_fiscal_info['empenho_numero']]);
+                    }
                         
 
                     
@@ -178,23 +190,23 @@ if($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['registrar_entrada'])){
                             <select class="form-control select_nota_fiscal" id="nota_fiscal" name="nota_fiscal" required style="min-width: 300px;">
                                 <option value="">Selecione uma nota fiscal</option>
                                 <?php 
-                                // Buscar notas fiscais de empenhos abertos
-                                $sql_notas_abertas = "SELECT nf.nota_numero, nf.nota_valor, nf.fornecedor, ei.numero as empenho_numero
+                                // Buscar notas fiscais com saldo disponível
+                                $sql_notas_abertas = "SELECT nf.nota_numero, nf.nota_valor, nf.saldo, nf.fornecedor, ei.numero as empenho_numero
                                                       FROM notas_fiscais nf
                                                       JOIN empenhos_insumos ei ON nf.empenho_numero = ei.numero
-                                                      WHERE ei.status = 'Aberto'
+                                                      WHERE nf.saldo > 0
                                                       ORDER BY nf.nota_numero ASC";
                                 $stmt_notas_abertas = $pdo->prepare($sql_notas_abertas);
                                 $stmt_notas_abertas->execute();
                                 $notas_abertas = $stmt_notas_abertas->fetchAll(PDO::FETCH_ASSOC);
                                 
                                 foreach($notas_abertas as $nota): ?>
-                                    <option value="<?php echo htmlspecialchars($nota['nota_numero']); ?>" title="<?php echo htmlspecialchars($nota['nota_numero'] . ' - ' . $nota['fornecedor'] . ' (R$ ' . number_format($nota['nota_valor'], 2, ',', '.') . ')'); ?>">
-                                        <?php echo htmlspecialchars($nota['nota_numero'] . ' - ' . $nota['fornecedor'] . ' (R$ ' . number_format($nota['nota_valor'], 2, ',', '.') . ')'); ?>
+                                    <option value="<?php echo htmlspecialchars($nota['nota_numero']); ?>" title="<?php echo htmlspecialchars($nota['nota_numero'] . ' - ' . $nota['fornecedor'] . ' (Saldo: R$ ' . number_format($nota['saldo'], 2, ',', '.') . ')'); ?>">
+                                        <?php echo htmlspecialchars($nota['nota_numero'] . ' - ' . $nota['fornecedor'] . ' (Saldo: R$ ' . number_format($nota['saldo'], 2, ',', '.') . ')'); ?>
                                     </option>
                                 <?php endforeach; ?>
                             </select>
-                            <small class="form-text text-muted">Apenas notas fiscais de empenhos abertos são exibidas</small>
+                            <small class="form-text text-muted">Apenas notas fiscais com saldo disponível são exibidas</small>
                         </div>
                     </div>
                     <div class="col-md-6">
@@ -210,16 +222,11 @@ if($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['registrar_entrada'])){
                         <div class="card-body">
                             <div class="row">
                                 <div class="col-md-6">
-                                    <div class="form-group">
-                                        <label for="material_id_0">Material:</label>
-                                        <select class="form-control material-select" id="material_id_0" name="itens[0][material_id]" required style="min-width: 300px;">
-                                            <option value="">Selecione um material</option>
-                                            <?php foreach($materiais as $material): ?>
-                                                <option value="<?php echo $material['id']; ?>" title="<?php echo htmlspecialchars($material['codigo'] . ' - ' . $material['nome']); ?>">
-                                                    <?php echo htmlspecialchars($material['codigo'] . ' - ' . $material['nome']); ?>
-                                                </option>
-                                            <?php endforeach; ?>
-                                        </select>
+                                    <div class="form-group" style="position: relative;">
+                                        <label for="material_search_0">Material:</label>
+                                        <input type="text" class="form-control material-search" id="material_search_0" placeholder="Digite para buscar material..." autocomplete="off" required>
+                                        <input type="hidden" name="itens[0][material_id]" id="material_id_0" required>
+                                        <div id="material_suggestions_0" class="suggestions-list"></div>
                                     </div>
                                 </div>
                                 <div class="col-md-3">
@@ -311,30 +318,27 @@ if($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['registrar_entrada'])){
     overflow-y: auto;
     width: calc(100% - 2px);
     display: none;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
 }
 
-.suggestions-list .list-group-item {
+.suggestion-item {
     padding: 10px;
-    border: none;
     border-bottom: 1px solid #eee;
+    cursor: pointer;
+    transition: background-color 0.2s;
 }
 
-.suggestions-list .list-group-item:last-child {
+.suggestion-item:last-child {
     border-bottom: none;
 }
 
-.suggestions-list .list-group-item:hover {
+.suggestion-item:hover {
     background-color: #f8f9fa;
 }
 
-.suggestions-list .list-group-item strong {
-    display: block;
-    margin-bottom: 5px;
-}
-
-.suggestions-list .list-group-item small {
-    display: block;
-    color: #666;
+.suggestion-item strong {
+    color: #007bff;
+    margin-right: 5px;
 }
 
 /* Estilos para resolver o problema de texto cortado nos selects */
@@ -358,7 +362,67 @@ if($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['registrar_entrada'])){
 <script>
 let itemIndex = 1;
 
+const baseUrl = window.location.origin + '/inventario';
+
+// Função para configurar busca automática de material
+function setupMaterialSearch(index) {
+    const searchInput = document.getElementById('material_search_' + index);
+    const hiddenInput = document.getElementById('material_id_' + index);
+    const suggestionsDiv = document.getElementById('material_suggestions_' + index);
+    let timeout;
+    
+    if (!searchInput) return;
+    
+    searchInput.addEventListener('input', function() {
+        clearTimeout(timeout);
+        const query = this.value.trim();
+        
+        if (query.length >= 2) {
+            timeout = setTimeout(() => {
+                fetch(`${baseUrl}/api/search_materiais.php?q=${encodeURIComponent(query)}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        suggestionsDiv.innerHTML = '';
+                        if (data.success && data.materiais && data.materiais.length > 0) {
+                            data.materiais.forEach(material => {
+                                const div = document.createElement('div');
+                                div.className = 'suggestion-item';
+                                div.innerHTML = `<strong>${material.codigo}</strong> - ${material.nome}`;
+                                div.addEventListener('click', () => {
+                                    searchInput.value = `${material.codigo} - ${material.nome}`;
+                                    hiddenInput.value = material.id;
+                                    suggestionsDiv.style.display = 'none';
+                                });
+                                suggestionsDiv.appendChild(div);
+                            });
+                            suggestionsDiv.style.display = 'block';
+                        } else {
+                            suggestionsDiv.style.display = 'none';
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Erro na busca:', error);
+                        suggestionsDiv.style.display = 'none';
+                    });
+            }, 300);
+        } else {
+            suggestionsDiv.style.display = 'none';
+            hiddenInput.value = '';
+        }
+    });
+    
+    // Esconder sugestões ao clicar fora
+    document.addEventListener('click', function(e) {
+        if (!searchInput.contains(e.target) && !suggestionsDiv.contains(e.target)) {
+            suggestionsDiv.style.display = 'none';
+        }
+    });
+}
+
 document.addEventListener('DOMContentLoaded', function() {
+    // Configurar busca para o primeiro item
+    setupMaterialSearch(0);
+    
     // Adicionar novo item
     document.getElementById('adicionar-item').addEventListener('click', function() {
         const itensContainer = document.getElementById('itens-entrada');
@@ -368,16 +432,11 @@ document.addEventListener('DOMContentLoaded', function() {
             <div class="card-body">
                 <div class="row">
                     <div class="col-md-6">
-                        <div class="form-group">
-                            <label for="material_id_${itemIndex}">Material:</label>
-                            <select class="form-control material-select" id="material_id_${itemIndex}" name="itens[${itemIndex}][material_id]" required>
-                                <option value="">Selecione um material</option>
-                                <?php foreach($materiais as $material): ?>
-                                    <option value="<?php echo $material['id']; ?>">
-                                        <?php echo htmlspecialchars($material['codigo'] . ' - ' . $material['nome']); ?>
-                                    </option>
-                                <?php endforeach; ?>
-                            </select>
+                        <div class="form-group" style="position: relative;">
+                            <label for="material_search_${itemIndex}">Material:</label>
+                            <input type="text" class="form-control material-search" id="material_search_${itemIndex}" placeholder="Digite para buscar material..." autocomplete="off" required>
+                            <input type="hidden" name="itens[${itemIndex}][material_id]" id="material_id_${itemIndex}" required>
+                            <div id="material_suggestions_${itemIndex}" class="suggestions-list"></div>
                         </div>
                     </div>
                     <div class="col-md-3">
@@ -399,6 +458,10 @@ document.addEventListener('DOMContentLoaded', function() {
             </div>
         `;
         itensContainer.appendChild(novoItem);
+        
+        // Configurar busca automática para o novo item
+        setupMaterialSearch(itemIndex);
+        
         itemIndex++;
         
         // Adicionar evento de remoção ao botão recém-criado

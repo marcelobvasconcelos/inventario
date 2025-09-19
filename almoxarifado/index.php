@@ -33,13 +33,27 @@ $status_filtro = isset($_GET['status']) ? $_GET['status'] : '';
 // Select base com todas as colunas necessárias para o estoque
 $select_columns = "SELECT m.id, m.codigo, m.nome, m.categoria as categoria_nome, m.quantidade_maxima_requisicao, m.unidade_medida, m.nota_fiscal";
 if ($is_privileged_user) {
-    $select_columns .= ", m.estoque_atual, m.valor_unitario, m.estoque_minimo,
+    $select_columns .= ", m.estoque_atual, 
+                      COALESCE((
+                          SELECT e.valor_unitario 
+                          FROM almoxarifado_entradas e 
+                          WHERE e.material_id = m.id AND e.valor_unitario > 0 
+                          ORDER BY e.data_cadastro DESC 
+                          LIMIT 1
+                      ), 0) as valor_unitario,
+                      m.estoque_minimo,
                       CASE
                           WHEN m.estoque_atual <= 0 THEN 'sem_estoque'
                           WHEN m.estoque_atual < m.estoque_minimo THEN 'estoque_baixo'
                           ELSE 'estoque_normal'
                       END as situacao_estoque,
-                      (m.estoque_atual * m.valor_unitario) as valor_total_estoque,
+                      (m.estoque_atual * COALESCE((
+                          SELECT e.valor_unitario 
+                          FROM almoxarifado_entradas e 
+                          WHERE e.material_id = m.id AND e.valor_unitario > 0 
+                          ORDER BY e.data_cadastro DESC 
+                          LIMIT 1
+                      ), 0)) as valor_total_estoque,
                       'ativo' as status";
 }
 
@@ -136,50 +150,63 @@ $categorias = $pdo->query("SELECT CONCAT(COALESCE(numero, CAST(id AS CHAR)), ' -
     </div>
 </div>
 
+<?php if ($can_request): ?>
+<div id="requisicao-actions" style="display: none; margin: 20px 0;">
+    <button type="button" id="btn-requisicao" class="btn btn-primary">
+        <i class="fas fa-shopping-cart"></i> Fazer Requisição dos Itens Selecionados
+    </button>
+    <span id="itens-selecionados-count" class="ml-2"></span>
+</div>
+<?php endif; ?>
+
 <?php if (empty($materiais)): ?>
     <div class="alert alert-info">Nenhum material encontrado.</div>
 <?php else: ?>
-    <table class="almoxarifado-table">
-        <thead>
-            <tr>
-                <th>Código</th>
-                <th>Nome</th>
-                <th>Categoria</th>
-                <th>Unidade</th>
-                <?php if ($is_privileged_user): ?>
-                <th>Estoque Mínimo</th>
-                <th>Estoque Atual</th>
-                <th>Valor Unitário</th>
-                <th>Valor Total</th>
-                <th>Nota Fiscal</th>
-                <th>Situação</th>
-                <th>Status</th>
-                <?php else: ?>
-                <th>Qtd. Máxima por Requisição</th>
-                <?php endif; ?>
-                <th>Ações</th>
-            </tr>
-        </thead>
+    <div class="table-responsive">
+        <table class="almoxarifado-table estoque-table">
+            <thead>
+                <tr>
+                    <?php if ($can_request): ?>
+                    <th class="col-checkbox"><input type="checkbox" id="select-all"></th>
+                    <?php endif; ?>
+                    <th class="col-nome">Nome</th>
+                    <th class="col-unidade">Unidade</th>
+                    <?php if ($is_privileged_user): ?>
+                    <th class="col-numero text-right">Estoque Mínimo</th>
+                    <th class="col-numero text-right">Estoque Atual</th>
+                    <th class="col-numero text-right">Valor Unitário</th>
+                    <th class="col-numero text-right">Valor Total</th>
+                    <th class="col-nota">Nota Fiscal</th>
+                    <th class="col-situacao text-center">Situação</th>
+                    <?php else: ?>
+                    <th class="col-numero text-right">Qtd. Máxima por Requisição</th>
+                    <?php endif; ?>
+                    <th class="col-acoes text-center">Ações</th>
+                </tr>
+            </thead>
         <tbody id="itens-table-body">
             <?php foreach($materiais as $material): ?>
             <tr>
-                <td><?php echo htmlspecialchars($material['codigo']); ?></td>
-                <td><?php echo htmlspecialchars($material['nome']); ?></td>
-                <td><?php echo htmlspecialchars($material['categoria_nome'] ?? 'Não categorizado'); ?></td>
-                <td><?php echo htmlspecialchars($material['unidade_medida'] ?? 'N/A'); ?></td>
+                <?php if ($can_request): ?>
+                <td class="col-checkbox"><input type="checkbox" class="item-checkbox" data-id="<?php echo $material['id']; ?>" data-nome="<?php echo htmlspecialchars($material['nome']); ?>"></td>
+                <?php endif; ?>
+                <td class="col-nome" title="<?php echo htmlspecialchars($material['codigo'] . ' - ' . ($material['categoria_nome'] ?? 'Não categorizado')); ?>"><?php echo htmlspecialchars($material['nome']); ?></td>
+                <td class="col-unidade"><?php echo htmlspecialchars($material['unidade_medida'] ?? 'N/A'); ?></td>
                 <?php if ($is_privileged_user): ?>
-                <td><?php echo formatar_quantidade($material['estoque_minimo']); ?></td>
-                <td><?php echo formatar_quantidade($material['estoque_atual']); ?></td>
-                <td>R$ <?php echo number_format($material['valor_unitario'], 2, ',', '.'); ?></td>
-                <td>R$ <?php echo number_format($material['estoque_atual'] * $material['valor_unitario'], 2, ',', '.'); ?></td>
-                <td>
+                <td class="col-numero text-right"><?php echo formatar_quantidade($material['estoque_minimo']); ?></td>
+                <td class="col-numero text-right"><?php echo formatar_quantidade($material['estoque_atual']); ?></td>
+                <td class="col-numero text-right">R$ <?php echo number_format($material['valor_unitario'], 2, ',', '.'); ?></td>
+                <td class="col-numero text-right">R$ <?php echo number_format($material['estoque_atual'] * $material['valor_unitario'], 2, ',', '.'); ?></td>
+                <td class="col-nota">
                     <?php if (!empty($material['nota_fiscal'])): ?>
-                        <span class="badge badge-info"><?php echo htmlspecialchars($material['nota_fiscal']); ?></span>
+                        <a href="nota_fiscal_detalhes.php?nota=<?php echo urlencode($material['nota_fiscal']); ?>" class="badge badge-info" title="Ver detalhes da nota fiscal">
+                            <?php echo htmlspecialchars($material['nota_fiscal']); ?>
+                        </a>
                     <?php else: ?>
                         <span class="badge badge-secondary">N/A</span>
                     <?php endif; ?>
                 </td>
-                <td>
+                <td class="col-situacao text-center">
                     <?php
                     if ($material['situacao_estoque'] == 'sem_estoque') {
                         echo '<span class="badge badge-danger">Sem estoque</span>';
@@ -190,17 +217,10 @@ $categorias = $pdo->query("SELECT CONCAT(COALESCE(numero, CAST(id AS CHAR)), ' -
                     }
                     ?>
                 </td>
-                <td>
-                    <?php if (isset($material['status']) && $material['status'] == 'ativo'): ?>
-                        <span class="badge badge-success">Ativo</span>
-                    <?php else: ?>
-                        <span class="badge badge-danger">Inativo</span>
-                    <?php endif; ?>
-                </td>
                 <?php else: ?>
-                <td><?php echo formatar_quantidade($material['quantidade_maxima_requisicao'] ?? 0); ?></td>
+                <td class="col-numero text-right"><?php echo formatar_quantidade($material['quantidade_maxima_requisicao'] ?? 0); ?></td>
                 <?php endif; ?>
-                <td>
+                <td class="col-acoes text-center">
                     <?php if ($is_privileged_user): ?>
                         <div class="action-buttons-horizontal">
                             <a href="material_edit.php?id=<?php echo $material['id']; ?>" title="Editar" class="action-icon edit-icon"><i class="fas fa-edit"></i></a>
@@ -214,7 +234,8 @@ $categorias = $pdo->query("SELECT CONCAT(COALESCE(numero, CAST(id AS CHAR)), ' -
             </tr>
             <?php endforeach; ?>
         </tbody>
-    </table>
+        </table>
+    </div>
 <?php endif; ?>
 
 <?php if ($total_paginas > 1): ?>
@@ -274,7 +295,8 @@ function updateTable(materiais) {
 
     if (materiais.length === 0) {
         const tr = document.createElement('tr');
-        const colspan = isPrivilegedUser ? '10' : '6';
+        let colspan = isPrivilegedUser ? '10' : '6';
+        if (canRequest) colspan++; // Adicionar 1 para a coluna do checkbox
         tr.innerHTML = `<td colspan="${colspan}" class="text-center">Nenhum material encontrado.</td>`;
         tbody.appendChild(tr);
         return;
@@ -283,7 +305,11 @@ function updateTable(materiais) {
     materiais.forEach(material => {
         const tr = document.createElement('tr');
 
-        let html = `
+        let html = '';
+        if (canRequest) {
+            html += `<td><input type="checkbox" class="item-checkbox" data-id="${material.id}" data-nome="${material.nome}"></td>`;
+        }
+        html += `
             <td>${material.codigo}</td>
             <td>${material.nome}</td>
             <td>${material.categoria_nome || 'Não categorizado'}</td>
@@ -304,7 +330,7 @@ function updateTable(materiais) {
                 <td>R$ ${valorTotal}</td>
                 <td>
                     ${notaFiscal !== 'N/A' ? 
-                        `<span class="badge badge-info">${notaFiscal}</span>` : 
+                        `<a href="nota_fiscal_detalhes.php?nota=${encodeURIComponent(notaFiscal)}" class="badge badge-info" title="Ver detalhes da nota fiscal">${notaFiscal}</a>` : 
                         `<span class="badge badge-secondary">N/A</span>`}
                 </td>
                 <td>
@@ -360,6 +386,74 @@ function updatePagination(totalPages, currentPage) {
 }
 
 document.addEventListener('DOMContentLoaded', function() {
+    
+    // Gerenciar checkboxes
+    <?php if ($can_request): ?>
+    const selectAll = document.getElementById('select-all');
+    const itemCheckboxes = document.querySelectorAll('.item-checkbox');
+    const requisicaoActions = document.getElementById('requisicao-actions');
+    const btnRequisicao = document.getElementById('btn-requisicao');
+    const countSpan = document.getElementById('itens-selecionados-count');
+    
+    function updateRequisicaoButton() {
+        const selected = document.querySelectorAll('.item-checkbox:checked');
+        if (selected.length > 0) {
+            requisicaoActions.style.display = 'block';
+            countSpan.textContent = `(${selected.length} item${selected.length > 1 ? 'ns' : ''} selecionado${selected.length > 1 ? 's' : ''})`;
+        } else {
+            requisicaoActions.style.display = 'none';
+        }
+    }
+    
+    // Selecionar/deselecionar todos
+    if (selectAll) {
+        selectAll.addEventListener('change', function() {
+            itemCheckboxes.forEach(checkbox => {
+                checkbox.checked = this.checked;
+            });
+            updateRequisicaoButton();
+        });
+    }
+    
+    // Gerenciar seleção individual
+    itemCheckboxes.forEach(checkbox => {
+        checkbox.addEventListener('change', function() {
+            updateRequisicaoButton();
+            
+            // Atualizar checkbox "selecionar todos"
+            if (selectAll) {
+                const allChecked = Array.from(itemCheckboxes).every(cb => cb.checked);
+                const noneChecked = Array.from(itemCheckboxes).every(cb => !cb.checked);
+                selectAll.checked = allChecked;
+                selectAll.indeterminate = !allChecked && !noneChecked;
+            }
+        });
+    });
+    
+    // Botão de requisição
+    if (btnRequisicao) {
+        btnRequisicao.addEventListener('click', function() {
+            const selected = document.querySelectorAll('.item-checkbox:checked');
+            const itens = [];
+            
+            selected.forEach(checkbox => {
+                itens.push({
+                    id: checkbox.dataset.id,
+                    nome: checkbox.dataset.nome
+                });
+            });
+            
+            // Redirecionar para página de requisição com parâmetros
+            const params = new URLSearchParams();
+            itens.forEach((item, index) => {
+                params.append(`material_id[${index}]`, item.id);
+                params.append(`material_nome[${index}]`, item.nome);
+            });
+            
+            window.location.href = 'requisicao.php?' + params.toString();
+        });
+    }
+    <?php endif; ?>
 
     // Carregar materiais apenas se houver filtros aplicados
     <?php if (!empty($search_query) || !empty($categoria_filtro) || !empty($status_filtro)): ?>
@@ -484,6 +578,98 @@ document.addEventListener('DOMContentLoaded', function() {
 .view-icon:hover {
     color: #1e7e34;
     background-color: rgba(40, 167, 69, 0.1);
+}
+
+/* Estilo para link da nota fiscal */
+.badge.badge-info {
+    text-decoration: none;
+    transition: all 0.2s ease;
+}
+
+.badge.badge-info:hover {
+    text-decoration: none;
+    background-color: #138496;
+    transform: scale(1.05);
+}
+
+/* Estilos específicos para tabela de estoque */
+.estoque-table {
+    table-layout: auto;
+    width: 100%;
+    min-width: 800px;
+}
+
+.estoque-table td,
+.estoque-table th {
+    padding: 12px 8px;
+    vertical-align: middle;
+    line-height: 1.4;
+}
+
+/* Larguras das colunas */
+.col-checkbox { width: 35px; }
+.col-nome { width: 35%; min-width: 200px; }
+.col-unidade { width: 70px; }
+.col-numero { width: 100px; }
+.col-nota { width: 100px; }
+.col-situacao { width: 100px; }
+.col-acoes { width: 110px; }
+
+/* Quebra de linha para nome */
+.col-nome {
+    word-wrap: break-word;
+    white-space: normal;
+    overflow-wrap: break-word;
+    hyphens: auto;
+}
+
+/* Alinhamentos */
+.text-right {
+    text-align: right;
+}
+
+.text-center {
+    text-align: center;
+}
+
+/* Ações centralizadas */
+.action-buttons-horizontal {
+    display: flex;
+    justify-content: center;
+    gap: 5px;
+    align-items: center;
+}
+
+/* Responsividade */
+@media (max-width: 1200px) {
+    .col-nome { width: 30%; min-width: 180px; }
+    .col-numero { width: 90px; }
+}
+
+@media (max-width: 992px) {
+    .table-responsive {
+        overflow-x: auto;
+    }
+    
+    .col-nome { width: 25%; min-width: 150px; }
+    .col-unidade { width: 60px; }
+    .col-numero { width: 80px; }
+    .col-nota { width: 90px; }
+    .col-situacao { width: 90px; }
+    .col-acoes { width: 100px; }
+}
+
+@media (max-width: 768px) {
+    .estoque-table td,
+    .estoque-table th {
+        padding: 8px 4px;
+        font-size: 0.9em;
+    }
+    
+    .col-nome {
+        min-width: 140px;
+        max-width: 200px;
+    }
 }
 
 </style>

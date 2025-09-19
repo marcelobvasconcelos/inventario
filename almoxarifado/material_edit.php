@@ -45,16 +45,13 @@ $categoria_selecionada = $material['categoria'];
 
 // Processar formulário de edição
 if($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['editar_material'])){
-    // O código não será editado, mantém o código original
-    $codigo = $material['codigo'];
+    // Processar apenas campos editáveis
     $nome = trim($_POST["nome"]);
     $descricao = trim($_POST["descricao"]);
     $unidade_medida = trim($_POST["unidade_medida"]);
-    $estoque_atual = trim($_POST["estoque_atual"]);
-    $valor_unitario = trim($_POST["valor_unitario"]);
+    $estoque_minimo = !empty($_POST["estoque_minimo"]) ? (float)trim($_POST["estoque_minimo"]) : 0;
     $quantidade_maxima_requisicao = !empty($_POST["quantidade_maxima_requisicao"]) ? (int)trim($_POST["quantidade_maxima_requisicao"]) : null;
     $categoria_selecionada = trim($_POST["categoria"]);
-    $nota_fiscal = !empty($_POST["nota_fiscal"]) ? trim($_POST["nota_fiscal"]) : null;
 
     // Manter o formato completo "numero - descricao"
 
@@ -63,12 +60,11 @@ if($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['editar_material'])){
     if(empty($nome) || empty($unidade_medida) || empty($categoria_selecionada)){
         $error = "Nome, Unidade de Medida e Categoria são obrigatórios.";
     } else {
-        // Como o código não muda, não precisamos verificar se ele já existe
-        // Adicionar campo nota_fiscal na atualização
-        $sql_update = "UPDATE almoxarifado_materiais SET codigo = ?, nome = ?, descricao = ?, unidade_medida = ?, estoque_atual = ?, valor_unitario = ?, quantidade_maxima_requisicao = ?, categoria = ?, nota_fiscal = ? WHERE id = ?";
+        // Atualizar apenas campos básicos do material (não estoque, valor ou nota fiscal)
+        $sql_update = "UPDATE almoxarifado_materiais SET nome = ?, descricao = ?, unidade_medida = ?, estoque_minimo = ?, quantidade_maxima_requisicao = ?, categoria = ? WHERE id = ?";
         $stmt_update = $pdo->prepare($sql_update);
         
-        if($stmt_update->execute([$codigo, $nome, $descricao, $unidade_medida, $estoque_atual, $valor_unitario, $quantidade_maxima_requisicao, $categoria_selecionada, $nota_fiscal, $id])){
+        if($stmt_update->execute([$nome, $descricao, $unidade_medida, $estoque_minimo, $quantidade_maxima_requisicao, $categoria_selecionada, $id])){
             $message = "Material atualizado com sucesso!";
             // Atualizar os valores das variáveis para refletir no formulário
             $material['nome'] = $nome;
@@ -129,56 +125,102 @@ $categorias_almoxarifado = $stmt_categorias->fetchAll(PDO::FETCH_COLUMN);
                     <textarea class="form-control" id="descricao" name="descricao" rows="2"><?php echo htmlspecialchars($descricao); ?></textarea>
                 </div>
                 <div class="form-row">
-                    <div class="form-group col-md-6">
+                    <div class="form-group col-md-4">
                         <label for="unidade_medida">Unidade de Medida:</label>
                         <input type="text" class="form-control" id="unidade_medida" name="unidade_medida" value="<?php echo htmlspecialchars($unidade_medida); ?>" required>
                     </div>
-                    <div class="form-group col-md-6">
-                        <label for="estoque_atual">Estoque Atual:</label>
-                        <input type="number" class="form-control" id="estoque_atual" name="estoque_atual" step="0.01" min="0" value="<?php echo htmlspecialchars($estoque_atual); ?>" required>
+                    <div class="form-group col-md-4">
+                        <label for="estoque_minimo">Estoque Mínimo:</label>
+                        <input type="number" class="form-control" id="estoque_minimo" name="estoque_minimo" step="0.01" min="0" value="<?php echo htmlspecialchars($material['estoque_minimo'] ?? 0); ?>">
+                        <small class="form-text text-muted">Quantidade mínima para alerta.</small>
                     </div>
-                </div>
-                <div class="form-row">
-                    <div class="form-group col-md-6">
-                        <label for="valor_unitario">Valor Unitário:</label>
-                        <input type="number" class="form-control" id="valor_unitario" name="valor_unitario" step="0.01" min="0" value="<?php echo htmlspecialchars($valor_unitario); ?>" required>
-                    </div>
-                    <div class="form-group col-md-6">
+                    <div class="form-group col-md-4">
                         <label for="quantidade_maxima_requisicao">Qtd. Máxima por Requisição:</label>
                         <input type="number" class="form-control" id="quantidade_maxima_requisicao" name="quantidade_maxima_requisicao" min="1" value="<?php echo htmlspecialchars($quantidade_maxima_requisicao); ?>">
                         <small class="form-text text-muted">Deixe em branco para não haver limite.</small>
                     </div>
                 </div>
-                <div class="form-row">
-                    <div class="form-group col-md-6" style="position: relative;">
-                        <label for="categoria">Categoria:</label>
-                        <input type="text" class="form-control" id="categoria" name="categoria" value="<?php echo htmlspecialchars($categoria_selecionada); ?>" required autocomplete="off">
-                        <div id="categoria-suggestions" class="suggestions-list"></div>
+                <div class="form-group" style="position: relative;">
+                    <label for="categoria">Categoria:</label>
+                    <input type="text" class="form-control" id="categoria" name="categoria" value="<?php echo htmlspecialchars($categoria_selecionada); ?>" required autocomplete="off">
+                    <div id="categoria-suggestions" class="suggestions-list"></div>
+                </div>
+                
+                <!-- Informações somente leitura -->
+                <div class="alert alert-info">
+                    <h5>Informações de Estoque (Somente Leitura)</h5>
+                    <div class="row">
+                        <div class="col-md-4">
+                            <strong>Estoque Atual:</strong> <?php echo number_format($estoque_atual, 2, ',', '.'); ?> <?php echo htmlspecialchars($unidade_medida); ?>
+                        </div>
+                        <div class="col-md-4">
+                            <strong>Valor Unitário:</strong> R$ <?php echo number_format($valor_unitario, 2, ',', '.'); ?>
+                        </div>
+                        <div class="col-md-4">
+                            <strong>Nota Fiscal:</strong> <?php echo $material['nota_fiscal'] ? htmlspecialchars($material['nota_fiscal']) : 'Nenhuma'; ?>
+                        </div>
                     </div>
-                    <div class="form-group col-md-6">
-                        <label for="nota_fiscal">Nota Fiscal Vinculada:</label>
-                        <select class="form-control" id="nota_fiscal" name="nota_fiscal">
-                            <option value="">Nenhuma</option>
-                            <?php
-                            // Buscar todas as notas fiscais
-                            $sql_notas = "SELECT nota_numero FROM notas_fiscais ORDER BY nota_numero ASC";
-                            $stmt_notas = $pdo->prepare($sql_notas);
-                            $stmt_notas->execute();
-                            $notas = $stmt_notas->fetchAll(PDO::FETCH_COLUMN);
-                            
-                            foreach($notas as $nota):
-                            ?>
-                                <option value="<?php echo htmlspecialchars($nota); ?>" <?php echo ($material['nota_fiscal'] == $nota) ? 'selected' : ''; ?>>
-                                    <?php echo htmlspecialchars($nota); ?>
-                                </option>
-                            <?php endforeach; ?>
-                        </select>
-                        <small class="form-text text-muted">Nota fiscal à qual este material está vinculado.</small>
-                    </div>
+                    <small class="text-muted">Para alterar estoque ou valor, use "Entrada de Material" ou "Ajustar Estoque".</small>
                 </div>
                 <button type="submit" name="editar_material" class="btn btn-primary">Salvar Alterações</button>
+                <a href="#" class="btn btn-info" onclick="toggleEntradas()">Ver/Editar Entradas</a>
                 <a href="index.php" class="btn btn-secondary">Voltar</a>
             </form>
+        </div>
+    </div>
+    
+    <!-- Seção de Entradas -->
+    <div id="entradas-section" class="card mt-4" style="display: none;">
+        <div class="card-header">
+            <h3>Entradas do Material</h3>
+        </div>
+        <div class="card-body">
+            <?php
+            // Buscar entradas do material
+            $sql_entradas = "SELECT e.*, nf.saldo as nota_saldo 
+                            FROM almoxarifado_entradas e
+                            LEFT JOIN notas_fiscais nf ON e.nota_fiscal = nf.nota_numero
+                            WHERE e.material_id = ? 
+                            ORDER BY e.data_entrada DESC";
+            $stmt_entradas = $pdo->prepare($sql_entradas);
+            $stmt_entradas->execute([$id]);
+            $entradas = $stmt_entradas->fetchAll(PDO::FETCH_ASSOC);
+            ?>
+            
+            <?php if (!empty($entradas)): ?>
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Data</th>
+                                <th>Nota Fiscal</th>
+                                <th>Quantidade</th>
+                                <th>Valor Unitário</th>
+                                <th>Valor Total</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach($entradas as $entrada): ?>
+                                <tr>
+                                    <td><?php echo date('d/m/Y', strtotime($entrada['data_entrada'])); ?></td>
+                                    <td><?php echo htmlspecialchars($entrada['nota_fiscal'] ?? 'N/A'); ?></td>
+                                    <td><?php echo number_format($entrada['quantidade'], 2, ',', '.'); ?></td>
+                                    <td>R$ <?php echo number_format($entrada['valor_unitario'], 2, ',', '.'); ?></td>
+                                    <td>R$ <?php echo number_format($entrada['quantidade'] * $entrada['valor_unitario'], 2, ',', '.'); ?></td>
+                                    <td>
+                                        <a href="entrada_edit.php?id=<?php echo $entrada['id']; ?>" class="btn btn-sm btn-warning" title="Editar Entrada">
+                                            <i class="fas fa-edit"></i>
+                                        </a>
+                                    </td>
+                                </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
+            <?php else: ?>
+                <div class="alert alert-info">Nenhuma entrada encontrada para este material.</div>
+            <?php endif; ?>
         </div>
     </div>
 </div>
@@ -256,6 +298,18 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 });
+</script>
+
+<script>
+function toggleEntradas() {
+    const section = document.getElementById('entradas-section');
+    if (section.style.display === 'none') {
+        section.style.display = 'block';
+        section.scrollIntoView({ behavior: 'smooth' });
+    } else {
+        section.style.display = 'none';
+    }
+}
 </script>
 
 <?php

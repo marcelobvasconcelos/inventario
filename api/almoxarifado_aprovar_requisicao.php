@@ -62,29 +62,31 @@ try {
     $stmt_itens->execute([$requisicao_id]);
     $itens = $stmt_itens->fetchAll();
     
-    // Atualizar o estoque dos produtos
-    $stmt_estoque = $pdo->prepare("UPDATE almoxarifado_produtos SET estoque_atual = estoque_atual - ? WHERE id = ? AND estoque_atual >= ?");
-    
+    // Atualizar o estoque dos materiais
     foreach ($itens as $item) {
-        $produto_id = (int)$item['produto_id'];
+        $material_id = (int)$item['produto_id'];
         $quantidade = (int)$item['quantidade_solicitada'];
         
         // Verificar se há estoque suficiente
-        $stmt_check_estoque = $pdo->prepare("SELECT estoque_atual FROM almoxarifado_produtos WHERE id = ?");
-        $stmt_check_estoque->execute([$produto_id]);
-        $produto = $stmt_check_estoque->fetch();
+        $stmt_check_estoque = $pdo->prepare("SELECT estoque_atual, nome FROM almoxarifado_materiais WHERE id = ?");
+        $stmt_check_estoque->execute([$material_id]);
+        $material = $stmt_check_estoque->fetch();
         
-        if (!$produto || $produto['estoque_atual'] < $quantidade) {
-            throw new Exception("Estoque insuficiente para o produto ID $produto_id");
+        if (!$material || $material['estoque_atual'] < $quantidade) {
+            throw new Exception("Estoque insuficiente para o material: " . ($material['nome'] ?? "ID $material_id"));
         }
+        
+        // Capturar saldo anterior
+        $saldo_anterior = $material['estoque_atual'];
+        $saldo_atual = $saldo_anterior - $quantidade;
         
         // Atualizar o estoque
-        $stmt_estoque->execute([$quantidade, $produto_id, $quantidade]);
+        $stmt_estoque = $pdo->prepare("UPDATE almoxarifado_materiais SET estoque_atual = estoque_atual - ? WHERE id = ?");
+        $stmt_estoque->execute([$quantidade, $material_id]);
         
-        // Verificar se a atualização foi bem-sucedida
-        if ($stmt_estoque->rowCount() == 0) {
-            throw new Exception("Erro ao atualizar estoque do produto ID $produto_id");
-        }
+        // Registrar movimentação
+        $stmt_mov = $pdo->prepare("INSERT INTO almoxarifado_movimentacoes (material_id, tipo, quantidade, saldo_anterior, saldo_atual, data_movimentacao, usuario_id, referencia_id) VALUES (?, 'saida', ?, ?, ?, NOW(), ?, ?)");
+        $stmt_mov->execute([$material_id, $quantidade, $saldo_anterior, $saldo_atual, $_SESSION['id'], $requisicao_id]);
     }
     
     // Commit da transação

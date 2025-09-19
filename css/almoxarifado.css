@@ -28,7 +28,7 @@ body.almoxarifado {
 .almoxarifado .main-header nav a
  {
     color: rgba(255, 255, 255, 0.9);
-    background-color: #6c757d;
+    background-color:#8b8f937d;
     margin-right: 5px;
     border-radius: 4px;
     padding: 8px 15px;
@@ -167,6 +167,14 @@ body.almoxarifado {
 .almoxarifado .btn-custom.btn-clicked {
     transform: translateY(0);
     box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.almoxarifado .btn-custom.active {
+    background-color: #1e7e34;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    transform: translateY(-1px);
+    border: 2px solid #155724;
+    font-weight: 700;
 }
 
 .almoxarifado .btn-danger {

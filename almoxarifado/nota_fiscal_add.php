@@ -81,7 +81,14 @@ if($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['cadastrar_nota_fiscal']
                             throw new Exception("Não é possível cadastrar a nota fiscal. O saldo do empenho ficaria negativo (R$ " . number_format($novo_saldo, 2, ',', '.') . ").");
                         }
                         
-                        $sql_update_saldo = "UPDATE empenhos_insumos SET saldo = ? WHERE numero = ?";
+                        // Atualizar saldo e status do empenho
+                        if($novo_saldo == 0){
+                            // Saldo 0 = empenho fechado
+                            $sql_update_saldo = "UPDATE empenhos_insumos SET saldo = ?, status = 'Fechado' WHERE numero = ?";
+                        } else {
+                            // Saldo > 0 = empenho continua aberto
+                            $sql_update_saldo = "UPDATE empenhos_insumos SET saldo = ? WHERE numero = ?";
+                        }
                         $stmt_update_saldo = $pdo->prepare($sql_update_saldo);
                         $stmt_update_saldo->execute([$novo_saldo, $empenho_numero]);
 

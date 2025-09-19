@@ -163,22 +163,61 @@ function getValorEstoqueData($pdo, $date_range) {
 }
 
 function getMaisRequisitadosData($pdo, $date_range) {
+    // Detectar nome da coluna automaticamente
+    $sql_check_column = "SHOW COLUMNS FROM almoxarifado_requisicoes_itens";
+    $stmt_check = $pdo->prepare($sql_check_column);
+    $stmt_check->execute();
+    $columns = $stmt_check->fetchAll(PDO::FETCH_ASSOC);
+    
+    $column_name = 'produto_id'; // padrão
+    foreach ($columns as $col) {
+        if ($col['Field'] == 'material_id') {
+            $column_name = 'material_id';
+            break;
+        } elseif ($col['Field'] == 'produto_id') {
+            $column_name = 'produto_id';
+            break;
+        }
+    }
+    
     $sql = "
         SELECT
             m.nome,
             SUM(ri.quantidade_solicitada) as total
         FROM almoxarifado_requisicoes_itens ri
         JOIN almoxarifado_requisicoes r ON ri.requisicao_id = r.id
-        JOIN almoxarifado_materiais m ON ri.produto_id = m.id
+        JOIN almoxarifado_materiais m ON ri.$column_name = m.id
         WHERE DATE(r.data_requisicao) BETWEEN ? AND ?
         GROUP BY m.id, m.nome
+        HAVING total > 0
         ORDER BY total DESC
-        LIMIT 10
+        LIMIT 5
     ";
-
+    
+    // Se não houver dados no período, buscar os últimos 90 dias
     $stmt = $pdo->prepare($sql);
     $stmt->execute([$date_range['start'], $date_range['end']]);
     $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    
+    // Se não encontrou resultados, expandir período
+    if (empty($results)) {
+        $sql_fallback = "
+            SELECT
+                m.nome,
+                SUM(ri.quantidade_solicitada) as total
+            FROM almoxarifado_requisicoes_itens ri
+            JOIN almoxarifado_requisicoes r ON ri.requisicao_id = r.id
+            JOIN almoxarifado_materiais m ON ri.$column_name = m.id
+            WHERE r.data_requisicao >= DATE_SUB(NOW(), INTERVAL 90 DAY)
+            GROUP BY m.id, m.nome
+            HAVING total > 0
+            ORDER BY total DESC
+            LIMIT 5
+        ";
+        $stmt = $pdo->prepare($sql_fallback);
+        $stmt->execute();
+        $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
 
     $labels = array_column($results, 'nome');
     $data = array_column($results, 'total');

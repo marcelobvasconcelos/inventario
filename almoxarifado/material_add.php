@@ -112,8 +112,11 @@ $materiais = $stmt_materiais->fetchAll(PDO::FETCH_ASSOC);
     <?php endif; ?>
     
     <div class="card">
-        <div class="card-header">
+        <div class="card-header d-flex justify-content-between align-items-center">
             <h3>Cadastrar Novo Material</h3>
+            <a href="import_materiais_csv.php" class="btn btn-info btn-sm">
+                <i class="fas fa-file-import"></i> Importar CSV
+            </a>
         </div>
         <div class="card-body">
             <form action="material_add.php" method="post">

@@ -1,210 +1,124 @@
-# Manual do Usuário - Sistema de Inventário
 
-## 1. Bem-vindo ao Sistema de Inventário
+# Manual do Usuário do Sistema de Inventário
 
-Este sistema foi desenvolvido para facilitar o controle e gerenciamento dos bens patrimoniais da sua organização. Com ele, você pode:
+## [VISUALIZADOR] 1. Introdução
 
-- **Controlar onde estão seus bens:** Saiba exatamente em qual local cada item está armazenado
-- **Gerenciar responsabilidades:** Defina quem é responsável por cada bem
-- **Acompanhar movimentações:** Registre e consulte o histórico de transferências
-- **Controlar almoxarifado:** Gerencie empenhos, notas fiscais e entrada de materiais
+Bem-vindo ao Sistema de Inventário! Esta aplicação foi desenvolvida para ajudar no gerenciamento e controle de itens, locais e movimentações dentro de um ambiente. Ele permite que você mantenha um registro organizado de seus ativos, saiba onde eles estão localizados e quem é o responsável por eles.
 
-## 2. Como Começar
+## [VISUALIZADOR] 2. Requisitos do Sistema
 
-### Primeiro Acesso
-1. **Solicite sua conta:** Entre em contato com o administrador do sistema para criar sua conta
-2. **Aguarde aprovação:** Sua conta ficará pendente até ser aprovada pelo administrador
-3. **Receba suas credenciais:** Você receberá um email com seu usuário e senha temporária
-4. **Faça login:** Acesse o sistema e altere sua senha no primeiro acesso
+Para utilizar o Sistema de Inventário, você precisará de:
 
-### Esqueceu sua senha?
-1. Na tela de login, clique em "Esqueceu sua senha?"
-2. Informe seu nome completo e email
-3. O administrador receberá sua solicitação e enviará uma nova senha temporária
+*   Um navegador web moderno (Google Chrome, Mozilla Firefox, Microsoft Edge, Safari).
+*   Conexão com a internet (se o sistema estiver hospedado online) ou acesso à rede local (se estiver em um servidor local como XAMPP).
 
-## 3. Perfis de Usuário e Permissões
+## [VISUALIZADOR] 3. Primeiros Passos
 
-### **Visualizador**
-- Consulta itens, locais e movimentações
-- Visualiza apenas informações dos bens sob sua responsabilidade
-- Não pode alterar ou cadastrar informações
+### 3.1. Acessando o Sistema
+Para acessar o sistema, abra seu navegador web e digite o endereço fornecido pelo administrador (ex: `http://localhost/inventario` se estiver usando XAMPP).
 
-### **Gestor**
-- Todas as funções do Visualizador
-- Cadastra e edita itens sob sua responsabilidade
-- Solicita criação de novos locais
-- Confirma ou recusa recebimento de itens
-- Justifica movimentações quando necessário
+### 3.2. Login e Logout
+*   **Login:** Na tela inicial, insira seu **Email** e **Senha** nos campos designados e clique no botão "Login".
+*   **Logout:** Para sair do sistema, clique no link "Sair" localizado no menu superior.
 
-### **Administrador**
-- Controle total do sistema
-- Gerencia usuários e suas permissões
-- Cadastra e gerencia todos os itens e locais
-- Aprova solicitações e resolve disputas
-- Acessa módulo de almoxarifado completo
 
-## 4. Gerenciamento de Itens
+## [VISUALIZADOR] 4. Visão Geral da Interface
 
-### Como Cadastrar um Item
-1. Acesse o menu "Itens" → "Adicionar Novo Item"
-2. Preencha as informações obrigatórias:
-   - **Nome do Item:** Descrição clara e objetiva
-   - **Categoria:** Selecione a categoria apropriada
-   - **Local:** Onde o item está armazenado
-   - **Responsável:** Quem é responsável pelo item
-   - **Valor:** Valor de aquisição (se conhecido)
-3. Adicione informações complementares se necessário
-4. Clique em "Salvar"
+Após o login, você verá a página inicial (Dashboard) com um menu de navegação na parte superior. **Cada usuário só visualiza as funcionalidades e seções permitidas pelo seu perfil**:
+- Administradores veem todas as opções do sistema.
+- Gestores veem apenas as funções de gestão de itens e locais sob sua responsabilidade.
+- Visualizadores têm acesso apenas à consulta de dados.
 
-### Informações Importantes sobre Itens
-- **Número Patrimonial:** Gerado automaticamente pelo sistema
-- **Status:** Ativo, Inativo ou Excluído
-- **Histórico:** Todas as alterações ficam registradas
-- **Fotos:** Você pode anexar imagens do item
 
-### Editando Itens
-- Gestores podem editar apenas itens sob sua responsabilidade
-- Administradores podem editar qualquer item
-- Alterações importantes geram notificações
+## [VISUALIZADOR] 5. Perfis de Usuário
 
-## 5. Gerenciamento de Locais
+O sistema possui diferentes níveis de acesso:
+- **Administrador:** Acesso total a todas as funcionalidades do sistema, incluindo gerenciamento de usuários, itens, locais e movimentações.
+- **Gestor:** Pode gerenciar itens sob sua responsabilidade, solicitar novos locais, responder e justificar movimentações, e visualizar dados dos itens que gerencia.
+- **Visualizador:** Pode apenas visualizar os dados do inventário, sem permissão para editar, adicionar ou excluir informações.
 
-### Tipos de Locais
-- **Salas:** Escritórios, laboratórios, auditórios
-- **Depósitos:** Almoxarifados, estoques
-- **Áreas Externas:** Pátios, estacionamentos
-- **Outros:** Locais específicos da organização
+> **Importante:** O sistema exibe menus, botões e funcionalidades de acordo com o perfil do usuário logado. Se você não encontrar determinada função, provavelmente ela não está disponível para seu perfil.
 
-### Como Solicitar um Novo Local
-1. Durante o cadastro de item, se o local não existir
-2. Clique em "Solicitar Novo Local"
-3. Preencha a justificativa
-4. Aguarde aprovação do administrador
+## [VISUALIZADOR] 6. Funcionalidades Básicas (Todos os Usuários)
 
-## 6. Movimentações e Transferências
+### 6.1. Visualizar Itens
+Na seção "Itens", você pode ver uma lista de todos os itens cadastrados, com suas informações principais.
 
-### Quando Registrar uma Movimentação
-- Mudança de local físico do item
-- Transferência de responsabilidade
-- Empréstimo temporário
-- Manutenção ou reparo
+### 6.2. Visualizar Locais
+Na seção "Locais", você pode ver uma lista de todos os locais de armazenamento cadastrados.
 
-### Processo de Transferência
-1. **Administrador registra a movimentação**
-2. **Sistema notifica o novo responsável**
-3. **Responsável confirma ou recusa o recebimento**
-4. **Se recusado, inicia-se processo de justificativa**
+### 6.3. Visualizar Movimentações
+Na seção "Movimentações", você pode visualizar o histórico de movimentações de itens. Gestores e Visualizadores veem apenas as movimentações dos itens pelos quais são responsáveis.
 
-### Confirmação de Recebimento
-- Você receberá notificação quando um item for transferido para você
-- **Confirmar:** Item passa para sua responsabilidade
-- **Recusar:** Deve justificar o motivo da recusa
+### 6.4. Meu Perfil
+Na seção "Meu Perfil", você pode visualizar seus dados e alterar sua senha.
 
-## 7. Sistema de Notificações
 
-### Tipos de Notificações
-- **Transferência de Item:** Quando um item é transferido para você
-- **Solicitação Aprovada:** Quando sua solicitação é aprovada
-- **Mensagem do Administrador:** Comunicações importantes
+## [GESTOR] 7. Funcionalidades de Gestor
 
-### Como Responder Notificações
-1. Acesse o ícone de notificações no menu superior
-2. Clique na notificação desejada
-3. Leia as informações e histórico
-4. Escolha "Confirmar" ou "Recusar"
-5. Se recusar, explique o motivo
+Como Gestor, além das funcionalidades básicas, você também pode:
 
-## 8. Módulo de Almoxarifado
+### 7.1. Adicionar e Editar Itens
+- **Adicionar Novo Item:** Na página "Itens", clique em "Adicionar Novo Item" para cadastrar um novo ativo sob sua responsabilidade.
+- **Editar Item:** Você pode editar as informações dos itens pelos quais você é responsável.
+- **Solicitar Novo Local:** Se um item precisa ser alocado em um local que não existe, o formulário de adição de item dará a opção de solicitar a criação de um novo local para o administrador.
 
-### Conceitos Básicos
-- **Empenho:** Autorização para gastar determinado valor
-- **Nota Fiscal:** Documento que comprova a compra
-- **Material:** Item físico adquirido e estocado
+### 7.2. Notificações e Disputas de Movimentação
+- **Receber Notificações:** Sempre que um item for transferido para você, você receberá uma notificação.
+- **Confirmar ou Recusar Movimentação:** Você pode aceitar a movimentação ou recusar, justificando o motivo.
+- **Comunicação com o Administrador:** Caso recuse, inicia-se uma conversa (histórico de mensagens) entre você e o administrador, até que a situação seja resolvida.
+- **Acompanhar Histórico:** Todo o histórico de justificativas e respostas fica disponível para consulta na tela da notificação.
 
-### Fluxo de Trabalho
-1. **Criar Empenho:** Define valor disponível para compras
-2. **Registrar Nota Fiscal:** Vincula compra ao empenho
-3. **Dar Entrada no Material:** Registra itens no estoque
-4. **Controlar Saídas:** Registra retiradas do almoxarifado
 
-### Cadastro de Materiais
-- **Nome:** Descrição clara do material
-- **Categoria:** Classificação para organização
-- **Unidade de Medida:** Kg, unidade, metro, etc.
-- **Estoque Mínimo:** Quantidade mínima para alerta
+## [ADMINISTRADOR] 8. Funcionalidades de Administrador
 
-### Controle de Estoque
-- **Entrada:** Aumenta o estoque disponível
-- **Saída:** Reduz o estoque (consumo, transferência)
-- **Ajuste:** Correções de inventário
-- **Relatórios:** Acompanhe movimentações e saldos
+Como Administrador, você tem controle total sobre o sistema e pode:
 
-## 9. Relatórios e Consultas
+### 8.1. Gerenciamento Completo de Itens
+*   **Adicionar, Editar e Excluir Itens:** Você pode realizar todas as operações em qualquer item do inventário.
+*   **Pesquisar Itens:** Utilize a barra de pesquisa para encontrar itens por qualquer critério.
 
-### Relatórios Disponíveis
-- **Itens por Local:** Lista todos os itens de um local específico
-- **Itens por Responsável:** Mostra itens sob responsabilidade de uma pessoa
-- **Movimentações:** Histórico de transferências por período
-- **Estoque de Materiais:** Situação atual do almoxarifado
+### 8.2. Gerenciamento de Locais
+*   **Adicionar, Editar e Excluir Locais:** Controle total sobre os locais de armazenamento.
+*   **Aprovar/Rejeitar Solicitações:** Gerencie as solicitações de novos locais feitas pelos Gestores.
 
-### Como Gerar Relatórios
-1. Acesse a seção correspondente (Itens, Locais, etc.)
-2. Use os filtros disponíveis
-3. Clique em "Gerar Relatório" ou "Exportar"
-4. Escolha o formato desejado (PDF, Excel)
 
-## 10. Boas Práticas
+### 8.3. Gerenciamento de Movimentações
+- **Registrar Movimentação:** Registre movimentações de itens individuais ou em massa entre locais e responsáveis.
+- **Notificações e Disputas:** Ao transferir um item para um gestor, o sistema envia uma notificação. Caso o gestor recuse, você pode responder justificando a movimentação ou desfazer a transferência, retornando o item ao local e responsável anterior. Todo o histórico da comunicação fica registrado e visível para ambos.
 
-### Para Gestores
-- Mantenha as informações dos seus itens sempre atualizadas
-- Responda às notificações rapidamente
-- Justifique adequadamente quando recusar transferências
-- Solicite novos locais apenas quando necessário
+### 8.4. Gerenciamento de Usuários
+*   **Adicionar, Editar e Excluir Usuários:** Crie, modifique e remova contas de usuário.
+*   **Gerenciar Permissões:** Defina o perfil de cada usuário (Administrador, Gestor, Visualizador).
+*   **Aprovar Contas:** Aprove ou rejeite o registro de novas contas de usuário.
 
-### Para Administradores
-- Aprove solicitações de usuários em tempo hábil
-- Mantenha a estrutura de locais organizada
-- Resolva disputas de movimentação rapidamente
-- Faça backup regular dos dados
 
-### Segurança
-- Não compartilhe sua senha com outras pessoas
-- Faça logout ao sair do sistema
-- Mantenha seus dados de contato atualizados
-- Reporte problemas ao administrador imediatamente
+## [VISUALIZADOR] 9. Ícones Utilizados
 
-## 11. Lixeira e Recuperação
+*   **Editar:** `<i class="fas fa-edit"></i>`
+*   **Excluir:** `<i class="fas fa-trash"></i>` (Pode estar desativado se você não tiver permissão)
+*   **Aprovar:** `<i class="fas fa-check-circle"></i>`
+*   **Rejeitar:** `<i class="fas fa-times-circle"></i>`
+*   **Pendente:** `<i class="fas fa-hourglass-half"></i>`
 
-### Sistema de Lixeira
-- Itens excluídos não são removidos permanentemente
-- Ficam armazenados na "Lixeira" do sistema
-- Apenas administradores podem restaurar itens excluídos
+## [VISUALIZADOR] 10. Perguntas Frequentes (FAQ)
 
-### Quando um Item vai para a Lixeira
-- Exclusão acidental pelo usuário
-- Baixa patrimonial autorizada
-- Item danificado irreparavelmente
+*   **Minha conta está "Pendente". O que devo fazer?**
+    Sua conta precisa ser aprovada por um administrador. Entre em contato com ele.
 
-## 12. Suporte e Contato
+## [VISUALIZADOR] 11. Solução de Problemas
 
-### Problemas Técnicos
-- Entre em contato com o administrador do sistema
-- Descreva detalhadamente o problema
-- Informe qual navegador está usando
-- Mencione se o erro se repete
+*   **Não consigo fazer login:** Verifique seus dados e se sua conta foi aprovada. Se esqueceu a senha, contate um administrador.
 
-### Solicitações de Melhoria
-- Sugestões são sempre bem-vindas
-- Envie para o administrador com justificativa
-- Explique como a melhoria ajudaria no trabalho
+## [VISUALIZADOR] 12. Informações do Sistema
 
-### Treinamento
-- Solicite treinamento adicional se necessário
-- Consulte este manual regularmente
-- Pratique as funcionalidades em ambiente de teste
+Este sistema foi desenvolvido pela [Seção de Tecnologia da Informação (STI-UAST)](https://uast.ufrpe.br/sti).
 
 ---
 
-**Sistema desenvolvido pela Seção de Tecnologia da Informação**
 
-*Este manual é atualizado regularmente. Consulte sempre a versão mais recente.*
+---
+
+> **Observação:** Caso você tenha dúvidas sobre alguma funcionalidade que não aparece para seu perfil, entre em contato com o administrador do sistema.
+
+**Fim do Manual do Usuário.**

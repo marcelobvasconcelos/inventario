@@ -68,6 +68,23 @@ if (isset($_POST['is_ajax']) && $_POST['is_ajax'] === 'true' && $_SERVER['REQUES
                 if ($acao == 'aprovar') {
                     $pdo->beginTransaction();
                     try {
+                        // Detectar nome da coluna para aprovação
+                        $sql_check_column = "SHOW COLUMNS FROM almoxarifado_requisicoes_itens";
+                        $stmt_check_col = $pdo->prepare($sql_check_column);
+                        $stmt_check_col->execute();
+                        $columns = $stmt_check_col->fetchAll(PDO::FETCH_ASSOC);
+                        
+                        $column_name = 'produto_id'; // padrão
+                        foreach ($columns as $col) {
+                            if ($col['Field'] == 'material_id') {
+                                $column_name = 'material_id';
+                                break;
+                            } elseif ($col['Field'] == 'produto_id') {
+                                $column_name = 'produto_id';
+                                break;
+                            }
+                        }
+                        
                         // Captura quantidades aprovadas enviadas (se houver)
                         $quantidades_aprovadas = [];
                         if (isset($_POST['quantidades']) && is_array($_POST['quantidades'])) {
@@ -81,13 +98,13 @@ if (isset($_POST['is_ajax']) && $_POST['is_ajax'] === 'true' && $_SERVER['REQUES
                         }
 
                         // Busca itens da requisição e aplica as quantidades aprovadas (limitadas ao solicitado)
-                        $sql_itens_req = "SELECT produto_id, quantidade_solicitada FROM almoxarifado_requisicoes_itens WHERE requisicao_id = ?";
+                        $sql_itens_req = "SELECT $column_name as produto_id, quantidade_solicitada FROM almoxarifado_requisicoes_itens WHERE requisicao_id = ?";
                         $stmt_itens_req = $pdo->prepare($sql_itens_req);
                         $stmt_itens_req->execute([$requisicao_id]);
                         $itens_req = $stmt_itens_req->fetchAll(PDO::FETCH_ASSOC);
 
                         if ($itens_req) {
-                            $stmt_upd_item = $pdo->prepare("UPDATE almoxarifado_requisicoes_itens SET quantidade_entregue = ? WHERE requisicao_id = ? AND produto_id = ?");
+                            $stmt_upd_item = $pdo->prepare("UPDATE almoxarifado_requisicoes_itens SET quantidade_entregue = ? WHERE requisicao_id = ? AND $column_name = ?");
                             $stmt_get_stock = $pdo->prepare("SELECT estoque_atual FROM almoxarifado_materiais WHERE id = ?");
                             $stmt_upd_stock = $pdo->prepare("UPDATE almoxarifado_materiais SET estoque_atual = estoque_atual - ? WHERE id = ?");
 
@@ -274,6 +291,30 @@ if (isset($_POST['is_ajax']) && $_POST['is_ajax'] === 'true' && $_SERVER['REQUES
                         echo json_encode(['success' => false, 'message' => 'Informe um período válido (data inicial e final).']);
                         exit;
                     }
+                } elseif ($acao == 'concluir_entrega') {
+                    $pdo->beginTransaction();
+                    try {
+                        // Atualizar status da requisição para concluída
+                        $sql_update_req = "UPDATE almoxarifado_requisicoes SET status_notificacao = 'concluida' WHERE id = ?";
+                        $stmt_update_req = $pdo->prepare($sql_update_req);
+                        $stmt_update_req->execute([$requisicao_id]);
+                        
+                        // Criar notificação para o requisitante
+                        $mensagem_notificacao = "Sua requisição #" . $requisicao_id . " foi concluída. Os materiais foram entregues.";
+                        $sql_notificacao = "INSERT INTO almoxarifado_requisicoes_notificacoes (requisicao_id, usuario_origem_id, usuario_destino_id, tipo, mensagem, status) VALUES (?, ?, ?, 'aprovada', ?, 'pendente')";
+                        $stmt_notificacao = $pdo->prepare($sql_notificacao);
+                        $stmt_notificacao->execute([$requisicao_id, $admin_id, $usuario_requisitante_id, $mensagem_notificacao]);
+                        
+                        $pdo->commit();
+                        echo json_encode(['success' => true, 'message' => 'Entrega concluída com sucesso!']);
+                        exit;
+                    } catch (Exception $e) {
+                        if (isset($pdo) && $pdo->inTransaction()) {
+                            $pdo->rollback();
+                        }
+                        echo json_encode(['success' => false, 'message' => 'Erro ao concluir entrega: ' . $e->getMessage()]);
+                        exit;
+                    }
                 } else {
                     echo json_encode(['success' => false, 'message' => 'Ação inválida ou dados incompletos.']);
                     exit;
@@ -330,13 +371,30 @@ if (!empty($where_clauses)) {
 
 $sql .= " ORDER BY ar.data_requisicao DESC";
 
+// Detectar nome da coluna automaticamente (uma vez só)
+$sql_check_column = "SHOW COLUMNS FROM almoxarifado_requisicoes_itens";
+$stmt_check = $pdo->prepare($sql_check_column);
+$stmt_check->execute();
+$columns = $stmt_check->fetchAll(PDO::FETCH_ASSOC);
+
+$column_name = 'produto_id'; // padrão
+foreach ($columns as $col) {
+    if ($col['Field'] == 'material_id') {
+        $column_name = 'material_id';
+        break;
+    } elseif ($col['Field'] == 'produto_id') {
+        $column_name = 'produto_id';
+        break;
+    }
+}
+
 $stmt = $pdo->prepare($sql);
 $stmt->execute($params);
 $requisicoes = [];
 while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
-    $sql_itens = "SELECT ari.quantidade_solicitada, ari.quantidade_entregue, ari.produto_id as produto_id, m.nome as material_nome
+    $sql_itens = "SELECT ari.quantidade_solicitada, ari.quantidade_entregue, ari.$column_name as produto_id, m.nome as material_nome
                   FROM almoxarifado_requisicoes_itens ari
-                  JOIN almoxarifado_materiais m ON ari.produto_id = m.id
+                  JOIN almoxarifado_materiais m ON ari.$column_name = m.id
                   WHERE ari.requisicao_id = ?";
     $stmt_itens = $pdo->prepare($sql_itens);
     $stmt_itens->execute([$row['requisicao_id']]);
@@ -511,6 +569,7 @@ while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
                             <hr>
                             <div class="agendamento-admin">
                                 <button type="button" class="btn btn-primary" onclick="showAjusteAgendamentoForm(<?php echo $requisicao['requisicao_id']; ?>)">Ajustar Período de Entrega</button>
+                                <button type="button" class="btn btn-success ml-2" onclick="concluirEntrega(<?php echo $requisicao['requisicao_id']; ?>)">Concluir Entrega</button>
                                 <div id="ajuste-agendamento-form-<?php echo $requisicao['requisicao_id']; ?>" class="mt-3" style="display:none;">
                                     <form class="ajustar-agendamento-form" data-requisicao-id="<?php echo $requisicao['requisicao_id']; ?>">
                                         <div class="form-group">
@@ -563,6 +622,43 @@ function showAjusteAgendamentoForm(requisicaoId) {
 
 function hideAjusteAgendamentoForm(requisicaoId) {
     document.getElementById('ajuste-agendamento-form-' + requisicaoId).style.display = 'none';
+}
+
+function concluirEntrega(requisicaoId) {
+    if (confirm('Tem certeza que deseja concluir esta entrega? Esta ação não pode ser desfeita.')) {
+        const formData = new FormData();
+        formData.append('is_ajax', 'true');
+        formData.append('requisicao_id', requisicaoId);
+        formData.append('acao', 'concluir_entrega');
+        
+        fetch('admin_notificacoes.php', { method: 'POST', body: formData })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Erro HTTP: ' + response.status);
+            }
+            const contentType = response.headers.get('content-type');
+            if (!contentType || !contentType.includes('application/json')) {
+                throw new Error('Resposta não é JSON válido');
+            }
+            return response.json();
+        })
+        .then(data => {
+            const feedbackMessage = document.getElementById('feedback-message');
+            feedbackMessage.style.display = 'block';
+            feedbackMessage.textContent = data.message;
+            feedbackMessage.className = data.success ? 'alert alert-success' : 'alert alert-danger';
+            if (data.success) {
+                setTimeout(() => { location.reload(); }, 1000);
+            }
+        })
+        .catch(error => {
+            console.error('Erro de rede:', error);
+            const feedbackMessage = document.getElementById('feedback-message');
+            feedbackMessage.style.display = 'block';
+            feedbackMessage.textContent = 'Ocorreu um erro ao processar sua solicitação. Por favor, tente novamente.';
+            feedbackMessage.className = 'alert alert-danger';
+        });
+    }
 }
 
 document.addEventListener('DOMContentLoaded', function() {
